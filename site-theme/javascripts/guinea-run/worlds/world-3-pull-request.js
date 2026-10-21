@@ -1,7 +1,7 @@
 /*
  * World 3, Open the Pull Request (Labs 1.6, 2.2, 2.3, 2.4): a puzzle at the
  * desk. The guinea pig sits in front of its Pull Request and gets it green:
- * 1. pick the right base, or the check waits forever on "Expected"
+ * 1. pick the right base branch: a User Story starts in integration
  * 2. answer the deployment check: three real failures and their fixes
  * 3. declare the deployment actions the release needs, before or after the
  *    metadata deployment, in order, and leave out what is not an action
@@ -21,13 +21,13 @@ export const MODELS = ["office"];
 export const TEXTS = {
   en: {
     intro: "US-014 is committed and published. Open its Pull Request and get it ready to merge.",
-    how1: "Pick the right base for the Pull Request",
+    how1: "Pick the right base branch for the Pull Request",
     how2: "The check is red: pick the fix for each error",
     how3: "Sort the deployment actions: Before, After, or bin",
-    goal1: "Pick the base of your Pull Request",
+    goal1: "Pick the base branch of your Pull Request",
     goal2: "The deployment check is red: pick the fix ({{n}} of 3)",
     goal3: "Sort the 5 cards: Before, After, or not an action",
-    coach1: "Which base? Read it carefully!",
+    coach1: "Which branch first? Think of the pipeline!",
     coach2: "Red check! Read the error, pick the fix",
     coach3: "Now sort the deployment actions",
     wrongShort: "Not this one",
@@ -40,18 +40,20 @@ export const TEXTS = {
     step1: "1. Base",
     step2: "2. Deployment check",
     step3: "3. Deployment actions",
-    baseQuestion: "Open the Pull Request: which base?",
-    baseUpstream: "base: hardisgroupcom/sfdx-hardis-training : integration",
-    baseMain: "base: your fork : main",
-    baseFork: "base: your fork : integration",
-    baseUpstreamTip: "The base is the original repository: the check stays on Expected forever. Check base and compare before clicking, every single time.",
-    baseMainTip: "A User Story goes to integration first. main is production.",
-    baseOk: "Base: your fork, integration. The check starts.",
+    baseQuestion: "Open the Pull Request in your repository: which base branch?",
+    baseIntegration: "integration branch",
+    baseUat: "uat branch",
+    basePreprod: "preprod branch",
+    baseMain: "main branch",
+    baseUatTip: "The uat branch comes after integration: a User Story is merged into the integration branch first, then promoted to uat with the others.",
+    basePreprodTip: "The preprod branch is the last stop before production. A User Story starts in the integration branch.",
+    baseMainTip: "The main branch is production. A User Story goes to the integration branch first.",
+    baseOk: "Base: the integration branch of your repository. The check starts.",
     checkFailed: "Simulate Deployment failed",
     checkGreen: "All checks have passed",
     q1: "The check fails on the permission set:",
     q1a: "Add Installation__c.Panels_Required__c to the Pull Request, next to the permission set",
-    q1b: "Create the field by hand in helios-integration",
+    q1b: "Create the field by hand in the helios-integration org",
     q1c: "Remove Helios_Delivery_Crew from the Pull Request",
     q1bTip: "Anything you do by hand in one org, you will have to do in every org. The field must travel with the permission set.",
     q1cTip: "Without its permission set, the field deploys green and nobody can see it.",
@@ -93,18 +95,18 @@ export const TEXTS = {
     templateShow: "Show the rest of the Pull Request template",
     templateLine: "<!-- Victor: ...",
     mariiaPlan: "Deployment actions are defined with the Pull Request, and run during the deployment. Same file for everyone.",
-    mariiaBase: "Check base and compare before clicking, every single time.",
+    mariiaBase: "integration, then uat, then preprod, then main. A User Story always starts at the first one.",
     selected: "Selected: {{label}}"
   },
   fr: {
     intro: "US-014 est commitée et publiée. Ouvrez sa Pull Request et préparez-la pour le merge.",
-    how1: "Choisissez la bonne base pour la Pull Request",
+    how1: "Choisissez la bonne branch de base pour la Pull Request",
     how2: "Le contrôle est rouge : choisissez le correctif de chaque erreur",
     how3: "Rangez les actions de déploiement : Avant, Après, ou poubelle",
-    goal1: "Choisissez la base de votre Pull Request",
+    goal1: "Choisissez la branch de base de votre Pull Request",
     goal2: "Le contrôle de déploiement est rouge : choisissez le correctif ({{n}} sur 3)",
     goal3: "Rangez les 5 cartes : Avant, Après, ou pas une action",
-    coach1: "Quelle base ? Lisez bien !",
+    coach1: "Quelle branch d'abord ? Pensez au pipeline !",
     coach2: "Contrôle rouge ! Lisez l'erreur, choisissez le correctif",
     coach3: "Maintenant, rangez les actions de déploiement",
     wrongShort: "Pas celle-ci",
@@ -117,18 +119,20 @@ export const TEXTS = {
     step1: "1. Base",
     step2: "2. Contrôle de déploiement",
     step3: "3. Actions de déploiement",
-    baseQuestion: "Ouvrir la Pull Request : quelle base ?",
-    baseUpstream: "base: hardisgroupcom/sfdx-hardis-training : integration",
-    baseMain: "base: votre fork : main",
-    baseFork: "base: votre fork : integration",
-    baseUpstreamTip: "La base est le repository d'origine : le contrôle reste sur Expected pour toujours. Vérifiez base et compare avant de cliquer, à chaque fois.",
-    baseMainTip: "Une User Story va d'abord en integration. main, c'est la production.",
-    baseOk: "Base : votre fork, integration. Le contrôle démarre.",
+    baseQuestion: "Ouvrir la Pull Request dans votre repository : quelle branch de base ?",
+    baseIntegration: "branch integration",
+    baseUat: "branch uat",
+    basePreprod: "branch preprod",
+    baseMain: "branch main",
+    baseUatTip: "La branch uat vient après integration : une User Story est d'abord mergée dans la branch integration, puis promue en uat avec les autres.",
+    basePreprodTip: "La branch preprod est la dernière étape avant la production. Une User Story commence dans la branch integration.",
+    baseMainTip: "La branch main, c'est la production. Une User Story va d'abord dans la branch integration.",
+    baseOk: "Base : la branch integration de votre repository. Le contrôle démarre.",
     checkFailed: "Simulate Deployment en échec",
     checkGreen: "Tous les contrôles sont passés",
     q1: "Le contrôle échoue sur le permission set :",
     q1a: "Ajouter Installation__c.Panels_Required__c à la Pull Request, à côté du permission set",
-    q1b: "Créer le champ à la main dans helios-integration",
+    q1b: "Créer le champ à la main dans l'org helios-integration",
     q1c: "Retirer Helios_Delivery_Crew de la Pull Request",
     q1bTip: "Tout ce que vous faites à la main dans une org, vous devrez le faire dans chaque org. Le champ doit voyager avec le permission set.",
     q1cTip: "Sans son permission set, le champ se déploie au vert et personne ne le voit.",
@@ -170,7 +174,7 @@ export const TEXTS = {
     templateShow: "Afficher la suite du template de Pull Request",
     templateLine: "<!-- Victor: ...",
     mariiaPlan: "Les actions de déploiement se définissent avec la Pull Request, et s'exécutent pendant le déploiement. Le même fichier pour tout le monde.",
-    mariiaBase: "Vérifiez base et compare avant de cliquer, à chaque fois.",
+    mariiaBase: "integration, puis uat, puis preprod, puis main. Une User Story commence toujours par la première.",
     selected: "Sélectionnée : {{label}}"
   }
 };
@@ -178,7 +182,6 @@ export const TEXTS = {
 /** The strings taken word for word from the labs, checked by scripts/verify/check-easter-egg.mjs. */
 export const QUOTES = [
   { lab: "1.6", text: "INVALID_CROSS_REFERENCE_KEY" },
-  { lab: "1.6", text: "hardisgroupcom/sfdx-hardis-training" },
   { lab: "2.2", text: "Crew_Warning_Sent__c" },
   { lab: "2.2", text: "Metadata Retriever" },
   { lab: "2.3", text: "After Metadata Deployment" },
@@ -522,8 +525,10 @@ export function createWorld(ctx) {
     phase = "base";
     setStep(0);
     const answers = [
-      { text: t("baseUpstream"), tip: t("baseUpstreamTip") },
-      { text: t("baseFork"), ok: true },
+      // In the order of the pipeline: the first one is the answer, and the lesson
+      { text: t("baseIntegration"), ok: true },
+      { text: t("baseUat"), tip: t("baseUatTip") },
+      { text: t("basePreprod"), tip: t("basePreprodTip") },
       { text: t("baseMain"), tip: t("baseMainTip") }
     ];
     renderChoices(t("baseQuestion"), null, answers, (answer, button) => {
