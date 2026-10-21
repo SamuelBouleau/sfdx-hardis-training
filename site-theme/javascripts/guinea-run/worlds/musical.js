@@ -390,7 +390,7 @@ export function createMusicalRun(ctx, def) {
   });
   track.receiveShadow = true;
   root.add(track);
-  const base = new THREE.Mesh(box, paint.plain(0x032d60, { roughness: 0.9 }));
+  const base = new THREE.Mesh(box, paint.plain(0x0b5cab, { roughness: 0.8, emissive: 0x041a33 }));
   base.scale.set(X(lastQuarter * QUARTER - firstQuarter * QUARTER), 1.4, 3.4);
   base.position.set(X((lastQuarter * QUARTER + firstQuarter * QUARTER) / 2), -1.75, 0);
   root.add(base);
@@ -1308,7 +1308,7 @@ export function createMusicalRun(ctx, def) {
       const into = Math.min(run.beat - z.from, z.to - run.beat);
       fog = Math.max(fog, Math.max(0, Math.min(1, (into + 2) / 3)));
     }
-    fogMaterial.opacity = fog * 0.62;
+    fogMaterial.opacity = fog * 0.45;
     fogs.forEach((mesh, i) => {
       mesh.visible = fog > 0.01;
       mesh.position.x = camX + Math.sin(time * 0.3 + i * 2) * 2 + (i - 1) * 6;
@@ -1369,7 +1369,7 @@ export function createMusicalRun(ctx, def) {
     const jitter = shake > 0 ? (Math.random() - 0.5) * shake : 0;
     const distance = portrait ? 17.5 : 12.5;
     camera.position.set(camX + jitter, camY + (portrait ? 1.2 : 0.9), distance);
-    camera.lookAt(camX, camY - (portrait ? 1.3 : 0.1), 0);
+    camera.lookAt(camX, camY + (portrait ? -0.4 : 0.75), 0);
     engine.aimSun(px, 0);
   }
 
@@ -1380,6 +1380,7 @@ export function createMusicalRun(ctx, def) {
     const next = targets.find((x) => !x.bonus && x.at > run.beat - 0.05 && !(x.owner && x.owner.dead) && !(x.owner && x.owner.done));
     setData("jumpat", next ? next.at : "none");
     setData("stopped", run.mode === "stop" ? "yes" : "no");
+    setData("stopkind", run.mode === "stop" && run.stop ? run.stop.type : "");
   }
 
   /* ---------- What a world can use ---------- */
@@ -1458,6 +1459,31 @@ export function createMusicalRun(ctx, def) {
       music.setSection(def.song.start || "intro", 0);
       run.mode = "run";
       run.offset = 0;
+      // guinea-at=N (for checks): start at the last checkpoint before run beat N
+      const at = Number(ctx.params && ctx.params.startAt) || 0;
+      if (at > 0) {
+        const cp = checkpoints.filter((c) => c.at <= at).pop();
+        run.cp = cp;
+        run.offset = -cp.at;
+        run.beat = cp.at;
+        run.prev = cp.at;
+        run.section = cp.section;
+        music.setSection(cp.section, 0);
+        for (const c of checkpoints) {
+          c.passed = c.at <= cp.at;
+        }
+        for (const trigger of triggers) {
+          if (trigger.event.at <= cp.at) {
+            trigger.done = true;
+            if (trigger.event.type === "script") {
+              trigger.event.run(api);
+            }
+          }
+        }
+        for (const target of targets) {
+          target.cued = target.at < cp.at;
+        }
+      }
       coach(t(hud.touch ? "mu_startTouch" : "mu_start"), 3000, true);
     },
     update(dt, time) {
@@ -1529,8 +1555,8 @@ export function createMusicalRun(ctx, def) {
         return;
       }
       if (run.mode === "stop" && run.stop && run.stop.type === "choice") {
-        // The press counts for what was lit a moment ago: reaction time
-        pick(run.stop, litAt(music.beat - 0.08));
+        // The press counts for what is lit: what the player sees
+        pick(run.stop, litAt(music.beat));
       }
       if (run.mode === "run" || run.mode === "stop" || run.mode === "resume") {
         player.buffer = BUFFER_S;

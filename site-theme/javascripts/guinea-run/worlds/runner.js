@@ -45,6 +45,10 @@ const STOP_DISTANCE = 3.5;
 const GATE_PANEL_AT = 60;
 const TEACH_AT = 30;
 const STREAK_STEP = 10;
+// Signs and badges further than this are too small to read: not drawn.
+// Small objects further than DRAW_SMALL are deep in the fog: not drawn either
+const LABEL_DISTANCE = 50;
+const DRAW_SMALL = 78;
 
 const THEMES = {
   error: { color: SLDS.error, dark: 0xba0517, glyph: "error" },
@@ -115,6 +119,8 @@ export function createRunner(ctx, config) {
   let nextRowAt = Math.max(distance + (config.firstRowAt || 30), 0);
   let gatesSpawned = sectionIndex;
   let noObstacleUntil = 0;
+  // Stretches with no obstacle: the run-up to a gate, to read and steer
+  const quiet = [];
   let objects = [];
   let scriptIndex = 0;
   let fog = false;
@@ -174,11 +180,18 @@ export function createRunner(ctx, config) {
     trackTexture.repeat.set(1, 4);
     const top = paint.plain(0xffffff, { map: trackTexture, roughness: 0.8 });
     const edge = new THREE.MeshStandardMaterial({ color: sections[0].color, roughness: 0.5 });
-    const under = paint.plain(0xffe9c7, { roughness: 0.9 });
-    const slabGeometry = paint.geometry("slab", () => new THREE.BoxGeometry(6.6, 0.4, SEGMENT_LENGTH));
+    // Three draw calls a slab, not six: the sides, the top, then the rest
+    const slabGeometry = paint.geometry("r-slab", () => {
+      const geometry = new THREE.BoxGeometry(6.6, 0.4, SEGMENT_LENGTH);
+      geometry.clearGroups();
+      geometry.addGroup(0, 12, 0);
+      geometry.addGroup(12, 6, 1);
+      geometry.addGroup(18, 18, 0);
+      return geometry;
+    });
     const segments = [];
     for (let i = 0; i < Math.ceil(140 / SEGMENT_LENGTH) + 1; i++) {
-      const slab = new THREE.Mesh(slabGeometry, [edge, edge, top, under, edge, edge]);
+      const slab = new THREE.Mesh(slabGeometry, [edge, top]);
       slab.position.y = -0.2;
       slab.receiveShadow = true;
       root.add(slab);
@@ -406,10 +419,12 @@ export function createRunner(ctx, config) {
     post: paint.geometry("post", () => new THREE.BoxGeometry(0.12, 1.3, 0.12)),
     hole: paint.geometry("hole", () => new THREE.BoxGeometry(1.75, 0.06, 2.2)),
     stripe: paint.geometry("stripe", () => new THREE.BoxGeometry(1.95, 0.06, 0.18)),
-    // A thin box: its sides in one material, its two faces in the other
-    tile: paint.geometry("r-tile", () => twoSided(new THREE.BoxGeometry(0.7, 0.7, 0.12))),
-    bigTile: paint.geometry("r-tile-big", () => twoSided(new THREE.BoxGeometry(0.92, 0.92, 0.14))),
+    // A thin box drawn in one call: its picture shows on every face
+    tile: paint.geometry("r-tile", () => new THREE.BoxGeometry(0.7, 0.7, 0.12)),
+    bigTile: paint.geometry("r-tile-big", () => new THREE.BoxGeometry(0.92, 0.92, 0.14)),
     halo: paint.geometry("r-halo", () => new THREE.TorusGeometry(0.66, 0.05, 8, 32)),
+    portal: paint.geometry("r-portal", () => new THREE.TorusGeometry(0.92, 0.13, 10, 40)),
+    portalGlow: paint.geometry("r-portal-glow", () => new THREE.CircleGeometry(0.9, 32)),
     coin: paint.geometry("coin", () => new THREE.CylinderGeometry(0.44, 0.44, 0.09, 36)),
     ring: paint.geometry("ring", () => new THREE.TorusGeometry(0.5, 0.035, 8, 36)),
     door: paint.geometry("r-door", () => new THREE.BoxGeometry(1.95, 2.5, 0.12)),
@@ -461,14 +476,6 @@ export function createRunner(ctx, config) {
     },
     { transparent: true, depthWrite: false }
   );
-
-  /** A BoxGeometry drawn in two groups: the four sides (0), front and back (1). */
-  function twoSided(geometry) {
-    geometry.clearGroups();
-    geometry.addGroup(0, 24, 0);
-    geometry.addGroup(24, 12, 1);
-    return geometry;
-  }
 
   /** An unlit picture, so a face reads the same in any light: crisp text. */
   function flat(name, width, height, draw, extra) {
@@ -573,13 +580,10 @@ export function createRunner(ctx, config) {
     });
   }
 
+  /** Only the big body of an obstacle casts a shadow: every caster is drawn twice. */
   function shadows(group) {
-    if (engine.settings.shadows) {
-      group.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true;
-        }
-      });
+    if (engine.settings.shadows && group.children[0] && group.children[0].isMesh) {
+      group.children[0].castShadow = true;
     }
     return group;
   }
@@ -657,10 +661,7 @@ export function createRunner(ctx, config) {
   function itemMesh(kind, withLabel) {
     const def = config.items[kind];
     const group = new THREE.Group();
-    const side = paint.plain(new THREE.Color(def.color).getHex(), { roughness: 0.35, emissive: new THREE.Color(def.color).getHex(), emissiveIntensity: 0.25 });
-    const face = paint.tile(kind, def.color, def.glyph);
-    const tile = new THREE.Mesh(def.big ? shapes.bigTile : shapes.tile, [side, face]);
-    tile.castShadow = engine.settings.shadows;
+    const tile = new THREE.Mesh(def.big ? shapes.bigTile : shapes.tile, paint.tile(kind, def.color, def.glyph));
     group.add(tile);
     if (def.big) {
       const halo = new THREE.Mesh(shapes.halo, paint.plain(0xffd84d, { emissive: 0xffb400, emissiveIntensity: 0.9 }));
@@ -738,6 +739,7 @@ export function createRunner(ctx, config) {
   function gateMesh(spec) {
     const group = new THREE.Group();
     const panels = [];
+    const spinners = [];
     spec.doors.forEach((door, lane) => {
       const x = LANES[lane];
       const look = doorLook(door);
@@ -750,6 +752,13 @@ export function createRunner(ctx, config) {
         arrow.rotation.x = -Math.PI / 2;
         arrow.position.set(x, 0.02, 3);
         group.add(arrow);
+        // A glowing green ring: the way through
+        const ring = new THREE.Mesh(shapes.portal, paint.plain(0x45c65a, { emissive: 0x2e844a, emissiveIntensity: 1.1, roughness: 0.3 }));
+        ring.position.set(x, 1.3, 0);
+        const glow = new THREE.Mesh(shapes.portalGlow, paint.plain(0xb6f5c2, { emissive: 0x45c65a, emissiveIntensity: 0.8, transparent: true, opacity: 0.45, depthWrite: false }));
+        glow.position.set(x, 1.3, -0.02);
+        group.add(ring, glow);
+        spinners.push(ring);
         panels.push(null);
       } else {
         const icon = look === "quiz" ? "branch" : look === "trap" ? "loop" : "error";
@@ -790,7 +799,8 @@ export function createRunner(ctx, config) {
     logo.position.set(0, bannerText || Array.isArray(spec.banner) ? 5.05 : 4.2, 0);
     group.add(logo);
     group.userData.panels = panels;
-    return shadows(group);
+    group.userData.spinners = spinners;
+    return group;
   }
 
   /** A manual stop: a big sign across the track, waiting for "Mark as done". */
@@ -856,6 +866,8 @@ export function createRunner(ctx, config) {
   }
 
   function add(object) {
+    object.small = object.type === "obstacle" || object.type === "item" || object.type === "power";
+    object.detail = 2;
     object.mesh.position.x = object.x;
     object.mesh.position.z = -(object.at - distance);
     root.add(object.mesh);
@@ -972,10 +984,16 @@ export function createRunner(ctx, config) {
     },
     /** spec: { doors: [3 x { text, short, ok, look, tip }], question, sign, coach, id } */
     spawnGate(spec, at) {
+      calmBefore(at);
       return add({ type: "gate", kind: "gate", spec, x: 0, at, mesh: gateMesh(spec), depth: 0.4 });
+    },
+    /** No obstacle from 30 m before `at` to 8 m after: a run-up to something to read or catch. */
+    calm(at) {
+      calmBefore(at);
     },
     /** spec: { header, title, hint, button, id } */
     spawnStop(spec, at) {
+      calmBefore(at);
       return add({ type: "stop", kind: "stop", spec, x: 0, at, mesh: stopMesh(spec), depth: 0.4 });
     },
     spawnSign(text, at, side, look) {
@@ -1067,7 +1085,7 @@ export function createRunner(ctx, config) {
       if (points) {
         ctx.points(points);
       }
-      runner.coach(t("r_right"), 1600, true);
+      runner.coach(say("r_right"), 1600, true);
     },
     /** A bad pick: the streak of good moves starts again. */
     breakStreak() {
@@ -1123,6 +1141,12 @@ export function createRunner(ctx, config) {
       if (!ended && distance >= total) {
         ended = true;
         hideDoors();
+        // The result card orbits the guinea pig: nothing tall stays around it
+        for (const object of objects) {
+          if ((object.type === "gate" || object.type === "stop") && object.at - distance < 4) {
+            object.mesh.visible = false;
+          }
+        }
         events.push({ type: "end" });
       }
       return events;
@@ -1189,6 +1213,23 @@ export function createRunner(ctx, config) {
 
   function scene() {
     return ctx.scene;
+  }
+
+  /** A word of the runner, or nothing when the world did not take RUNNER_TEXTS. */
+  function say(key, vars) {
+    const text = t(key, vars);
+    return text === key ? "" : text;
+  }
+
+  /** No obstacle in the run-up to a gate or a stop, so it can be read and steered at. */
+  function calmBefore(at) {
+    quiet.push([at - 30, at + 8]);
+    for (const object of objects) {
+      if (object.type === "obstacle" && object.at > at - 30 && object.at < at + 8) {
+        remove(object);
+      }
+    }
+    objects = objects.filter((object) => !object.removed);
   }
 
   function applyPower(event) {
@@ -1327,7 +1368,8 @@ export function createRunner(ctx, config) {
     const kinds = section.obstacles || [];
     const items = section.items || [];
 
-    if (nearEdge || at < noObstacleUntil || !kinds.length) {
+    const calm = quiet.some(([from, to]) => at > from && at < to);
+    if (nearEdge || calm || at < noObstacleUntil || !kinds.length) {
       if (items.length) {
         const kind = pick(items);
         for (let i = 0; i < 4; i++) {
@@ -1420,8 +1462,8 @@ export function createRunner(ctx, config) {
     if (taught.has(move)) {
       return;
     }
-    const key = "r_teach_" + move + (touch ? "_touch" : "");
-    if (runner.coach(t(key), 2400)) {
+    const text = say("r_teach_" + move + (touch ? "_touch" : ""));
+    if (!text || runner.coach(text, 2400)) {
       taught.add(move);
     }
   }
@@ -1430,6 +1472,14 @@ export function createRunner(ctx, config) {
     for (const object of objects) {
       const dz = object.at - distance;
       object.mesh.position.z = -dz;
+      // 0: not drawn, 1: without its labels, 2: everything
+      const detail = object.small && dz >= DRAW_SMALL ? 0 : dz >= LABEL_DISTANCE ? 1 : 2;
+      if (object.detail !== detail) {
+        object.detail = detail;
+        for (const child of object.mesh.children) {
+          child.visible = detail === 2 || (detail === 1 && !child.isSprite);
+        }
+      }
       if (object.type === "item" || object.type === "power") {
         // Only the tile turns: its name, a sprite, always faces the camera
         object.mesh.children[0].rotation.y = time * 2.2 + object.at;
@@ -1456,6 +1506,10 @@ export function createRunner(ctx, config) {
         continue;
       }
       if (object.type === "gate") {
+        for (const ring of object.mesh.userData.spinners) {
+          ring.rotation.z = time * 1.5;
+          ring.scale.setScalar(1 + Math.sin(time * 5) * 0.05);
+        }
         if (dz < GATE_PANEL_AT && !object.shown && dz > 0) {
           object.shown = true;
           showDoors(object);
@@ -1464,7 +1518,7 @@ export function createRunner(ctx, config) {
             runner.coach(object.spec.coach, 2800, true);
           } else if (!taught.has("door")) {
             taught.add("door");
-            runner.coach(t("r_teach_door"), 2600, true);
+            runner.coach(say("r_teach_door"), 2600, true);
           }
         }
         if (dz <= 0) {
@@ -1484,7 +1538,7 @@ export function createRunner(ctx, config) {
         }
         continue;
       }
-      if (object.type === "obstacle" && dz < TEACH_AT && dz > 4 && object.mesh.visible) {
+      if (object.type === "obstacle" && !stopped && dz < TEACH_AT && dz > 4 && object.mesh.visible) {
         teach(object.def.move);
       }
       const reach = object.depth / 2 + (object.type === "obstacle" ? 0.3 : 0.6);
@@ -1518,7 +1572,7 @@ export function createRunner(ctx, config) {
             // A streak: a bigger burst and a cheer
             ctx.fx.burst(player.x, 1.4, 0, { count: 50, speed: 5, up: 6, life: 1.4 });
             ctx.sound.play("combo");
-            runner.coach(t("r_streak", { n: streak }), 1400);
+            runner.coach(say("r_streak", { n: streak }), 1400);
           }
         }
         events.push({ type: object.type, kind: object.kind, def: object.def, object });
@@ -1567,7 +1621,7 @@ export const RUNNER_CSS = `
   position: absolute;
   left: 50%;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
-  z-index: 2;
+  z-index: 4;
   width: min(760px, calc(100vw - 20px));
   transform: translateX(-50%);
   pointer-events: none;
@@ -1625,8 +1679,9 @@ export const RUNNER_CSS = `
 }
 @media (max-width: 600px) {
   .guinea-run .gr-run-q {
-    padding: 6px 10px;
-    font-size: 15px;
+    margin-bottom: 5px;
+    padding: 5px 10px;
+    font-size: 14px;
   }
   .guinea-run .gr-run-row {
     gap: 5px;
@@ -1638,7 +1693,7 @@ export const RUNNER_CSS = `
     font-size: 15px;
   }
   .guinea-run .gr-run-door span {
-    font-size: 11.5px;
+    display: none;
   }
 }
 `;

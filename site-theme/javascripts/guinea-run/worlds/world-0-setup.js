@@ -303,6 +303,7 @@ export function createWorld(ctx) {
   let nearGate = null;
   let foundTold = false;
   let allGreen = false;
+  let greeted = false;
 
   const items = {};
   for (const [id, tool] of Object.entries(TOOLS)) {
@@ -504,6 +505,7 @@ export function createWorld(ctx) {
         if (event.step.spawn && !required[event.step.spawn] && state[event.step.spawn] === "missing") {
           spawnRequired(event.step.spawn, PLACES[event.step.spawn][0]);
         } else if (event.step.note) {
+          runner.calm(event.step.at + 90);
           runner.spawnObstacle("trust", 0, event.step.at + 90);
           runner.spawnItem("note", 0, event.step.at + 90, 2.1, { label: false });
         }
@@ -587,11 +589,15 @@ export function createWorld(ctx) {
   return {
     start() {
       updateGoal();
-      runner.coach(t(hud.touch ? "coachStartTouch" : "coachStart"), 2800, true);
     },
     update(dt, time) {
       if (finished) {
         return;
+      }
+      // The first instruction, once the world is really playing
+      if (!greeted) {
+        greeted = true;
+        runner.coach(t(hud.touch ? "coachStartTouch" : "coachStart"), 2800, true);
       }
       const events = runner.update(dt, time);
       for (const event of events) {

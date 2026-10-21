@@ -1,42 +1,125 @@
 /*
- * World 8, Release to production (Lab 3.6): the last runner. main, then the
- * production deployment itself, with Quick Deploy: the validation already ran
- * the tests, so the deployment does not run them again.
+ * World 8, Release to production (Lab 3.6): the last world, a musical run.
+ * The guinea pig runs to the music and the player only jumps.
+ *
+ * The run follows the steps of the lab: the three checks worth checking, the
+ * rehearsal in preprod, the production Pull Request and its check read like
+ * it matters, the merge and the deployment watched to its end, then the
+ * verification in production.
+ *
+ * The rehearsal is musical: preprod plays the same riff as production, eight
+ * bars of it, and there a mistake costs nothing (a release that fails in
+ * preprod has cost you nothing). In production the same riff comes back with
+ * the full band, with one thing more that preprod did not have: drift.
  *
  * The finale is the DORA card of Lab 3.6, with the lab's own numbers, and two
- * questions about what they really say: which lead time to quote, and how far
- * one red job moves a failure rate built on one deployment.
+ * questions about what they really say.
  */
-import { createRunner } from "./runner.js";
+import { createLevel, createMusicalRun, MUSICAL_TEXTS, MUSICAL_CSS } from "./musical.js";
+import { melody } from "../core/music.js";
+import { SLDS } from "../core/painter.js";
 
-export const PADS = ["left", "right", "jump", "duck", "confirm"];
+export const PADS = ["jump"];
 
-const MAIN_LENGTH = 330;
-const PROD_LENGTH = 260;
+const SONG = {
+  bpm: 116,
+  // G major: I vi IV V, a sunny evening release
+  root: 67,
+  progression: [0, 5, 3, 4],
+  lead: {
+    chorus: melody("7.4.2.4.7.9.7.4. 5.7.9.7.5...2.4. 3.5.7.5.3.5.7.8. 8.6.4.6.8...6.4.")
+  },
+  start: "intro",
+  end: "lounge"
+};
+
+const BAR = 4;
+// The riff rehearsed in preprod, and played again in production
+const RIFF = ["x.x.", "X-x-", "g.o.", "xx..", "x.g.", "o-X-", "x..x", "G-x-"];
 
 export const TEXTS = {
-  en: {
-    intro: "UAT signed off. The release goes to production this evening. If you get it wrong, real people cannot do their jobs tomorrow. Deploy through main to production, then read what your DORA metrics say.",
+  en: Object.assign({}, MUSICAL_TEXTS.en, {
+    intro: "UAT signed off. The release goes to production this evening: rehearse the song in preprod, then play it for real.",
+    how1: "Jump with Up, Space or a tap when the ring closes",
+    how2: "In preprod a mistake costs nothing: learn the riff there",
+    how3: "In production, stop on what you did not expect",
     note: "The rating is about the period, not about you. I wish someone had told me that on my first release. - V.",
-    s0: "main",
-    s1: "production",
-    stopHeader: "In main: 1 to do by hand",
-    stopTitle: "Set Email Deliverability to All Email",
-    stopHint: "The last org that needs the click: production.",
-    stopButton: "Mark as done (Enter)",
-    stopDone: "Done in production: the deployment starts",
-    o_deleted: "Metadata: 1 deleted, that nobody asked for",
-    o_deleted_tip: "Stop. Find in destructiveChanges.xml and the diff what goes, and who intended it.",
-    o_drift: "Fails in production, worked in preprod",
-    o_drift_tip: "Production drifted: an extra validation rule, a record type, real data. Keep preprod close to production.",
-    o_half: "The deployment half-succeeded",
-    o_half_tip: "Deployments are atomic: a post-deployment action failed. Re-run the action, not the deployment.",
-    o_latemain: "In main: the manual step was never done here",
-    o_latemain_tip: "The manual action runs once in every org, production included: mark it as done, then re-run the jobs.",
+    path0: "Checks",
+    path1: "preprod",
+    path2: "main",
+    path3: "Deploy",
+    path4: "Verify",
+    arch0: "1 · Three checks",
+    arch1: "2 · preprod",
+    arch2: "3 · main",
+    arch3: "4 · Merge, and stay",
+    arch4: "5 · Verify",
+    goal0: "Jump for the three checks worth checking",
+    goal1: "Rehearse in preprod: learn the riff, mistakes are free",
+    goal1manual: "The first check stops red, on purpose: press Mark as done",
+    goal2: "The production Pull Request: read the check like it matters",
+    goal3: "The same riff, for real. Watch for drift",
+    goal4: "Verify in production: the new story, and an old one",
+    goal5: "Read your DORA metrics",
+    coachRehearse: "preprod: the same riff as production, for free",
+    coachProd: "Same riff as preprod, with one surprise",
+    coachQuick: "Quick Deploy: the tests already ran during the validation",
+    coachVerify: "The most common incident is an old feature breaking",
+    s_check1: "UAT signed off",
+    s_check2: "Manual steps",
+    s_check3: "Look at prod",
+    s_jwt: "sf org login jwt",
+    s_quick: "Quick Deploy",
+    s_v1: "Panels Required",
+    s_v2: "Timeline",
+    s_v3: "Record saves",
+    s_green: "Signed off?",
+    s_fail: "Fails here",
+    s_prod: "Error",
+    s_drift: "Drift",
+    s_half: "Half done",
+    s_old: "Old feature",
+    s_late: "Too late",
+    s_dora: "DORA metrics",
+    p_check1: "UAT signed off: somebody tested it and said yes",
+    p_check2: "The manual steps of the release, known before you create anything",
+    p_check3: "helios-prod carries what the course seeded, nothing else yet",
+    p_jwt: "sf org login jwt: the key of Lab 3.1 works",
+    p_jwt2: "sf org login jwt: the first JWT login into helios-prod",
     p_quick: "Quick Deploy. Apex tests: Already run during the validation",
-    p_retry: "Re-run all jobs: one more attempt",
-    item_story: "User Story",
-    item_dora: "Deployment",
+    p_v1: "Panels Required: the crew sees how many panels a job needs",
+    p_v2: "The timeline component still works",
+    p_v3: "A record saves: the old features still work",
+    o_green: "Green is not signed off",
+    o_green_tip: "Is UAT genuinely signed off? Not \"the deployment was green\": somebody tested it and said yes.",
+    o_fail: "Failed in preprod",
+    o_fail_tip: "That is what preprod is for: a release that fails here has cost you nothing.",
+    o_prod: "Failed in production",
+    o_prod_tip: "Rehearse in preprod: a release that deploys there cleanly has very little left to surprise you with.",
+    o_drift: "Fails in production, worked in preprod",
+    o_drift_tip: "Production drifted: an extra validation rule, a record type, real data. Keep preprod as close to production as you can.",
+    o_half: "The deployment half-succeeded",
+    o_half_tip: "Deployments are atomic: a post-deployment action failed. Re-run the action, do not re-run the deployment.",
+    o_old: "An old feature broke",
+    o_old_tip: "Check something that already worked still works: open an installation, its timeline, save a record.",
+    o_tests: "Apex tests ran again",
+    o_tests_tip: "The validation already ran the tests: the merge job applies it, as a Quick Deploy.",
+    o_latemain: "The manual step was never done",
+    o_latemain_tip: "A manual action runs once in every org, production included: declare it in World 3, then mark it as done in each org.",
+    stopHeader: "1 to do by hand",
+    stopButton: "Mark as done",
+    stopDone1: "Mark as done in preprod, then Re-run all jobs: green",
+    stopDone2: "Done in production: the last org that needed the click",
+    choiceHeader: "Read the check",
+    q0: "The Metadata row of the comment says: 1 deleted",
+    q0d: "You did not expect anything to go.",
+    q0a: "Read destructiveChanges.xml",
+    q0b: "Merge anyway",
+    q0c: "Re-run all jobs",
+    q0Ok: "Stopping on an unexpected deletion is the job",
+    q0bTip: "A deletion in production is permanent and takes data with it. Stop, and find out what goes and who intended it.",
+    q0cTip: "A re-run shows the same figure. The comment will not tell you what goes: destructiveChanges.xml and the diff will.",
+    mainGreen: "Process Deployment (sfdx-hardis) on main: green",
     doraTitle: "DORA metrics",
     doraPeriod: "main, Last 90 days",
     q1: "Your manager asks for your lead time. You quote:",
@@ -54,30 +137,94 @@ export const TEXTS = {
     q2cTip: "A red deployment job is exactly what the failure rate counts.",
     q2Ok: "Small numbers move in big steps. The rating is about the period, not about you.",
     choose: "Up and down choose, Enter answers. Or tap.",
-    shipped: "You have shipped once, and the DORA tab says exactly that."
-  },
-  fr: {
-    intro: "La recette UAT est validée. La release part en production ce soir. Si vous vous trompez, de vraies personnes ne pourront pas travailler demain. Déployez de main jusqu'en production, puis lisez ce que disent vos métriques DORA.",
+    shipped: "You have shipped once, and the DORA tab says exactly that.",
+    info_checks: "You skipped {{n}} of the three checks of step 1: know the manual steps and look at production before you create anything.",
+    info_verify: "You verified {{n}} of 3 things in production: the most common incident after a release is an old feature breaking.",
+    info_quick: "You missed Quick Deploy: the validation already ran the tests.",
+    info_coins: "You picked up {{got}} of {{total}} notes."
+  }),
+  fr: Object.assign({}, MUSICAL_TEXTS.fr, {
+    intro: "La recette UAT est validée. La release part en production ce soir : répétez le morceau en preprod, puis jouez-le pour de vrai.",
+    how1: "Sautez avec Haut, Espace ou en touchant quand l'anneau se referme",
+    how2: "En preprod, une erreur ne coûte rien : apprenez le riff là",
+    how3: "En production, arrêtez-vous sur ce que vous n'attendiez pas",
     note: "La note porte sur la période, pas sur vous. J'aurais aimé qu'on me le dise à ma première release. - V.",
-    s0: "main",
-    s1: "production",
-    stopHeader: "In main: 1 to do by hand",
-    stopTitle: "Set Email Deliverability to All Email",
-    stopHint: "La dernière org qui a besoin du clic : la production.",
-    stopButton: "Mark as done (Entrée)",
-    stopDone: "Fait en production : le déploiement démarre",
-    o_deleted: "Metadata : 1 supprimé, que personne n'a demandé",
-    o_deleted_tip: "Arrêtez-vous. Cherchez dans destructiveChanges.xml et le diff ce qui part, et qui l'a voulu.",
+    path0: "Contrôles",
+    path1: "preprod",
+    path2: "main",
+    path3: "Déploiement",
+    path4: "Vérifier",
+    arch0: "1 · Trois contrôles",
+    arch1: "2 · preprod",
+    arch2: "3 · main",
+    arch3: "4 · Merger, et rester",
+    arch4: "5 · Vérifier",
+    goal0: "Sautez pour les trois contrôles qui valent la peine",
+    goal1: "Répétez en preprod : apprenez le riff, les erreurs sont gratuites",
+    goal1manual: "Le premier contrôle s'arrête en rouge, exprès : appuyez sur Mark as done",
+    goal2: "La Pull Request de production : lisez le contrôle comme si ça comptait",
+    goal3: "Le même riff, pour de vrai. Attention à la dérive",
+    goal4: "Vérifiez en production : la nouvelle story, et une ancienne",
+    goal5: "Lisez vos métriques DORA",
+    coachRehearse: "preprod : le même riff qu'en production, gratuitement",
+    coachProd: "Le même riff qu'en preprod, avec une surprise",
+    coachQuick: "Quick Deploy : les tests ont déjà tourné pendant la validation",
+    coachVerify: "L'incident le plus courant, c'est une ancienne fonctionnalité qui casse",
+    s_check1: "UAT validée",
+    s_check2: "Étapes manuelles",
+    s_check3: "Regarder la prod",
+    s_jwt: "sf org login jwt",
+    s_quick: "Quick Deploy",
+    s_v1: "Panels Required",
+    s_v2: "Timeline",
+    s_v3: "Enregistrement OK",
+    s_green: "Validée ?",
+    s_fail: "Échoue ici",
+    s_prod: "Erreur",
+    s_drift: "Dérive",
+    s_half: "À moitié",
+    s_old: "Ancienne fonction",
+    s_late: "Trop tard",
+    s_dora: "Métriques DORA",
+    p_check1: "UAT validée : quelqu'un a testé et a dit oui",
+    p_check2: "Les étapes manuelles de la release, connues avant de créer quoi que ce soit",
+    p_check3: "helios-prod contient ce que le cours y a mis, rien d'autre pour l'instant",
+    p_jwt: "sf org login jwt : la clé du Lab 3.1 marche",
+    p_jwt2: "sf org login jwt : la première connexion JWT à helios-prod",
+    p_quick: "Quick Deploy. Apex tests: Already run during the validation",
+    p_v1: "Panels Required : l'équipe voit combien de panneaux demande un chantier",
+    p_v2: "Le composant timeline marche toujours",
+    p_v3: "Un enregistrement se sauve : les anciennes fonctionnalités marchent toujours",
+    o_green: "Vert n'est pas validé",
+    o_green_tip: "La recette UAT est-elle vraiment validée ? Pas \"le déploiement était vert\" : quelqu'un a testé et a dit oui.",
+    o_fail: "Échec en preprod",
+    o_fail_tip: "C'est à ça que sert preprod : une release qui échoue ici ne vous a rien coûté.",
+    o_prod: "Échec en production",
+    o_prod_tip: "Répétez en preprod : une release qui s'y déploie proprement n'a presque plus de surprise en réserve.",
     o_drift: "Échoue en production, marchait en preprod",
-    o_drift_tip: "La production a dérivé : une règle de validation en plus, un type d'enregistrement, de vraies données. Gardez preprod proche de la production.",
+    o_drift_tip: "La production a dérivé : une règle de validation en plus, un type d'enregistrement, de vraies données. Gardez preprod aussi proche de la production que possible.",
     o_half: "Le déploiement a réussi à moitié",
     o_half_tip: "Les déploiements sont atomiques : une action post-deployment a échoué. Relancez l'action, pas le déploiement.",
-    o_latemain: "In main : l'étape manuelle n'a jamais été faite ici",
-    o_latemain_tip: "L'action manuelle s'exécute une fois dans chaque org, production comprise : marquez-la comme faite, puis relancez les jobs.",
-    p_quick: "Quick Deploy. Apex tests: Already run during the validation",
-    p_retry: "Re-run all jobs : un essai de plus",
-    item_story: "User Story",
-    item_dora: "Déploiement",
+    o_old: "Une ancienne fonctionnalité a cassé",
+    o_old_tip: "Vérifiez que ce qui marchait marche encore : ouvrez une installation, sa timeline, enregistrez un enregistrement.",
+    o_tests: "Les tests Apex ont tourné à nouveau",
+    o_tests_tip: "La validation a déjà exécuté les tests : le job du merge l'applique, en Quick Deploy.",
+    o_latemain: "L'étape manuelle n'a jamais été faite",
+    o_latemain_tip: "Une action manuelle s'exécute une fois dans chaque org, production comprise : déclarez-la dans le Monde 3, puis marquez-la comme faite dans chaque org.",
+    stopHeader: "1 to do by hand",
+    stopButton: "Mark as done",
+    stopDone1: "Mark as done in preprod, puis Re-run all jobs : vert",
+    stopDone2: "Fait en production : la dernière org qui avait besoin du clic",
+    choiceHeader: "Lisez le contrôle",
+    q0: "La ligne Metadata du commentaire dit : 1 deleted",
+    q0d: "Vous ne vous attendiez à aucune suppression.",
+    q0a: "Lire destructiveChanges.xml",
+    q0b: "Merger quand même",
+    q0c: "Re-run all jobs",
+    q0Ok: "S'arrêter sur une suppression inattendue, c'est le métier",
+    q0bTip: "Une suppression en production est définitive et emporte des données avec elle. Arrêtez-vous, et cherchez ce qui part et qui l'a voulu.",
+    q0cTip: "Relancer affiche le même chiffre. Le commentaire ne dit pas ce qui part : destructiveChanges.xml et le diff, si.",
+    mainGreen: "Process Deployment (sfdx-hardis) sur main : vert",
     doraTitle: "Métriques DORA",
     doraPeriod: "main, Last 90 days",
     q1: "Votre manager demande votre lead time. Vous annoncez :",
@@ -95,20 +242,32 @@ export const TEXTS = {
     q2cTip: "Un job de déploiement rouge, c'est exactement ce que compte le failure rate.",
     q2Ok: "Les petits nombres bougent par grands pas. La note porte sur la période, pas sur vous.",
     choose: "Haut et bas choisissent, Entrée répond. Ou touchez.",
-    shipped: "Vous avez livré une fois, et l'onglet DORA dit exactement ça."
-  }
+    shipped: "Vous avez livré une fois, et l'onglet DORA dit exactement ça.",
+    info_checks: "Vous avez sauté {{n}} des trois contrôles de l'étape 1 : connaissez les étapes manuelles et regardez la production avant de créer quoi que ce soit.",
+    info_verify: "Vous avez vérifié {{n}} choses sur 3 en production : l'incident le plus courant après une release, c'est une ancienne fonctionnalité qui casse.",
+    info_quick: "Vous avez raté le Quick Deploy : la validation a déjà exécuté les tests.",
+    info_coins: "Vous avez ramassé {{got}} notes sur {{total}}."
+  })
 };
 
 /** The strings taken word for word from the labs, checked by scripts/verify/check-easter-egg.mjs. */
 export const QUOTES = [
   { lab: "1.6", text: "Already run during the validation" },
-  { lab: "2.8", text: "destructiveChanges.xml" },
+  { lab: "2.4", text: "Mark as done" },
+  { lab: "2.4", text: "1 to do by hand" },
+  { lab: "3.6", text: "destructiveChanges.xml" },
+  { lab: "3.6", text: "sf org login jwt" },
+  { lab: "3.6", text: "Re-run all jobs" },
+  { lab: "3.6", text: "Mark as done in preprod" },
+  { lab: "3.6", text: "Process Deployment (sfdx-hardis)" },
+  { lab: "3.6", text: "helios-prod" },
   { lab: "3.6", text: "Deployments per week" },
   { lab: "3.6", text: "Lead time" },
   { lab: "3.6", text: "Failure rate" },
   { lab: "3.6", text: "Recovery" },
   { lab: "3.6", text: "Rework" },
   { lab: "3.6", text: "No data" },
+  { lab: "3.6", text: "Last 90 days" },
   { lab: "3.6", text: "5.7 d" },
   { lab: "3.6", text: "0.1 d" },
   { lab: "3.6", text: "50 %" }
@@ -141,87 +300,203 @@ function el(tag, className, parent, text) {
 export function createWorld(ctx) {
   const { t, hud } = ctx;
   const verdict = ctx.judgePlan();
+  const manualOk = verdict.deliverability.ok;
+
+  /* ---------- The track ---------- */
+
+  const look = (id, color, glyph, sign, title, extra) => Object.assign({ id, color, glyph, sign: t(sign), title: t(title), tip: t(title + "_tip") }, extra);
+  const LOOKS = {
+    green: look("green", SLDS.warningDark, "check", "s_green", "o_green"),
+    fail: look("fail", SLDS.purple, "error", "s_fail", "o_fail"),
+    prod: look("prod", SLDS.errorDark, "error", "s_prod", "o_prod"),
+    drift: look("drift", SLDS.warningDark, "warning", "s_drift", "o_drift", { signEvery: true }),
+    half: look("half", SLDS.error, "loop", "s_half", "o_half"),
+    old: look("old", SLDS.errorDark, "flow", "s_old", "o_old"),
+    tests: look("tests", SLDS.purple, "code", "s_quick", "o_tests", { group: "tests", sign: "" }),
+    latemain: look("latemain", SLDS.warningDark, "warning", "s_late", "o_latemain", { signEvery: true })
+  };
+  const COIN = { id: "note", color: "#E3066A", glyph: "star" };
+  const OK = { id: "ok", color: SLDS.success, glyph: "check" };
+  const L = createLevel();
+  const part = (bar, color, archKey) => {
+    L.zone(bar * BAR, color);
+    L.arch(bar * BAR + 0.6, t(archKey), { color: "#" + color.toString(16).padStart(6, "0") });
+  };
+  const POWER = (id, color, glyph) => ({ id, color, glyph, sign: t("s_" + id) });
+
+  // Part 1: the three checks worth checking
+  part(0, 0xffb400, "arch0");
+  L.music(0, "intro");
+  L.music(2 * BAR, "verse");
+  const p1 = { block: LOOKS.green, coin: COIN };
+  ["..--", "-.--", "x.--", "x.-.", "x.x.", "-.--"].forEach((p, i) => L.riff(i, p, p1));
+  L.power(1 * BAR + 1, POWER("check1", SLDS.success, "check"));
+  L.power(3 * BAR + 2, POWER("check2", SLDS.warningDark, "warning"));
+  L.power(5 * BAR + 1, POWER("check3", SLDS.brand, "eye"));
+
+  // Part 2: the rehearsal in preprod, where a mistake costs nothing
+  L.checkpoint(6 * BAR);
+  part(6, 0x9050e9, "arch1");
+  L.soft(6 * BAR, 18 * BAR);
+  const p2 = { block: LOOKS.fail, coin: COIN };
+  L.riff(6, "--..", p2);
+  L.power(6 * BAR + 2, POWER("jwt", SLDS.navy, "lock"), true);
+  L.riff(7, "-...", p2);
+  if (manualOk) {
+    L.manual(8 * BAR, { header: t("stopHeader"), button: t("stopButton"), id: "preprod" });
+  } else {
+    L.block(7 * BAR + 2, LOOKS.latemain);
+  }
+  L.riff(8, "..-.", p2);
+  RIFF.forEach((p, i) => L.riff(9 + i, p, p2));
+  L.riff(17, "s-..", p2);
+  // Victor's note, at the top of the spring's jump, at the end of the rehearsal
+  L.note(17 * BAR + 1, 2 * 2.3 + 0.45);
+
+  // Part 3: the production Pull Request
+  L.checkpoint(18 * BAR);
+  part(18, 0x032d60, "arch2");
+  const p3 = { block: LOOKS.prod, coin: COIN };
+  L.riff(18, "--..", p3);
+  L.power(18 * BAR + 2, { id: "jwt2", color: SLDS.navy, glyph: "lock", sign: "helios-prod" }, true);
+  L.riff(19, "-...", p3);
+  if (manualOk) {
+    L.manual(20 * BAR, { header: t("stopHeader"), button: t("stopButton"), id: "prod" });
+  } else {
+    L.block(19 * BAR + 2, LOOKS.latemain);
+  }
+  L.riff(20, "..-.", p3);
+  L.riff(21, "-.-.", p3);
+  L.choice(22 * BAR, {
+    header: t("choiceHeader"),
+    rounds: [
+      {
+        prompt: t("q0"),
+        detail: t("q0d"),
+        lesson: t("q0Ok"),
+        options: [
+          { label: t("q0b"), ok: false, tip: t("q0bTip") },
+          { label: t("q0a"), ok: true },
+          { label: t("q0c"), ok: false, tip: t("q0cTip") }
+        ]
+      }
+    ]
+  });
+  L.riff(22, "..-.", p3);
+
+  // Part 4: merge, and stay: the same riff, for real, with drift
+  L.checkpoint(23 * BAR);
+  part(23, 0xe3066a, "arch3");
+  L.music(23 * BAR, "chorus");
+  L.riff(23, "-.--", p3);
+  L.power(23 * BAR + 1, POWER("quick", SLDS.purple, "bolt"));
+  L.block(24 * BAR, LOOKS.tests, { convert: OK });
+  L.block(24 * BAR + 2, LOOKS.tests, { convert: OK });
+  L.riff(24, ".-.-", p3);
+  RIFF.forEach((p, i) => L.riff(25 + i, p, p3));
+  // The one thing preprod did not have
+  L.block(26 * BAR + 3, LOOKS.drift);
+  L.checkpoint(30 * BAR);
+  L.riff(33, "x-..", { block: LOOKS.half, coin: COIN });
+  L.riff(34, "--..", p3);
+
+  // Part 5: verify in production, the new story and an old one
+  L.checkpoint(35 * BAR);
+  part(35, 0x2e844a, "arch4");
+  const p5 = { block: LOOKS.old, coin: OK };
+  ["-.--", "x.-.", "-.--", "x.x.", "-.--", "----"].forEach((p, i) => L.riff(35 + i, p, p5));
+  L.power(35 * BAR + 1, POWER("v1", SLDS.brand, "gear"));
+  L.power(37 * BAR + 1, POWER("v2", SLDS.teal, "flow"));
+  L.power(39 * BAR + 1, POWER("v3", SLDS.success, "check"));
+  L.end(41 * BAR, { text: t("s_dora"), glyph: "star", color: SLDS.navy });
+
+  /* ---------- The story on the way ---------- */
+
+  const path = (i) => hud.setPath([t("path0"), t("path1"), t("path2"), t("path3"), t("path4")], i);
+  L.script(0, () => {
+    path(0);
+    hud.goal(t("goal0"));
+  });
+  L.script(6 * BAR, (api) => {
+    path(1);
+    hud.goal(t("goal1"));
+    api.coach(t("coachRehearse"), 2800, true);
+  });
+  if (manualOk) {
+    L.script(7 * BAR, () => hud.goal(t("goal1manual")));
+    L.script(8 * BAR + 1, () => hud.goal(t("goal1")));
+  }
+  L.script(18 * BAR, () => {
+    path(2);
+    hud.goal(t("goal2"));
+  });
+  L.script(23 * BAR, () => {
+    path(3);
+    hud.goal(t("goal3"));
+    hud.tick("Deployment mode: FULL + Quick Deploy");
+  });
+  L.script(25 * BAR - 1, (api) => api.coach(t("coachProd"), 2600, true));
+  L.script(34 * BAR, () => {
+    hud.tick(t("mainGreen"));
+    ctx.sound.play("gate");
+  });
+  L.script(35 * BAR, (api) => {
+    path(4);
+    hud.goal(t("goal4"));
+    api.coach(t("coachVerify"), 2800, true);
+  });
+
   let phase = "run";
   let finished = false;
   let card = null;
   let quiz = null;
-
-  const ob = (move, key, theme, detail) => ({ move, title: "o_" + key, tip: "o_" + key + "_tip", theme: theme || "error", detail });
-  const config = {
-    sections: [
-      { name: t("s0"), color: 0xba0517, length: MAIN_LENGTH, speed: 12, obstacles: ["deleted", "drift"], items: ["story", "dora"], powers: ["retry"], doubles: 0.35 },
-      { name: t("s1"), color: 0x032d60, length: PROD_LENGTH, speed: 13.5, obstacles: ["drift", "half", "deleted"], items: ["story", "dora"], powers: ["quick", "retry"], doubles: 0.4 }
-    ],
-    spacing: [11, 17],
-    obstacles: {
-      deleted: ob("duck", "deleted", "warning", "destructiveChanges.xml"),
-      drift: ob("lane", "drift", "error", "Validation rule"),
-      half: ob("jump", "half", "warning", "post-deployment"),
-      latemain: ob("lane", "latemain", "warning", "manual")
-    },
-    items: {
-      story: { glyph: "note", color: "#0176D3", label: t("item_story"), points: 10 },
-      dora: { glyph: "star", color: "#2E844A", label: t("item_dora"), points: 10 },
-      note: { glyph: "note", color: "#F2C94C", label: "?", points: 0 }
-    },
-    powers: {
-      quick: { glyph: "bolt", color: "#9050E9", label: "Quick Deploy", effect: "quick", seconds: 6, toast: "p_quick" },
-      retry: { glyph: "loop", color: "#2E844A", label: "Re-run all jobs", effect: "attempt", toast: "p_retry" }
-    },
-    gates(index) {
-      if (index === 0) {
-        // The production gate: the Path from feature to production, all done but the last
-        return {
-          doors: [
-            { text: "production", ok: true, look: "open" },
-            { text: "production", ok: true, look: "open" },
-            { text: "production", ok: true, look: "open" }
-          ],
-          banner: ["feature", "integration", "uat", "preprod", "main", "production"],
-          bannerIndex: 5
-        };
-      }
-      return null;
-    },
-    script: [
-      { at: 5, tick: "Deployment mode: FULL + Quick Deploy" },
-      { at: 30, manual: true },
-      { at: MAIN_LENGTH - 10, quick: true },
-      { at: MAIN_LENGTH + 120, note: true }
-    ]
-  };
-
-  const runner = createRunner(ctx, config);
-
-  function onScript(step) {
-    const ahead = 70;
-    if (step.tick) {
-      hud.tick(step.tick);
-    }
-    if (step.manual) {
-      if (verdict.deliverability.ok) {
-        runner.spawnStop({ header: t("stopHeader"), title: t("stopTitle"), hint: t("stopHint"), button: t("stopButton") }, step.at + ahead);
-      } else {
-        runner.spawnObstacle("latemain", 1, step.at + ahead);
+  const run = createMusicalRun(ctx, {
+    song: SONG,
+    level: L,
+    palette: [0x9050e9, 0xe3066a, 0xffb400, 0x06a59a, 0x1b96ff, 0x2e844a],
+    callbacks: {
+      onPower(power) {
+        const toast = { check1: "p_check1", check2: "p_check2", check3: "p_check3", jwt: "p_jwt", jwt2: "p_jwt2", quick: "p_quick", v1: "p_v1", v2: "p_v2", v3: "p_v3" }[power.id];
+        if (toast) {
+          hud.toast(t(toast), "power");
+        }
+        if (power.id === "quick") {
+          run.convert("tests");
+          run.coach(t("coachQuick"), 2600, true);
+        }
+      },
+      onSoftHit(look) {
+        if (look) {
+          hud.tip(look.tip);
+        }
+      },
+      onManual(stop) {
+        ctx.collect(150, t(stop.event.id === "preprod" ? "stopDone1" : "stopDone2"));
+      },
+      onEnd() {
+        showDora();
+      },
+      onEndAction(name) {
+        doraAction(name);
       }
     }
-    if (step.quick) {
-      // Quick Deploy is never missed: one coin in every lane
-      for (const lane of [0, 1, 2]) {
-        runner.spawnPower("quick", lane, step.at + ahead);
-      }
-    }
-    if (step.note) {
-      runner.spawnObstacle("half", 0, step.at + ahead);
-      runner.spawnItem("note", 0, step.at + ahead, 2.1);
-    }
-  }
+  });
 
   /* ---------- The DORA card ---------- */
+
+  const QUESTIONS = [
+    { q: "q1", answers: [{ key: "q1a", ok: true }, { key: "q1b", tip: "q1bTip" }, { key: "q1c", tip: "q1cTip" }], lesson: "q1Ok" },
+    { q: "q2", answers: [{ key: "q2a", ok: true }, { key: "q2b", tip: "q2bTip" }, { key: "q2c", tip: "q2cTip" }], lesson: "q2Ok" }
+  ];
+  let question = 0;
+  let choice = 0;
+  let buttons = [];
 
   function showDora() {
     phase = "dora";
     ctx.setData("phase", "dora");
+    hud.goal(t("goal5"));
+    hud.setPath([], 0);
     card = el("div", "gr-w8-card gr-scroll", hud.layer);
     const head = el("div", "gr-w8-head", card);
     el("strong", "", head, t("doraTitle"));
@@ -240,14 +515,6 @@ export function createWorld(ctx) {
     ask(0);
   }
 
-  const QUESTIONS = [
-    { q: "q1", answers: [{ key: "q1a", ok: true }, { key: "q1b", tip: "q1bTip" }, { key: "q1c", tip: "q1cTip" }], lesson: "q1Ok" },
-    { q: "q2", answers: [{ key: "q2a", ok: true }, { key: "q2b", tip: "q2bTip" }, { key: "q2c", tip: "q2cTip" }], lesson: "q2Ok" }
-  ];
-  let question = 0;
-  let choice = 0;
-  let buttons = [];
-
   function ask(index) {
     question = index;
     ctx.setData("question", index + 1);
@@ -259,6 +526,7 @@ export function createWorld(ctx) {
     buttons = answers.map((answer, i) => {
       const button = el("button", "gr-w8-answer", quiz, t(answer.key));
       button.type = "button";
+      button.dataset.ok = answer.ok ? "1" : "0";
       button.addEventListener("click", () => {
         choice = i;
         answerWith(answer, button);
@@ -274,7 +542,7 @@ export function createWorld(ctx) {
   }
 
   function answerWith(answer, button) {
-    if (!ctx.playing) {
+    if (!ctx.playing || finished) {
       return;
     }
     const q = QUESTIONS[question];
@@ -286,77 +554,94 @@ export function createWorld(ctx) {
       } else {
         finished = true;
         hud.toast(t("shipped"), "good");
-        ctx.finish(300);
+        run.finale();
+        ctx.finish(bonus(), missedInfo());
       }
     } else {
       button.disabled = true;
       button.classList.add("is-wrong");
       ctx.loseAttempt(t(answer.key), t(answer.tip));
+      // The cursor leaves the wrong answer, so Enter never picks it twice
+      const open = buttons.findIndex((b) => !b.disabled);
+      if (open >= 0) {
+        choice = open;
+        highlight();
+      }
     }
   }
 
-  function onEvent(event) {
-    switch (event.type) {
-      case "script":
-        onScript(event.step);
-        return;
-      case "stop":
-        ctx.sound.play("gate");
-        return;
-      case "item":
-        if (event.kind === "note") {
-          ctx.foundNote();
-          return;
-        }
-        runner.handle(event);
-        return;
-      case "end":
-        showDora();
-        return;
-      default:
-        runner.handle(event);
+  function doraAction(name) {
+    if (phase !== "dora" || !buttons.length) {
+      return;
     }
+    const step = name === "jump" || name === "left" ? -1 : name === "duck" || name === "right" ? 1 : 0;
+    if (step) {
+      for (let i = 0; i < buttons.length; i++) {
+        choice = (choice + step + buttons.length) % buttons.length;
+        if (!buttons[choice].disabled) {
+          break;
+        }
+      }
+      highlight();
+    } else if (name === "confirm" && !buttons[choice].disabled) {
+      buttons[choice].click();
+    }
+  }
+
+  function checksTaken() {
+    return ["check1", "check2", "check3"].filter((id) => run.powerTaken(id)).length;
+  }
+
+  function verified() {
+    return ["v1", "v2", "v3"].filter((id) => run.powerTaken(id)).length;
+  }
+
+  function bonus() {
+    const s = run.stats;
+    let points = 200 + Math.round((200 * s.got) / Math.max(1, s.coins));
+    points -= (3 - checksTaken()) * 30 + (3 - verified()) * 30;
+    if (!run.powerTaken("quick")) {
+      points -= 30;
+    }
+    return Math.max(0, points);
+  }
+
+  function missedInfo() {
+    const lines = [];
+    const s = run.stats;
+    if (checksTaken() < 3) {
+      lines.push(t("info_checks", { n: 3 - checksTaken() }));
+    }
+    if (verified() < 3) {
+      lines.push(t("info_verify", { n: verified() }));
+    }
+    if (!run.powerTaken("quick")) {
+      lines.push(t("info_quick"));
+    }
+    if (s.got < s.coins * 0.9) {
+      lines.push(t("info_coins", { got: s.got, total: s.coins }));
+    }
+    return lines.slice(0, 2).join(" ");
   }
 
   return {
-    start() {},
+    start() {
+      run.start();
+    },
     update(dt, time) {
       if (finished) {
         return;
       }
-      if (phase === "dora") {
-        // The guinea pig waits on the track while the card is read
-        ctx.pig.state = { running: false };
-        return;
-      }
-      const events = runner.update(dt, time);
-      for (const event of events) {
-        onEvent(event);
-        if (!ctx.playing) {
-          return;
-        }
-      }
+      run.update(dt, time);
     },
     action(name) {
-      if (phase === "dora") {
-        if (name === "jump" || name === "left") {
-          choice = (choice - 1 + buttons.length) % buttons.length;
-          highlight();
-        } else if (name === "duck" || name === "right") {
-          choice = (choice + 1) % buttons.length;
-          highlight();
-        } else if (name === "confirm") {
-          buttons[choice].click();
-        }
-        return;
-      }
-      if (runner.action(name) === "release") {
-        runner.release();
-        ctx.collect(150, t("stopDone"));
-      }
+      run.action(name);
+    },
+    idleCamera(time) {
+      run.idleCamera(time);
     },
     dispose() {
-      runner.dispose();
+      run.dispose();
       if (card) {
         card.remove();
       }
@@ -364,20 +649,23 @@ export function createWorld(ctx) {
   };
 }
 
-export const CSS = `
+export const CSS =
+  MUSICAL_CSS +
+  `
 .guinea-run .gr-w8-card {
   position: absolute;
   top: 50%;
   left: 50%;
   width: min(560px, calc(100vw - 24px));
-  max-height: calc(100dvh - 140px);
+  max-height: calc(100dvh - 150px);
   overflow-y: auto;
   overscroll-behavior: contain;
   transform: translate(-50%, -45%);
-  border: 1px solid #c9c9c9;
-  border-radius: 4px;
+  border: 3px solid #032d60;
+  border-radius: 14px;
   background: #ffffff;
-  box-shadow: 0 4px 30px rgba(3, 45, 96, 0.45);
+  box-shadow: 0 6px 30px rgba(3, 45, 96, 0.45);
+  pointer-events: auto;
   touch-action: pan-y;
   animation: gr-card-in 0.4s ease-out;
 }
@@ -390,13 +678,14 @@ export const CSS = `
   align-items: baseline;
   padding: 10px 14px;
   border-bottom: 2px solid #c9c9c9;
+  color: #032d60;
 }
 .guinea-run .gr-w8-head strong {
-  font-size: 18px;
+  font-size: 19px;
 }
 .guinea-run .gr-w8-head span {
   color: #444444;
-  font-size: 13px;
+  font-size: 14px;
 }
 .guinea-run .gr-w8-grid {
   display: grid;
@@ -410,13 +699,14 @@ export const CSS = `
   gap: 2px;
   padding: 8px 10px;
   border: 1px solid #c9c9c9;
-  border-radius: 4px;
+  border-radius: 8px;
 }
 .guinea-run .gr-w8-name {
   color: #444444;
-  font-size: 12px;
+  font-size: 13px;
 }
 .guinea-run .gr-w8-value {
+  color: #032d60;
   font-size: 20px;
 }
 .guinea-run .gr-w8-rating {
@@ -424,7 +714,7 @@ export const CSS = `
   padding: 1px 8px;
   border-radius: 999px;
   color: #ffffff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
 }
 .guinea-run .gr-w8-quiz {
@@ -432,26 +722,27 @@ export const CSS = `
 }
 .guinea-run .gr-w8-question {
   margin: 6px 0 2px;
-  font-size: 15px;
-  font-weight: 700;
+  color: #032d60;
+  font-size: 16px;
+  font-weight: 800;
 }
 .guinea-run .gr-w8-hint {
   margin: 0 0 8px;
   color: #444444;
-  font-size: 12px;
+  font-size: 13px;
 }
 .guinea-run .gr-w8-answer {
   display: block;
   width: 100%;
-  min-height: 44px;
+  min-height: 48px;
   margin: 6px 0;
   padding: 8px 12px;
-  border: 1px solid #c9c9c9;
-  border-radius: 4px;
+  border: 2px solid #c9c9c9;
+  border-radius: 10px;
   background: #ffffff;
   color: #181818;
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
   text-align: left;
   cursor: pointer;
   touch-action: manipulation;
@@ -459,6 +750,7 @@ export const CSS = `
 .guinea-run .gr-w8-answer.is-chosen {
   border-color: #0176d3;
   box-shadow: 0 0 0 2px #0176d3;
+  background: #eef4ff;
 }
 .guinea-run .gr-w8-answer.is-wrong {
   border-color: #ea001e;

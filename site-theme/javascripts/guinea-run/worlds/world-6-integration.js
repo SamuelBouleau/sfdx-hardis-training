@@ -317,7 +317,7 @@ export function createWorld(ctx) {
     latemanual: look("latemanual", SLDS.warningDark, "warning", "s_late", "o_latemanual", { signEvery: true }),
     lateorder: look("lateorder", SLDS.warningDark, "loop", "s_order", "o_lateorder", { signEvery: true })
   };
-  const COIN = { id: "note", color: "#06A59A", glyph: "star" };
+  const COIN = { id: "note", color: "#FFB400", glyph: "star" };
   const COMP = { id: "comp", color: SLDS.brand, glyph: "box" };
   const OK = { id: "ok", color: SLDS.success, glyph: "check" };
   const L = createLevel();
