@@ -309,6 +309,8 @@ export function createWorld(ctx) {
   let foundTold = false;
   let allGreen = false;
   let greeted = false;
+  // The tip of a wrong exit door, for the result's "Good to know"
+  let portalTip = "";
 
   const items = {};
   for (const [id, tool] of Object.entries(TOOLS)) {
@@ -409,6 +411,9 @@ export function createWorld(ctx) {
     });
   }
 
+  // Harder than the first version: the install stays calm, then it runs
+  config.paceCalm = 0.18;
+  config.paceGain = 0.5;
   const runner = createRunner(ctx, config);
 
   /* ---------- The Setup panel at the top ---------- */
@@ -565,6 +570,19 @@ export function createWorld(ctx) {
           ctx.sound.play("fanfare");
           return;
         }
+        if (event.gate.spec.portal) {
+          // The last door is the finish line: a wrong one costs points and
+          // says why, never the attempt that would fail the whole world
+          ctx.sound.play("wrong");
+          ctx.points(-60);
+          runner.breakStreak();
+          hud.toast(event.door.short || event.door.text, "bad");
+          if (event.door.tip) {
+            hud.tip(event.door.tip);
+            portalTip = event.door.tip;
+          }
+          return;
+        }
         runner.handle(event);
         if (!event.door.portal && event.gate.spec.quiz && REQUIRED.some((id) => state[id] === "found")) {
           // A restart is still owed: it comes down the track as a power-up
@@ -582,7 +600,7 @@ export function createWorld(ctx) {
         finished = true;
         hud.goal("");
         hud.toast(t("created"), "good");
-        const info = missing.length ? t("missedTools", { tools: missing.map((id) => TOOLS[id].label).join(", ") }) : "";
+        const info = [missing.length ? t("missedTools", { tools: missing.map((id) => TOOLS[id].label).join(", ") }) : "", portalTip].filter(Boolean).join(" ");
         ctx.finish((restartsDone >= 2 ? 100 : 0) - missing.length * 40, info);
         return;
       }

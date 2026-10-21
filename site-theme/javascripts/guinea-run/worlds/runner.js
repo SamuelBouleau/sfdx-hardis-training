@@ -1601,10 +1601,17 @@ export function createRunner(ctx, config) {
     return startSpeed * pace();
   }
 
-  /** The pace from progress alone: an ease-in curve, plus a small step per section. */
+  /**
+   * The pace from progress alone: an ease-in curve, plus a small step per
+   * section. A world can ask for more (config.paceGain) and keep its start
+   * calm (config.paceCalm: the share of the track at the gentle pace).
+   */
+  const paceGain = config.paceGain || PACE_GAIN;
+  const paceCalm = config.paceCalm || 0;
   function basePace(at) {
-    const p = Math.min(1, Math.max(0, at / total));
-    return 1 + PACE_GAIN * (0.4 * p + 0.6 * p * p) + PACE_STEP * sectionAt(at);
+    const raw = Math.min(1, Math.max(0, at / total));
+    const p = raw <= paceCalm ? 0 : (raw - paceCalm) / (1 - paceCalm);
+    return 1 + paceGain * (0.4 * p + 0.6 * p * p) + (raw <= paceCalm ? 0 : PACE_STEP * sectionAt(at));
   }
 
   function pace() {

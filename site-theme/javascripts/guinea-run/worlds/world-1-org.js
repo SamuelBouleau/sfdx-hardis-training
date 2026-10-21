@@ -261,8 +261,10 @@ const END_X = 231;
 // with the parts taken, up to +35 % at the end, on an ease-in curve. The
 // guinea pig's own top speed follows a little (a third of it). A lost attempt
 // slows everything down by 15 % for a few seconds
-const PACE_GAIN = 0.35;
-const PACE_RUN_SHARE = 0.3;
+const PACE_GAIN = 0.55;
+const PACE_RUN_SHARE = 0.4;
+// The share of the parts taken at the gentle pace: the New User Story stage
+const PACE_CALM = 0.18;
 const MERCY_S = 5;
 const MERCY_FACTOR = 0.85;
 // How fast the pace may change, per second: never a jump
@@ -1069,7 +1071,9 @@ export function createWorld(ctx) {
   /** The pace follows the parts taken; a mistake buys a few calmer seconds. */
   function updatePace(dt) {
     const progress = parts.filter((p) => p.done).length / totalParts;
-    const wanted = (1 + PACE_GAIN * progress * progress) * (mercy > 0 ? MERCY_FACTOR : 1);
+    // The first stage stays at the gentle pace, then the level picks up
+    const ramp = Math.max(0, (progress - PACE_CALM) / (1 - PACE_CALM));
+    const wanted = (1 + PACE_GAIN * ramp * (0.35 + 0.65 * ramp)) * (mercy > 0 ? MERCY_FACTOR : 1);
     mercy = Math.max(0, mercy - dt);
     pace += Math.sign(wanted - pace) * Math.min(Math.abs(wanted - pace), PACE_RATE * dt);
     ctx.setData("pace", pace.toFixed(2));
