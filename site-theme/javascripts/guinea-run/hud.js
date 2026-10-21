@@ -113,6 +113,15 @@ export function createHud(t, options) {
     return slot;
   });
   const extra = element("div", "gr-extra", top);
+  // Where the top bar ends, for the messages that sit under it on a phone
+  if (window.ResizeObserver) {
+    const watch = new ResizeObserver(() => {
+      const box = top.getBoundingClientRect();
+      const frame = overlay.getBoundingClientRect();
+      overlay.style.setProperty("--gr-top-end", Math.round(box.bottom - frame.top) + "px");
+    });
+    watch.observe(top);
+  }
   // What to do right now, in one line that stays
   const goal = element("div", "gr-goal", top);
   goal.hidden = true;
@@ -128,6 +137,9 @@ export function createHud(t, options) {
   coach.setAttribute("aria-live", "assertive");
   let coachTimer = 0;
   let pendingCoach = null;
+  let coaching = false;
+  let goalValue = "";
+  const narrow = window.matchMedia ? window.matchMedia("(max-width: 600px)") : { matches: false };
   // Why a move was wrong, and what to do instead, right after a mistake
   const tipBar = element("div", "gr-tipbar", overlay);
   tipBar.setAttribute("aria-live", "polite");
@@ -505,7 +517,11 @@ export function createHud(t, options) {
 
     /** The goal line under the top bar; an empty text hides it. */
     goal(text) {
-      goalText.textContent = text || "";
+      goalValue = text || "";
+      if (coaching) {
+        return;
+      }
+      goalText.textContent = goalValue;
       goal.hidden = !text;
       if (text && !reduced) {
         goal.classList.remove("is-new");
@@ -515,9 +531,10 @@ export function createHud(t, options) {
     },
 
     /** Why that was wrong: a tip box for a few seconds, after a mistake. */
-    tip(text, ms) {
+    tip(text, ms, heading) {
       window.clearTimeout(tipTimer);
-      tipTitle.textContent = t("tipTitle");
+      // On a phone the toast hides behind the tip: the tip says what went wrong
+      tipTitle.textContent = narrow.matches && heading ? heading : t("tipTitle");
       tipText.textContent = text;
       tipBar.classList.add("is-shown");
       tipTimer = window.setTimeout(() => tipBar.classList.remove("is-shown"), ms || Math.min(11000, 4000 + text.length * 45));
@@ -537,6 +554,21 @@ export function createHud(t, options) {
         return;
       }
       window.clearTimeout(coachTimer);
+      // A phone keeps the middle of the screen for what is coming: the coach
+      // speaks in the goal line for a moment, then the goal comes back
+      if (narrow.matches) {
+        coaching = true;
+        goal.hidden = false;
+        goal.classList.add("is-coach");
+        goalText.textContent = text;
+        coachTimer = window.setTimeout(() => {
+          coaching = false;
+          goal.classList.remove("is-coach");
+          goalText.textContent = goalValue;
+          goal.hidden = !goalValue;
+        }, ms || 2200);
+        return;
+      }
       coach.textContent = text;
       coach.classList.remove("is-shown");
       void coach.offsetWidth;
@@ -593,6 +625,11 @@ export function createHud(t, options) {
       hud.goal("");
       coach.classList.remove("is-shown");
       pendingCoach = null;
+      window.clearTimeout(coachTimer);
+      coaching = false;
+      goal.classList.remove("is-coach");
+      goalText.textContent = "";
+      goal.hidden = true;
       tipBar.classList.remove("is-shown");
       hud.setPath([], 0);
       lastUpdate = "";

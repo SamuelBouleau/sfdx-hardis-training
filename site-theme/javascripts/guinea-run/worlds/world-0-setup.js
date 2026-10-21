@@ -19,6 +19,9 @@ import { createRunner, RUNNER_TEXTS, RUNNER_CSS } from "./runner.js";
 
 export const PADS = ["left", "right", "jump", "duck"];
 // The Salesforce items of the track, and the Kenney islands far away
+/** On a phone, toasts and tips sit above the pads: the track runs up the middle. */
+export const PHONE_MESSAGES = "bottom";
+
 export const MODELS = ["salesforce", "platform"];
 
 // What VS Code only sees after a restart

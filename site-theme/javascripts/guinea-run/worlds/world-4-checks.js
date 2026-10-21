@@ -21,6 +21,9 @@ import { SLDS, pictureBox, rounded, fitText, glyph } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump", "confirm"];
 // The course's own items: CI runners, check statuses, Apex test flasks, Victor's note
+/** On a phone, toasts and tips sit above the pads: the track runs up the middle. */
+export const PHONE_MESSAGES = "bottom";
+
 export const MODELS = ["salesforce"];
 
 const LANES = [-2.2, 0, 2.2];

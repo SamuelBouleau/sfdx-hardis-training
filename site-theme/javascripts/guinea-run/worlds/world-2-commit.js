@@ -21,6 +21,9 @@
 import { SLDS, rounded, font, fitText, glyph } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump", "confirm"];
+/** On a phone, toasts and tips sit above the pads: the track runs up the middle. */
+export const PHONE_MESSAGES = "bottom";
+
 export const MODELS = ["salesforce", "office"];
 
 const LANES = [-1.7, 0, 1.7];

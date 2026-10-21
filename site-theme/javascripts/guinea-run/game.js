@@ -324,6 +324,9 @@ function createGame(options) {
     }
     current = { info, module, world: null, t: translator(lang, [module.TEXTS || {}]) };
     overlay.setAttribute("data-world", String(id));
+    // On a phone, messages go under the top bar unless the world's track runs
+    // up the middle of the screen (PHONE_MESSAGES = "bottom")
+    overlay.setAttribute("data-messages", module.PHONE_MESSAGES === "bottom" ? "bottom" : "top");
     // A world's own styles live in its module, and leave with it
     if (module.CSS) {
       const style = document.createElement("style");
@@ -515,7 +518,7 @@ function createGame(options) {
           hud.toast(title, "bad");
         }
         if (tip && tip !== title) {
-          hud.tip(tip);
+          hud.tip(tip, 0, title);
         }
         updateHud();
         if (run.attempts <= 0) {

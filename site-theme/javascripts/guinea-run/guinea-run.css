@@ -1386,3 +1386,117 @@ html.guinea-run-open body {
     top: 44%;
   }
 }
+
+/*
+ * A phone: the middle of the screen belongs to what is coming. The top keeps
+ * the path, the score, the world's own panel and the goal, all compact; the
+ * coach speaks in the goal line; toasts, tips and chat sit just above the pads.
+ */
+@media (max-width: 600px) {
+  .guinea-run[data-state="playing"] .gr-world,
+  .guinea-run[data-state="playing"] .gr-shelf {
+    display: none;
+  }
+
+  .guinea-run .gr-top {
+    gap: 4px;
+  }
+
+  .guinea-run .gr-pill {
+    padding: 2px 8px;
+    font-size: 12px;
+  }
+
+  .guinea-run .gr-extra {
+    zoom: 0.8;
+  }
+
+  .guinea-run .gr-goal {
+    padding: 4px 10px 4px 8px;
+    font-size: 13px;
+  }
+
+  .guinea-run .gr-goal.is-coach {
+    background: linear-gradient(180deg, #ffd84d, #ffb400);
+    box-shadow: 0 3px 0 #c77d00, 0 4px 10px rgba(3, 45, 96, 0.25);
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .guinea-run .gr-coach {
+    display: none !important;
+  }
+
+  /* Messages: just under the goal line by default, over the sky... */
+  .guinea-run .gr-toast {
+    top: calc(var(--gr-top-end, 160px) + 6px);
+    max-width: 86vw;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .guinea-run .gr-tipbar {
+    top: calc(var(--gr-top-end, 160px) + 6px);
+    bottom: auto;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .guinea-run .gr-chat {
+    top: calc(var(--gr-top-end, 160px) + 48px);
+    bottom: auto;
+    left: calc(env(safe-area-inset-left, 0px) + 10px);
+    width: auto;
+    opacity: 0.95;
+  }
+
+  .guinea-run.gr-show-buttons .gr-tipbar,
+  .guinea-run.gr-show-buttons .gr-chat {
+    bottom: auto;
+  }
+
+  /* After a mistake the tip carries the error's own title: one box, not two */
+  .guinea-run .gr-tipbar.is-shown ~ .gr-toast {
+    opacity: 0;
+  }
+
+  .guinea-run .gr-tipbar {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .guinea-run .gr-tipbar strong {
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  /* ...or just above the pads, for the worlds whose track runs up the middle */
+  .guinea-run[data-messages="bottom"] .gr-toast {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  }
+
+  .guinea-run[data-messages="bottom"].gr-show-buttons .gr-toast {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 100px);
+  }
+
+  .guinea-run[data-messages="bottom"] .gr-tipbar,
+  .guinea-run[data-messages="bottom"] .gr-chat {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 66px);
+  }
+
+  .guinea-run[data-messages="bottom"].gr-show-buttons .gr-tipbar,
+  .guinea-run[data-messages="bottom"].gr-show-buttons .gr-chat {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 142px);
+  }
+
+  /* One bubble at a time, and small */
+  .guinea-run .gr-chat .gr-bubble:not(:last-child) {
+    display: none;
+  }
+
+  .guinea-run .gr-bubble {
+    font-size: 12px;
+  }
+}
