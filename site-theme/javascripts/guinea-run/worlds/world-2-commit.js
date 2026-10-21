@@ -21,6 +21,7 @@
 import { SLDS, rounded, font, fitText, glyph } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump", "confirm"];
+export const MODELS = ["platform", "office"];
 
 const LANES = [-1.7, 0, 1.7];
 const BELT_Y = 0.42;
@@ -536,15 +537,63 @@ export function createWorld(ctx) {
     typeSides[name] = paint.plain(new THREE.Color(type.color).getHex(), { roughness: 0.5 });
   }
 
+  // The crate body is the Kenney crate, one instanced mesh per part of it for
+  // the whole pool; each crate keeps its own label (front and top) on it.
+  // Without the model pack, the plain coloured box stays.
+  const crateParts = [];
+  const crateModel = ctx.models && ctx.models.get("crate", { shadows: false });
+  if (crateModel) {
+    const size = new THREE.Box3().setFromObject(crateModel).getSize(new THREE.Vector3());
+    crateModel.scale.multiply(new THREE.Vector3(CRATE.w / size.x, CRATE.h / size.y, CRATE.d / size.z));
+    crateModel.position.y = -CRATE.h / 2;
+    crateModel.updateMatrixWorld(true);
+    crateModel.traverse((child) => {
+      if (child.isMesh) {
+        const mesh = new THREE.InstancedMesh(child.geometry, child.material, POOL);
+        mesh.frustumCulled = false;
+        mesh.castShadow = engine.settings.shadows;
+        root.add(mesh);
+        crateParts.push({ mesh, local: child.matrixWorld.clone() });
+      }
+    });
+  }
+  const labelGeometry = paint.geometry("w2-crate-label", () => crateLabelGeometry(THREE));
+  const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
+
+  function syncCrates() {
+    if (!crateParts.length) {
+      return;
+    }
+    for (let i = 0; i < POOL; i++) {
+      const group = pool[i].group;
+      if (group.visible) {
+        group.updateMatrix();
+      }
+      for (const part of crateParts) {
+        if (group.visible) {
+          matrix.multiplyMatrices(group.matrix, part.local);
+          part.mesh.setMatrixAt(i, matrix);
+        } else {
+          part.mesh.setMatrixAt(i, hidden);
+        }
+      }
+    }
+    for (const part of crateParts) {
+      part.mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+
   const pool = [];
   for (let i = 0; i < POOL; i++) {
     const group = new THREE.Group();
-    const box = new THREE.Mesh(crateGeometry, [crateSide, crateSide, crateSide, crateBottom, crateSide, crateSide]);
+    const box = crateParts.length
+      ? new THREE.Mesh(labelGeometry, crateSide)
+      : new THREE.Mesh(crateGeometry, [crateSide, crateSide, crateSide, crateBottom, crateSide, crateSide]);
     box.castShadow = engine.settings.shadows;
     group.add(box);
     const tick = new THREE.Mesh(tickGeometry, tickMaterial);
     tick.rotation.x = -Math.PI / 2;
-    tick.position.set(-CRATE.w / 2 + 0.3, CRATE.h / 2 + 0.01, -CRATE.d / 2 + 0.28);
+    tick.position.set(-CRATE.w / 2 + 0.3, CRATE.h / 2 + 0.04, -CRATE.d / 2 + 0.28);
     group.add(tick);
     group.visible = false;
     root.add(group);
@@ -554,11 +603,20 @@ export function createWorld(ctx) {
   // The special ones, built once each: the note, two power-ups, the header row
   function coin(kind, color, glyphName, label, sign) {
     const group = new THREE.Group();
-    const face = paint.coin("w2-" + kind, color, glyphName, label);
-    const disc = new THREE.Mesh(coinGeometry, [coinRim, face, face]);
-    disc.rotation.x = Math.PI / 2;
+    const model = ctx.models && ctx.models.get(kind === "reset" ? "coin-silver" : "coin-gold", { height: 0.86, shadows: false });
+    let disc;
+    if (model) {
+      model.position.y = -0.43;
+      disc = new THREE.Group();
+      disc.add(model);
+    } else {
+      const face = paint.coin("w2-" + kind, color, glyphName, label);
+      disc = new THREE.Mesh(coinGeometry, [coinRim, face, face]);
+      disc.rotation.x = Math.PI / 2;
+    }
     group.add(disc);
-    group.add(new THREE.Mesh(ringGeometry, paint.plain(new THREE.Color(color).getHex(), { emissive: new THREE.Color(color).getHex(), emissiveIntensity: 0.8 })));
+    // The ring glows (bloom on the high tier): it says "take me"
+    group.add(new THREE.Mesh(ringGeometry, paint.plain(new THREE.Color(color).getHex(), { emissive: new THREE.Color(color).getHex(), emissiveIntensity: 1.8 })));
     const board = paint.sign("w2-sign-" + kind, sign, { color, glyph: glyphName, height: 0.42 });
     board.position.y = 0.85;
     group.add(board);
@@ -767,7 +825,7 @@ export function createWorld(ctx) {
     }
     const face = cardMaterial(def);
     const side = typeSides[def.type] || crateSide;
-    entry.box.material = [side, side, face, crateBottom, face, side];
+    entry.box.material = crateParts.length ? face : [side, side, face, crateBottom, face, side];
     entry.tick.visible = role === "flood";
     entry.group.visible = true;
     entry.group.scale.setScalar(1);
@@ -883,6 +941,9 @@ export function createWorld(ctx) {
       committed += 1;
       setPile(staged.map((id) => (STORY.some((s) => s.id === id) ? "story" : "flood")));
       ctx.collect(100, t("staged", { name: entry.def.name }));
+      if (pig.hop) {
+        pig.hop();
+      }
       ctx.fx.burst(BASKET_X, BELT_Y + 0.9, BASKET_Z, { count: 28, colors: [0x2e844a, 0x0176d3, 0xfe9339, 0xff538a, 0x9050e9], speed: 3, up: 4, life: 1 });
       pop = 0.35;
       storyTimer = 3 + random() * 2;
@@ -1306,6 +1367,7 @@ export function createWorld(ctx) {
     }
     flights = flights.filter((e) => e.state === "fly");
     crates = crates.filter((e) => e.state === "belt" || e.state === "fall");
+    syncCrates();
 
     // Sorted by Last Updated Date: the recent ones glow, the Lab 1.2 ones fade
     const pulse = 0.5 + 0.5 * Math.sin(time * 6);
@@ -1379,6 +1441,40 @@ export function createWorld(ctx) {
     basket.scale.set(1 + pop * 0.4, 1 - pop * 0.3, 1 + pop * 0.4);
   }
 
+  /** The office around the belts: Kenney furniture, crates and barrels, nothing in the way. */
+  function placeProps() {
+    const FLOOR = -0.6;
+    const props = [
+      ["desk", { height: 0.85 }, -5.1, -6, Math.PI / 2],
+      ["computerScreen", { height: 0.5 }, -5.1, -6, Math.PI / 2, 0.85],
+      ["chairDesk", { height: 1.0 }, -5.9, -6.2, -Math.PI / 2],
+      ["kitchenCoffeeMachine", { height: 0.9 }, -4.4, -9.5, Math.PI / 2],
+      ["pottedPlant", { height: 1.3 }, -4.3, -3.2, 0],
+      ["pottedPlant", { height: 1.4 }, 6.2, -7.5, 0.5],
+      ["plantSmall2", { height: 0.7 }, -4.4, -12, 0],
+      ["cardboardBoxClosed", { height: 0.8 }, 5.0, -11.5, 0.3],
+      ["cardboardBoxClosed", { height: 0.6 }, 5.0, -11.5, 0.9, 0.8],
+      ["cardboardBoxOpen", { height: 0.7 }, 5.8, -12.8, -0.4],
+      ["barrel", { height: 0.95 }, -4.6, -15, 0],
+      ["barrel", { height: 0.95 }, -5.5, -15.6, 0.6],
+      ["crate-strong", { height: 1.0 }, 5.2, -18.5, 0.2],
+      ["crate-strong", { height: 0.8 }, 5.25, -18.5, 0.7, 1.0],
+      ["crate", { height: 0.9 }, -4.6, -20.5, 0.4],
+      ["conveyor-belt", { width: 1.8 }, 5.4, -23, Math.PI / 2],
+      ["chest", { height: 0.7 }, -3.6, 1.2, 0.3],
+      ["trashcan", { height: 0.7 }, 6.3, -3.5, 0]
+    ];
+    for (const [name, size, x, z, turn, lift] of props) {
+      const prop = ctx.models && ctx.models.get(name, Object.assign({ shadows: false }, size));
+      if (!prop) {
+        continue;
+      }
+      prop.position.set(x, FLOOR + (lift || 0), z);
+      prop.rotation.y = turn;
+      root.add(prop);
+    }
+  }
+
   function debugData() {
     const wanted = crates.filter((c) => c.state === "belt" && c.role !== "noise" && c.role !== "flood" && c.role !== "header").sort((a, b) => b.z - a.z)[0];
     ctx.setData("target", wanted ? wanted.lane + ":" + wanted.role : "");
@@ -1430,6 +1526,8 @@ export function createWorld(ctx) {
   setPile([]);
   renderPanel();
   setData();
+  placeProps();
+  syncCrates();
   pig.object.position.set(0, BELT_Y, PIG_Z);
   pig.shadow.position.set(0, BELT_Y + 0.012, PIG_Z + 0.05);
 
@@ -1487,6 +1585,9 @@ export function createWorld(ctx) {
       legs.dispose();
       deckLegs.dispose();
       pile.dispose();
+      for (const part of crateParts) {
+        part.mesh.dispose();
+      }
       for (const thing of disposables) {
         thing.dispose();
       }
@@ -1555,6 +1656,30 @@ function drawHeaderRow(c, w, h, label) {
   c.fillStyle = SLDS.white;
   c.textAlign = "center";
   fitText(c, label, w / 2, 176, w - 60, 46, "800");
+}
+
+/** The label of a crate: its front and its top as one mesh, so one draw call. */
+function crateLabelGeometry(THREE) {
+  const front = new THREE.PlaneGeometry(CRATE.w * 0.86, CRATE.h * 0.8);
+  front.translate(0, 0, CRATE.d / 2 + 0.02);
+  const top = new THREE.PlaneGeometry(CRATE.w * 0.86, CRATE.d * 0.8);
+  top.rotateX(-Math.PI / 2);
+  top.translate(0, CRATE.h / 2 + 0.02, 0);
+  const geometry = new THREE.BufferGeometry();
+  for (const name of ["position", "normal", "uv"]) {
+    const a = front.getAttribute(name);
+    const b = top.getAttribute(name);
+    const array = new Float32Array(a.array.length + b.array.length);
+    array.set(a.array, 0);
+    array.set(b.array, a.array.length);
+    geometry.setAttribute(name, new THREE.BufferAttribute(array, a.itemSize));
+  }
+  const count = front.getAttribute("position").count;
+  const index = Array.from(front.index.array).concat(Array.from(top.index.array, (i) => i + count));
+  geometry.setIndex(index);
+  front.dispose();
+  top.dispose();
+  return geometry;
 }
 
 /** "Installation__c.Panels_Required__c" reads best as its object, then its name. */
