@@ -17,7 +17,7 @@
  * the way. Spotting it and asking for the change wins; merging costs an
  * attempt.
  */
-import { SLDS, pictureBox, rounded, font, fitText, glyph } from "../core/painter.js";
+import { SLDS, pictureBox, rounded, fitText, glyph } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump", "confirm"];
 // The course's own items: CI runners, check statuses, Apex test flasks, Victor's note

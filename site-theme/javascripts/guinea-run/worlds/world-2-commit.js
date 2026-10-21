@@ -525,7 +525,6 @@ export function createWorld(ctx) {
   const coinGeometry = paint.geometry("w2-coin", () => new THREE.CylinderGeometry(0.42, 0.42, 0.09, 32));
   const ringGeometry = paint.geometry("w2-ring", () => new THREE.TorusGeometry(0.48, 0.035, 8, 32));
   const coinRim = paint.plain(0xffb020, { metalness: 0.6, roughness: 0.3, emissive: 0x3a2400 });
-  const signGeometry = paint.geometry("w2-sign", () => new THREE.PlaneGeometry(2.4, 0.4));
   const owner = t("byYou");
 
   // One material per component, cached: the dim and lit effects change it
@@ -1244,7 +1243,7 @@ export function createWorld(ctx) {
         ctx.collect(100, "Yes, my commit(s) are ready!");
         showStep("report");
         return;
-      default:
+      default: {
         hud.toast(t("pushed"), "good");
         card.hidden = true;
         hud.goal("");
@@ -1253,6 +1252,7 @@ export function createWorld(ctx) {
         const info = skipped.length ? t("infoSkipped", { names: skipped.map((d) => d.name).join(", ") }) : "";
         ctx.points(-100 * skipped.length);
         ctx.finish(noise === 0 && !skipped.length ? 200 : 0, info);
+      }
     }
   }
 
