@@ -1,15 +1,17 @@
 /*
- * World 0, Get set up (Labs 1.1 and 1.2): a runner where the guinea pig
- * collects what a contributor installs on their first morning, then connects
- * the org, the Dev Hub and the fork, and opens the scratch org.
+ * World 0, Get set up (Lab 1.1): a runner where the guinea pig collects what
+ * every sfdx-hardis project needs on a machine, until every card of the Setup
+ * panel is green. Nothing of Lab 1.2 here: no org, no fork, no scratch org.
  *
  * The running gag of Lab 1.1: a tool you just installed stays "installed, not
  * found" in the Setup panel until VS Code is closed completely and opened
  * again, because VS Code only reads the PATH at startup. The gates at the end
- * of the first two sections are that restart, as a quiz.
+ * of the first two sections are that restart, as a quiz; the last gate is
+ * Re-check, which turns the last cards green.
  *
  * A missed install comes back down the track as a pending install, and what
  * is still missing at the end costs points, never the end of the world.
+ * Vegetables (what guinea pigs like best) are bonus points all along.
  *
  * The goal line always says what is next (the tools of the section, the
  * restart that is owed, the green door), and the coach teaches each new
@@ -18,252 +20,250 @@
 import { createRunner, RUNNER_TEXTS, RUNNER_CSS } from "./runner.js";
 
 export const PADS = ["left", "right", "jump", "duck"];
-// The Salesforce items of the track, and the Kenney islands far away
 /** On a phone, toasts and tips sit above the pads: the track runs up the middle. */
 export const PHONE_MESSAGES = "bottom";
+// The Salesforce items of the track, the Kenney islands far away, the vegetables
+export const MODELS = ["salesforce", "platform", "vegetables"];
 
-export const MODELS = ["salesforce", "platform"];
-
-// What VS Code only sees after a restart
+// What VS Code only sees after a restart: they land on the PATH
 const NEEDS_RESTART = ["git", "node", "cli"];
-const REQUIRED = ["git", "vscode", "node", "pack", "cli", "plugin", "org", "devhub", "fork"];
+const REQUIRED = ["git", "vscode", "node", "pack", "cli", "plugin", "sfdmu", "sgd", "sfext"];
 // The tools each section brings, for the goal line
 const BY_SECTION = [
   ["git", "vscode", "node", "pack"],
-  ["cli", "plugin"],
-  ["org", "devhub", "fork"]
+  ["cli", "plugin", "sfdmu"],
+  ["sgd", "sfext"]
 ];
 // Where each required item comes down the track, and in which lane
 const PLACES = {
   git: [40, 1],
-  vscode: [95, 0],
-  node: [160, 2],
-  pack: [230, 1],
-  cli: [345, 0],
-  plugin: [455, 2],
-  org: [585, 1],
-  devhub: [680, 0],
-  fork: [770, 2]
+  vscode: [105, 0],
+  node: [175, 2],
+  pack: [250, 1],
+  cli: [385, 0],
+  plugin: [460, 2],
+  sfdmu: [535, 1],
+  sgd: [665, 0],
+  sfext: [760, 2]
 };
+// The bonus vegetables, one kind per model of the vegetables pack
+const VEGETABLES = ["fennel", "carrot", "bellPepper", "cucumber", "romaine", "parsley"];
+const VEGETABLE_MODELS = { fennel: "fennel", carrot: "carrot", bellPepper: "bell-pepper", cucumber: "cucumber", romaine: "romaine", parsley: "parsley" };
+const VEGETABLE_COLORS = { fennel: "#7BC96F", carrot: "#FF8A3D", bellPepper: "#E8473B", cucumber: "#3E9B4F", romaine: "#8CD17D", parsley: "#2E844A" };
+const VEGETABLE_POINTS = 15;
 
 export const TEXTS = {
   en: {
     ...RUNNER_TEXTS.en,
-    intro: "Your first morning on a Salesforce team: install your tools, connect your org, open your scratch org. The Setup panel at the top turns green as you go.",
-    how1: "Collect Git, VS Code, Node.js and the other tools",
+    intro: "Your first morning on any Salesforce team: five things to install before anyone gives you a ticket. The Setup panel at the top turns green as you go.",
+    how1: "Collect Git, Node.js, VS Code and the extension pack",
     how2: "Arrows or swipe: change lane, Up to jump, Down to duck",
-    how3: "Pick the right door, then the green one at the end",
-    goal0: "Collect the 4 tools: {{n}} left",
-    goal1: "Collect the Salesforce CLI and sfdx-hardis: {{n}} left",
-    goal2: "Connect helios-prod, Dev Hub and your fork: {{n}} left",
+    how3: "Grab vegetables for bonus points, and pick the right doors",
+    note: "Your first morning on any Salesforce team. Five things before anyone gives you a ticket. - V.",
+    s0: "Install",
+    s1: "Setup panel",
+    s2: "Re-check",
+    panelTitle: "Setup panel",
+    stateMissing: "missing",
+    stateFound: "installed, not found",
+    stateOk: "ready",
+    goal0: "Install the 4 tools: {{n}} left",
+    goal1: "Run pending installs: Salesforce CLI, sfdx-hardis, SFDMU: {{n}} left",
+    goal2: "Last cards: sfdx-git-delta and Salesforce Extension Pack: {{n}} left",
     goalReady: "All collected: get ready for the door",
     goalDoor: "Read the question, steer into the right door",
     goalRestart: "Restart VS Code: grab the restart power-up",
-    goalPortal: "Take the green door: Set up my training environment",
+    goalFinish: "Take the green door: Re-check, and every card is green",
     coachStart: "Collect the tools! Left and Right to change lane",
     coachStartTouch: "Collect the tools! Swipe left or right",
     coachFound: "Installed, not found: see the orange card?",
     coachRestart: "Grab the restart power-up!",
     coachGreen: "Setup panel all green!",
-    coachPortal: "Green door: Set up my training environment!",
+    coachFinish: "Green door: Re-check!",
+    coachVeg: "Yum! Vegetables are bonus points",
     q0: "Git and Node.js are installed, but VS Code says they are missing. What do you do?",
     q1: "The Setup panel installed the Salesforce CLI, then says it is missing. What now?",
-    q2: "Last card of the Setup panel: your training environment. Which door?",
+    q2: "VS Code restarted. How do the last cards of the Setup panel turn green?",
     signQuiz: "Which door?",
-    note: "Your first morning on any Salesforce team. Five things before anyone gives you a ticket. - V.",
-    s0: "Install",
-    s1: "Setup panel",
-    s2: "Connect",
-    panelTitle: "Setup panel",
-    stateMissing: "missing",
-    stateFound: "installed, not found",
-    stateOk: "ready",
+    signFinish: "Setup panel",
     o_path: "Installed, but VS Code does not see it",
     o_path_tip: "Close VS Code completely, windows and all, and open it again: VS Code only reads the PATH at startup.",
     o_path_s: "PATH",
-    o_trust_s: "Trust?",
-    o_gitbash_s: "No Git Bash",
-    o_cli_s: "CLI missing",
-    o_noext_s: "No extension",
-    o_redline_s: "Red line",
-    o_outdated_s: "Outdated",
-    o_sandbox_s: "Wrong login",
-    o_fork_s: "Fork failed",
-    o_devhub_s: "Dev Hub off",
-    o_threeorgs_s: "3 / 3 orgs",
-    o_api_s: "API limit",
-    p_pending_s: "Pending installs",
-    p_reload_s: "Reload Window",
-    p_vibes_s: "Agentforce Vibes",
-    p_delete_s: "Delete org",
-    p_restart_s: "Restart VS Code",
-    g_restart_s: "Restart VS Code",
-    g_keep_s: "Wait",
-    g_terminal_s: "New terminal",
-    g_again_s: "Run again",
-    g_reinstall_s: "Reinstall CLI",
-    g_setup_s: "Set up",
-    g_recreate_s: "Recreate org",
-    g_testlogin_s: "test.salesforce.com",
     o_trust: "Do you trust the publishers of these extensions?",
-    o_trust_tip: "Answer Trust Publishers & Install, or the install stops.",
+    o_trust_tip: "Answer Trust Publishers & Install, or the install of the pack stops.",
+    o_trust_s: "Trust?",
     o_gitbash: "Errors that look like nothing to do with Git",
     o_gitbash_tip: "Reinstall Git and keep every default, with the Git Bash components ticked.",
+    o_gitbash_s: "No Git Bash",
+    o_node: "Node.js too old",
+    o_node_tip: "Take the LTS version of Node.js, 22 at the least, 24 recommended.",
+    o_node_s: "Node.js 20",
+    o_checking: "Check in progress",
+    o_checking_tip: "Wait for the check to finish, then click the button: it opens the Setup panel.",
+    o_checking_s: "Checking...",
     o_cli: "The Setup panel says the Salesforce CLI is missing",
     o_cli_tip: "Close VS Code completely and open it again: the CLI landed on a PATH the open VS Code does not know yet.",
+    o_cli_s: "CLI missing",
     o_noext: "The extension does not appear",
     o_noext_tip: "View > Command Palette, then Developer: Reload Window.",
+    o_noext_s: "No extension",
     o_redline: "A red line you cannot clear",
     o_redline_tip: "Click the line: the panel says what it tried and what it got back, and that message is nearly always the answer.",
+    o_redline_s: "Red line",
     o_outdated: "A panel does not look like its screenshot",
     o_outdated_tip: "Tick Auto Update on the extension pack: an outdated extension is the most common cause.",
-    o_sandbox: "The login page refuses your username",
-    o_sandbox_tip: "A Developer Edition is not a sandbox: log in through login.salesforce.com.",
-    o_fork: "The fork could not be created",
-    o_fork_tip: "Fork by hand and untick Copy the main branch only: the course needs every branch.",
-    o_devhub: "Dev Hub could not be turned on",
-    o_devhub_tip: "Open helios-prod, Setup, type Dev Hub in Quick Find, and switch Enable Dev Hub on.",
-    o_threeorgs: "The Dev Hub already has its active scratch orgs",
-    o_threeorgs_tip: "A Developer Edition Dev Hub keeps three alive at once. Open Active Scratch Orgs and delete the ones this course did not create.",
-    o_api: "TotalRequests Limit exceeded",
-    o_api_tip: "The org's daily API calls are used up. Nothing is lost: come back in a few hours.",
+    o_outdated_s: "Outdated",
     p_pending: "Run pending installs: every missing tool comes to you",
+    p_pending_s: "Pending installs",
     p_reload: "Developer: Reload Window: one more attempt",
-    p_vibes: "Agentforce Vibes: everything is already installed, nothing can stop you",
-    p_delete: "Deleting a scratch org does not give its allowance back",
-    p_delete_tip: "Do not delete scratch orgs for fun: the daily allowance does not come back when you delete one.",
+    p_reload_s: "Reload Window",
+    p_vibes: "Agentforce Vibes: Git, Node.js and the editor come with it, nothing can stop you",
+    p_vibes_s: "Agentforce Vibes",
+    p_single: "The single extension, not the pack",
+    p_single_tip: "Take the pack rather than the single extension above it: the pack brings the tools the later levels use.",
+    p_single_s: "Single extension",
     p_restart: "VS Code restarted: it sees every tool now",
-    g0_banner: "Git and Node.js are installed. VS Code says they are missing.",
-    g1_banner: "The Setup panel installed the Salesforce CLI, then says it is missing.",
+    p_restart_s: "Restart VS Code",
     g_restart: "Close VS Code completely and open it again",
+    g_restart_s: "Restart VS Code",
     g_keep: "Keep VS Code open and wait",
-    g_terminal: "Open a new terminal in VS Code",
-    g_terminal_tip: "A new terminal of the same VS Code still has the old PATH. Close VS Code completely.",
+    g_keep_s: "Wait",
     g_keep_tip: "Waiting changes nothing: VS Code only reads the PATH when it starts.",
+    g_terminal: "Open a new terminal in VS Code",
+    g_terminal_s: "New terminal",
+    g_terminal_tip: "A new terminal of the same VS Code still has the old PATH. Close VS Code completely.",
     g_again: "Click Run pending installs again",
+    g_again_s: "Run again",
     g_again_tip: "It is installed already. VS Code just cannot see it until it restarts.",
     g_reinstall: "Reinstall the Salesforce CLI",
+    g_reinstall_s: "Reinstall CLI",
     g_reinstall_tip: "Reinstalling lands it in the same place, and VS Code still has the old PATH.",
-    g2_banner: "Last card of the Setup panel: your training environment",
-    g_setup: "Set up my training environment",
-    g_recreate: "Delete and recreate the scratch org",
-    g_recreate_tip: "Deleting a scratch org does not give its allowance back. Click the card again instead.",
-    g_testlogin: "Log in at test.salesforce.com",
-    g_testlogin_tip: "That is the sandbox login. A Developer Edition logs in at login.salesforce.com.",
+    g_recheck: "Press Re-check on the Setup panel",
+    g_recheck_s: "Re-check",
+    g_pendingAgain: "Click Run pending installs once more",
+    g_pendingAgain_s: "Install again",
+    g_pendingAgain_tip: "Everything is installed already: Re-check reads every version again, and what was red for the PATH turns green.",
+    g_upgrade: "Treat the amber Upgrade as a failure",
+    g_upgrade_s: "Fix Upgrade",
+    g_upgrade_tip: "An amber Upgrade is not a failure: a newer version exists, and the button fetches it whenever you like. Missing is the only state that stops you.",
     restarted: "VS Code restarted: {{tools}} found",
     pendingAgain: "Pending installs: {{tools}}",
     stillNotFound: "Still not found: VS Code needs a restart",
     missedTools: "Still pending at the end: {{tools}}. On a real machine, each missing tool is a command that fails later in the labs, so each one cost you points.",
-    created: "OK  helios-dev is created, for 30 days."
+    vegetablesCount: "Vegetables: {{n}}.",
+    allGreen: "Dependencies up to date: every card is green",
+    veg_fennel: "Fennel",
+    veg_carrot: "Carrot",
+    veg_bellPepper: "Bell pepper",
+    veg_cucumber: "Cucumber",
+    veg_romaine: "Romaine",
+    veg_parsley: "Parsley"
   },
   fr: {
     ...RUNNER_TEXTS.fr,
-    intro: "Votre premier matin dans une équipe Salesforce : installez vos outils, connectez votre org, ouvrez votre scratch org. Le Setup panel en haut passe au vert à mesure.",
-    how1: "Récupérez Git, VS Code, Node.js et les autres outils",
+    intro: "Votre premier matin dans une équipe Salesforce : cinq choses à installer avant qu'on vous confie un ticket. Le panneau Setup en haut passe au vert à mesure.",
+    how1: "Récupérez Git, Node.js, VS Code et le pack d'extensions",
     how2: "Flèches ou swipe : changez de voie, Haut saute, Bas baisse",
-    how3: "Choisissez la bonne porte, puis la verte à la fin",
-    goal0: "Récupérez les 4 outils : encore {{n}}",
-    goal1: "Récupérez la Salesforce CLI et sfdx-hardis : encore {{n}}",
-    goal2: "Connectez helios-prod, le Dev Hub et votre fork : encore {{n}}",
+    how3: "Attrapez des légumes pour des points bonus, prenez les bonnes portes",
+    note: "Votre premier matin dans une équipe Salesforce. Cinq choses avant qu'on vous confie un ticket. - V.",
+    s0: "Installer",
+    s1: "Panneau Setup",
+    s2: "Re-check",
+    panelTitle: "Panneau Setup",
+    stateMissing: "manquant",
+    stateFound: "installé, introuvable",
+    stateOk: "prêt",
+    goal0: "Installez les 4 outils : encore {{n}}",
+    goal1: "Run pending installs : Salesforce CLI, sfdx-hardis, SFDMU : encore {{n}}",
+    goal2: "Dernières cartes : sfdx-git-delta et Salesforce Extension Pack : encore {{n}}",
     goalReady: "Tout est récupéré : préparez-vous pour la porte",
     goalDoor: "Lisez la question, prenez la bonne porte",
     goalRestart: "Redémarrez VS Code : attrapez le bonus de redémarrage",
-    goalPortal: "Prenez la porte verte : Set up my training environment",
+    goalFinish: "Prenez la porte verte : Re-check, et chaque carte est verte",
     coachStart: "Récupérez les outils ! Gauche et Droite pour changer de voie",
     coachStartTouch: "Récupérez les outils ! Swipe à gauche ou à droite",
     coachFound: "Installé, introuvable : vous voyez la carte orange ?",
     coachRestart: "Attrapez le bonus de redémarrage !",
-    coachGreen: "Setup panel tout vert !",
-    coachPortal: "Porte verte : Set up my training environment !",
+    coachGreen: "Panneau Setup tout vert !",
+    coachFinish: "Porte verte : Re-check !",
+    coachVeg: "Miam ! Les légumes, ce sont des points bonus",
     q0: "Git et Node.js sont installés, mais VS Code dit qu'ils manquent. Que faites-vous ?",
-    q1: "Le Setup panel a installé la Salesforce CLI, puis dit qu'elle manque. Et maintenant ?",
-    q2: "Dernière carte du Setup panel : votre environnement de formation. Quelle porte ?",
+    q1: "Le panneau Setup a installé la CLI Salesforce, puis dit qu'elle manque. Et maintenant ?",
+    q2: "VS Code a redémarré. Comment les dernières cartes du panneau Setup passent-elles au vert ?",
     signQuiz: "Quelle porte ?",
-    note: "Votre premier matin dans une équipe Salesforce. Cinq choses avant qu'on vous donne un ticket. - V.",
-    s0: "Installer",
-    s1: "Setup panel",
-    s2: "Connecter",
-    panelTitle: "Setup panel",
-    stateMissing: "manquant",
-    stateFound: "installé, introuvable",
-    stateOk: "prêt",
+    signFinish: "Panneau Setup",
     o_path: "Installé, mais VS Code ne le voit pas",
-    o_path_tip: "Fermez complètement VS Code, toutes ses fenêtres, et rouvrez-le : VS Code ne lit le PATH qu'au démarrage.",
+    o_path_tip: "Fermez VS Code complètement, toutes fenêtres comprises, et rouvrez-le : VS Code ne lit le PATH qu'au démarrage.",
     o_path_s: "PATH",
-    o_trust_s: "Trust ?",
-    o_gitbash_s: "Pas de Git Bash",
-    o_cli_s: "CLI manquante",
-    o_noext_s: "Pas d'extension",
-    o_redline_s: "Ligne rouge",
-    o_outdated_s: "Pas à jour",
-    o_sandbox_s: "Mauvais login",
-    o_fork_s: "Fork raté",
-    o_devhub_s: "Dev Hub éteint",
-    o_threeorgs_s: "3 / 3 orgs",
-    o_api_s: "Limite API",
-    p_pending_s: "Installations",
-    p_reload_s: "Reload Window",
-    p_vibes_s: "Agentforce Vibes",
-    p_delete_s: "Supprimer l'org",
-    p_restart_s: "Redémarrer VS Code",
-    g_restart_s: "Redémarrer VS Code",
-    g_keep_s: "Attendre",
-    g_terminal_s: "Nouveau terminal",
-    g_again_s: "Relancer",
-    g_reinstall_s: "Réinstaller la CLI",
-    g_setup_s: "Set up",
-    g_recreate_s: "Recréer l'org",
-    g_testlogin_s: "test.salesforce.com",
     o_trust: "Do you trust the publishers of these extensions?",
-    o_trust_tip: "Répondez Trust Publishers & Install, sinon l'installation s'arrête.",
-    o_gitbash: "Des erreurs qui semblent sans rapport avec Git",
-    o_gitbash_tip: "Réinstallez Git en gardant tous les choix par défaut, composants Git Bash cochés.",
-    o_cli: "Le Setup panel dit que la Salesforce CLI manque",
-    o_cli_tip: "Fermez complètement VS Code et rouvrez-le : la CLI est arrivée sur un PATH que le VS Code ouvert ne connaît pas encore.",
+    o_trust_tip: "Répondez Trust Publishers & Install, sinon l'installation du pack s'arrête.",
+    o_trust_s: "Trust ?",
+    o_gitbash: "Des erreurs qui n'ont l'air d'avoir aucun rapport avec Git",
+    o_gitbash_tip: "Relancez l'installeur Git et gardez toutes les valeurs par défaut, composants Git Bash cochés.",
+    o_gitbash_s: "Pas de Git Bash",
+    o_node: "Node.js trop ancien",
+    o_node_tip: "Prenez la version LTS de Node.js, 22 au minimum, 24 recommandée.",
+    o_node_s: "Node.js 20",
+    o_checking: "Check in progress",
+    o_checking_tip: "Attendez la fin du contrôle, puis cliquez sur le bouton : il ouvre le panneau Setup.",
+    o_checking_s: "Contrôle...",
+    o_cli: "Le panneau Setup dit que la CLI Salesforce manque",
+    o_cli_tip: "Fermez VS Code complètement et rouvrez-le : la CLI a atterri sur un PATH que le VS Code ouvert ne connaît pas encore.",
+    o_cli_s: "CLI manquante",
     o_noext: "L'extension n'apparaît pas",
     o_noext_tip: "View > Command Palette, puis Developer: Reload Window.",
-    o_redline: "Une ligne rouge qui ne part pas",
-    o_redline_tip: "Cliquez sur la ligne : le panel dit ce qu'il a essayé et ce qu'il a reçu, et ce message est presque toujours la réponse.",
-    o_outdated: "Un panel ne ressemble pas à sa capture",
-    o_outdated_tip: "Cochez Auto Update sur l'extension pack : une extension pas à jour est la cause la plus fréquente.",
-    o_sandbox: "La page de connexion refuse votre nom d'utilisateur",
-    o_sandbox_tip: "Une Developer Edition n'est pas une sandbox : connectez-vous par login.salesforce.com.",
-    o_fork: "Le fork n'a pas pu être créé",
-    o_fork_tip: "Forkez à la main et décochez Copy the main branch only : le cours a besoin de toutes les branches.",
-    o_devhub: "Le Dev Hub n'a pas pu être activé",
-    o_devhub_tip: "Ouvrez helios-prod, Setup, tapez Dev Hub dans Quick Find, et activez Enable Dev Hub.",
-    o_threeorgs: "Le Dev Hub a déjà ses scratch orgs actives",
-    o_threeorgs_tip: "Un Dev Hub Developer Edition en garde trois en vie à la fois. Ouvrez Active Scratch Orgs et supprimez celles que ce cours n'a pas créées.",
-    o_api: "TotalRequests Limit exceeded",
-    o_api_tip: "Les appels API du jour sont épuisés. Rien n'est perdu : revenez dans quelques heures.",
+    o_noext_s: "Pas d'extension",
+    o_redline: "Une ligne rouge que vous n'arrivez pas à faire passer",
+    o_redline_tip: "Cliquez sur la ligne : le panneau dit ce qu'il a tenté et ce qu'on lui a répondu, et ce message est presque toujours la réponse.",
+    o_redline_s: "Ligne rouge",
+    o_outdated: "Un panneau ne ressemble pas à sa capture",
+    o_outdated_tip: "Cochez Auto Update sur le pack d'extensions : une extension en retard est la cause la plus fréquente.",
+    o_outdated_s: "Pas à jour",
     p_pending: "Run pending installs : chaque outil manquant vient à vous",
+    p_pending_s: "Installations",
     p_reload: "Developer: Reload Window : un essai de plus",
-    p_vibes: "Agentforce Vibes : tout est déjà installé, rien ne vous arrête",
-    p_delete: "Supprimer une scratch org ne rend pas son allocation",
-    p_delete_tip: "Ne supprimez pas des scratch orgs pour le plaisir : l'allocation du jour ne revient pas quand vous en supprimez une.",
+    p_reload_s: "Reload Window",
+    p_vibes: "Agentforce Vibes : Git, Node.js et l'éditeur viennent avec, rien ne vous arrête",
+    p_vibes_s: "Agentforce Vibes",
+    p_single: "L'extension seule, pas le pack",
+    p_single_tip: "Prenez le pack plutôt que l'extension seule juste au-dessus : le pack apporte les outils dont les niveaux suivants se servent.",
+    p_single_s: "Extension seule",
     p_restart: "VS Code redémarré : il voit tous les outils",
-    g0_banner: "Git et Node.js sont installés. VS Code dit qu'ils manquent.",
-    g1_banner: "Le Setup panel a installé la Salesforce CLI, puis dit qu'elle manque.",
+    p_restart_s: "Redémarrer VS Code",
     g_restart: "Fermer complètement VS Code et le rouvrir",
+    g_restart_s: "Redémarrer VS Code",
     g_keep: "Garder VS Code ouvert et attendre",
-    g_terminal: "Ouvrir un nouveau terminal dans VS Code",
-    g_terminal_tip: "Un nouveau terminal du même VS Code a toujours l'ancien PATH. Fermez complètement VS Code.",
+    g_keep_s: "Attendre",
     g_keep_tip: "Attendre ne change rien : VS Code ne lit le PATH qu'à son démarrage.",
+    g_terminal: "Ouvrir un nouveau terminal dans VS Code",
+    g_terminal_s: "Nouveau terminal",
+    g_terminal_tip: "Un nouveau terminal du même VS Code a toujours l'ancien PATH. Fermez complètement VS Code.",
     g_again: "Cliquer encore sur Run pending installs",
+    g_again_s: "Relancer",
     g_again_tip: "C'est déjà installé. VS Code ne peut juste pas le voir avant de redémarrer.",
-    g_reinstall: "Réinstaller la Salesforce CLI",
+    g_reinstall: "Réinstaller la CLI Salesforce",
+    g_reinstall_s: "Réinstaller la CLI",
     g_reinstall_tip: "La réinstaller la pose au même endroit, et VS Code a toujours l'ancien PATH.",
-    g2_banner: "Dernière carte du Setup panel : votre environnement de formation",
-    g_setup: "Set up my training environment",
-    g_recreate: "Supprimer et recréer la scratch org",
-    g_recreate_tip: "Supprimer une scratch org ne rend pas son allocation. Recliquez plutôt sur la carte.",
-    g_testlogin: "Se connecter sur test.salesforce.com",
-    g_testlogin_tip: "C'est la connexion des sandboxes. Une Developer Edition se connecte sur login.salesforce.com.",
+    g_recheck: "Appuyer sur Re-check dans le panneau Setup",
+    g_recheck_s: "Re-check",
+    g_pendingAgain: "Cliquer encore une fois sur Run pending installs",
+    g_pendingAgain_s: "Réinstaller",
+    g_pendingAgain_tip: "Tout est déjà installé : Re-check relit chaque version, et ce qui était rouge à cause du PATH passe au vert.",
+    g_upgrade: "Prendre l'Upgrade orange pour un échec",
+    g_upgrade_s: "Corriger Upgrade",
+    g_upgrade_tip: "Un Upgrade orange n'est pas un échec : une version plus récente existe, et le bouton ira la chercher quand vous voudrez. Manquant est le seul état qui vous bloque.",
     restarted: "VS Code redémarré : {{tools}} trouvés",
     pendingAgain: "Installations en attente : {{tools}}",
     stillNotFound: "Toujours introuvable : VS Code doit redémarrer",
     missedTools: "Encore en attente à la fin : {{tools}}. Sur une vraie machine, chaque outil manquant est une commande qui échoue plus tard dans les labs : chacun vous a coûté des points.",
-    created: "OK  helios-dev is created, for 30 days."
+    vegetablesCount: "Légumes : {{n}}.",
+    allGreen: "Dependencies up to date : chaque carte est verte",
+    veg_fennel: "Fenouil",
+    veg_carrot: "Carotte",
+    veg_bellPepper: "Poivron",
+    veg_cucumber: "Concombre",
+    veg_romaine: "Romaine",
+    veg_parsley: "Persil"
   }
 };
 
@@ -271,14 +271,19 @@ export const TEXTS = {
 export const QUOTES = [
   { lab: "1.1", text: "Run pending installs" },
   { lab: "1.1", text: "Developer: Reload Window" },
+  { lab: "1.1", text: "View > Command Palette" },
+  { lab: "1.1", text: "Do you trust the publishers of these extensions?" },
+  { lab: "1.1", text: "Auto Update" },
+  { lab: "1.1", text: "Re-check" },
+  { lab: "1.1", text: "Check in progress" },
+  { lab: "1.1", text: "Dependencies up to date" },
+  { lab: "1.1", text: "Salesforce Extension Pack" },
+  { lab: "1.1", text: "SFDMU" },
+  { lab: "1.1", text: "sfdx-git-delta" },
+  { lab: "1.1", text: "Agentforce Vibes" },
+  { lab: "1.1", text: "LTS" },
   { lab: "1.1", text: "Close VS Code completely, windows and all, and open it again", locales: ["en"] },
-  { lab: "1.2", text: "Copy the `main` branch only" },
-  { lab: "1.2", text: "Set up my training environment" },
-  { lab: "1.2", text: "TotalRequests Limit exceeded" },
-  { lab: "1.2", text: "Active Scratch Orgs" },
-  { lab: "1.2", text: "Enable Dev Hub" },
-  { lab: "1.2", text: "helios-prod" },
-  { lab: "1.2", text: "helios-dev" }
+  { lab: "1.1", text: "Fermez VS Code complètement, toutes fenêtres comprises", locales: ["fr"] }
 ];
 
 const TOOLS = {
@@ -288,9 +293,9 @@ const TOOLS = {
   pack: { glyph: "puzzle", color: "#0B5CAB", label: "Extension pack" },
   cli: { glyph: "cloud", color: "#032D60", label: "Salesforce CLI" },
   plugin: { glyph: "infinity", color: "#9050E9", label: "sfdx-hardis" },
-  org: { glyph: "org", color: "#06A59A", label: "helios-prod" },
-  devhub: { glyph: "gear", color: "#DD7A01", label: "Dev Hub" },
-  fork: { glyph: "fork", color: "#24292F", label: "Your fork" }
+  sfdmu: { glyph: "box", color: "#0D9DDA", label: "SFDMU" },
+  sgd: { glyph: "delta", color: "#DD7A01", label: "sfdx-git-delta" },
+  sfext: { glyph: "cloud", color: "#06A59A", label: "Salesforce Extension Pack" }
 };
 
 export function createWorld(ctx) {
@@ -309,46 +314,49 @@ export function createWorld(ctx) {
   let foundTold = false;
   let allGreen = false;
   let greeted = false;
-  // The tip of a wrong exit door, for the result's "Good to know"
-  let portalTip = "";
+  let vegTold = false;
+  let vegetables = 0;
+  const eaten = new Set();
+  // The tip of a wrong finish door, for the result's "Good to know"
+  let finishTip = "";
 
   const items = {};
   for (const [id, tool] of Object.entries(TOOLS)) {
     // The tools that count are big, with a halo and their name always shown
     items[id] = { glyph: tool.glyph, color: tool.color, label: tool.label, points: 50, big: true };
   }
-  items.sfdmu = { glyph: "box", color: "#0D9DDA", label: "SFDMU", points: 10 };
-  items.sgd = { glyph: "delta", color: "#DD7A01", label: "sfdx-git-delta", points: 10 };
-  items.gh = { glyph: "branch", color: "#24292F", label: "GitHub CLI", points: 10 };
+  for (const id of VEGETABLES) {
+    // Instanced models when the vegetables pack is there, a green tile otherwise
+    items[id] = { glyph: "star", color: VEGETABLE_COLORS[id], label: t("veg_" + id), points: VEGETABLE_POINTS, model: VEGETABLE_MODELS[id], instanced: true, glowIntensity: 0.3, vegetable: true };
+  }
   items.note = { glyph: "note", color: "#F2C94C", label: "?", points: 0, model: "note", glow: 0xffd84d, glowIntensity: 0.8 };
 
   const ob = (move, key, theme, detail) => ({ move, title: "o_" + key, tip: "o_" + key + "_tip", short: "o_" + key + "_s", theme: theme || "error", detail });
   const config = {
     sections: [
-      { name: t("s0"), color: 0x2e844a, length: 300, speed: 7.5, obstacles: ["path", "trust", "gitbash"], items: ["sfdmu", "gh"], powers: ["reload", "vibes"] },
-      { name: t("s1"), color: 0x0176d3, length: 250, speed: 8.2, obstacles: ["cli", "noext", "redline", "outdated"], items: ["sfdmu", "sgd"], powers: ["pending", "reload", "delete"], doubles: 0.1 },
-      { name: t("s2"), color: 0x9050e9, length: 300, speed: 9, obstacles: ["sandbox", "fork", "devhub", "threeorgs", "api"], items: ["gh", "sgd"], powers: ["pending", "vibes", "delete"], doubles: 0.15 }
+      { name: t("s0"), color: 0x2e844a, length: 330, speed: 7.5, obstacles: ["path", "trust", "gitbash", "node"], items: VEGETABLES, powers: ["reload", "vibes", "single"] },
+      { name: t("s1"), color: 0x0176d3, length: 270, obstacles: ["checking", "cli", "noext", "outdated"], items: VEGETABLES, powers: ["pending", "reload", "single"], doubles: 0.1 },
+      { name: t("s2"), color: 0x9050e9, length: 250, obstacles: ["redline", "outdated", "noext", "path"], items: VEGETABLES, powers: ["pending", "vibes", "reload"], doubles: 0.15 }
     ],
+    // A vegetable's name shows on the first one of its kind only
+    labelOnce: VEGETABLES,
     obstacles: {
       path: ob("lane", "path", "warning", "PATH"),
-      trust: ob("jump", "trust", "info", "Trust Publishers & Install"),
+      trust: ob("jump", "trust", "info"),
       gitbash: ob("duck", "gitbash", "warning", "Git Bash"),
+      node: ob("jump", "node", "lock", "LTS"),
+      checking: ob("duck", "checking", "info", "Check in progress"),
       cli: ob("lane", "cli", "warning", "@salesforce/cli"),
       noext: ob("jump", "noext", "info", "Developer: Reload Window"),
       redline: ob("duck", "redline", "error"),
-      outdated: ob("jump", "outdated", "warning", "Auto Update"),
-      sandbox: ob("lane", "sandbox", "lock", "login.salesforce.com"),
-      fork: ob("gap", "fork", "error", "Copy the main branch only"),
-      devhub: ob("lane", "devhub", "lock", "Enable Dev Hub"),
-      threeorgs: ob("duck", "threeorgs", "warning", "3 / 3"),
-      api: ob("jump", "api", "error", "TotalRequests Limit exceeded")
+      outdated: ob("jump", "outdated", "warning", "Auto Update")
     },
     items,
     powers: {
       pending: { glyph: "loop", color: "#0176D3", label: "Run pending installs", short: "p_pending_s", effect: "magnet", metres: 200, kinds: REQUIRED, toast: "p_pending" },
       reload: { glyph: "loop", color: "#2E844A", label: "Reload Window", short: "p_reload_s", effect: "attempt", toast: "p_reload" },
       vibes: { glyph: "bolt", color: "#9050E9", label: "Agentforce Vibes", short: "p_vibes_s", model: "lwc", glow: 0xffb400, effect: "shield", seconds: 5, toast: "p_vibes" },
-      delete: { glyph: "error", color: "#BA0517", label: "Delete scratch org", short: "p_delete_s", effect: "trap", toast: "p_delete", tip: "p_delete_tip" },
+      single: { glyph: "error", color: "#BA0517", label: "Single extension", short: "p_single_s", effect: "trap", toast: "p_single", tip: "p_single_tip" },
       restart: { glyph: "loop", color: "#0176D3", label: "Restart VS Code", short: "p_restart_s", model: "check-pass", glow: 0x45c65a, effect: "custom" }
     },
     gates(index) {
@@ -364,12 +372,12 @@ export function createWorld(ctx) {
           { text: t("g_reinstall"), short: t("g_reinstall_s"), tip: t("g_reinstall_tip") }
         ]);
       }
-      return portalGate();
+      return finishGate();
     },
     script: [
       ...REQUIRED.map((id) => ({ at: PLACES[id][0] - 80, spawn: id })),
-      // Victor's note: high above a barrier, in the lane nobody takes
-      { at: 420, note: true }
+      // Victor's note: high above a hurdle, in the lane nobody takes
+      { at: 520, note: true }
     ]
   };
 
@@ -395,19 +403,20 @@ export function createWorld(ctx) {
     });
   }
 
-  function portalGate() {
-    return cached("portal", () => {
+  /** The finish: Re-check is the green door, and every card turns green. */
+  function finishGate() {
+    return cached("finish", () => {
       const open = Math.floor(ctx.random() * 3);
       const wrong = [
-        { text: t("g_recreate"), short: t("g_recreate_s"), tip: t("g_recreate_tip"), ok: false, look: "trap" },
-        { text: t("g_testlogin"), short: t("g_testlogin_s"), tip: t("g_testlogin_tip"), ok: false, look: "closed" }
+        { text: t("g_pendingAgain"), short: t("g_pendingAgain_s"), tip: t("g_pendingAgain_tip"), ok: false, look: "closed" },
+        { text: t("g_upgrade"), short: t("g_upgrade_s"), tip: t("g_upgrade_tip"), ok: false, look: "trap" }
       ];
       const doors = [];
       let w = 0;
       for (let lane = 0; lane < 3; lane++) {
-        doors.push(lane === open ? { text: t("g_setup"), short: t("g_setup_s"), ok: true, look: "open", portal: true } : wrong[w++]);
+        doors.push(lane === open ? { text: t("g_recheck"), short: t("g_recheck_s"), ok: true, look: "open", finish: true } : wrong[w++]);
       }
-      return { doors, question: t("q2"), sign: "Training: Level 1", coach: t("coachPortal"), quiz: true, portal: true };
+      return { doors, question: t("q2"), sign: t("signFinish"), coach: t("coachFinish"), quiz: true, finish: true };
     });
   }
 
@@ -431,6 +440,10 @@ export function createWorld(ctx) {
     panel.appendChild(card);
     cards[id] = card;
   }
+  // The vegetables eaten so far, at the end of the panel
+  const vegCard = document.createElement("span");
+  vegCard.className = "gr-w0-veg";
+  panel.appendChild(vegCard);
   hud.extra.appendChild(panel);
 
   function render() {
@@ -448,6 +461,12 @@ export function createWorld(ctx) {
   }
   render();
 
+  function renderVegetables() {
+    vegCard.textContent = t("vegetablesCount", { n: vegetables }).replace(/\.$/, "");
+    ctx.setData("vegetables", vegetables);
+  }
+  renderVegetables();
+
   /** The goal line: always the next thing to do. */
   function updateGoal() {
     if (finished) {
@@ -459,7 +478,7 @@ export function createWorld(ctx) {
       return;
     }
     if (nearGate) {
-      hud.goal(nearGate.spec.portal ? t("goalPortal") : t("goalDoor"));
+      hud.goal(nearGate.spec.finish ? t("goalFinish") : t("goalDoor"));
       return;
     }
     const index = Math.min(runner.sectionIndex, BY_SECTION.length - 1);
@@ -516,7 +535,7 @@ export function createWorld(ctx) {
           spawnRequired(event.step.spawn, PLACES[event.step.spawn][0]);
         } else if (event.step.note) {
           runner.calm(event.step.at + 90);
-          runner.spawnObstacle("trust", 0, event.step.at + 90);
+          runner.spawnObstacle("noext", 0, event.step.at + 90);
           runner.spawnItem("note", 0, event.step.at + 90, 2.1, { label: false });
         }
         return;
@@ -530,6 +549,20 @@ export function createWorld(ctx) {
       case "item":
         if (event.kind === "note") {
           ctx.foundNote();
+          return;
+        }
+        if (event.def.vegetable) {
+          // A vegetable: bonus points and a happy wheek
+          vegetables += 1;
+          renderVegetables();
+          // Its name in the toast the first time each kind is eaten, then just the points
+          ctx.collect(VEGETABLE_POINTS, eaten.has(event.kind) ? "" : event.def.label);
+          eaten.add(event.kind);
+          ctx.sound.play("wheek");
+          if (!vegTold) {
+            vegTold = true;
+            runner.coach(t("coachVeg"), 2000);
+          }
           return;
         }
         if (REQUIRED.includes(event.kind)) {
@@ -565,12 +598,12 @@ export function createWorld(ctx) {
           updateGoal();
           return;
         }
-        if (event.ok && event.door.portal) {
+        if (event.ok && event.door.finish) {
           runner.celebrate(event.lane, 200);
           ctx.sound.play("fanfare");
           return;
         }
-        if (event.gate.spec.portal) {
+        if (event.gate.spec.finish) {
           // The last door is the finish line: a wrong one costs points and
           // says why, never the attempt that would fail the whole world
           ctx.sound.play("wrong");
@@ -579,12 +612,12 @@ export function createWorld(ctx) {
           hud.toast(event.door.short || event.door.text, "bad");
           if (event.door.tip) {
             hud.tip(event.door.tip);
-            portalTip = event.door.tip;
+            finishTip = event.door.tip;
           }
           return;
         }
         runner.handle(event);
-        if (!event.door.portal && event.gate.spec.quiz && REQUIRED.some((id) => state[id] === "found")) {
+        if (event.gate.spec.quiz && REQUIRED.some((id) => state[id] === "found")) {
           // A restart is still owed: it comes down the track as a power-up
           owed = true;
           runner.spawnPower("restart", runner.lane, runner.distance + 45);
@@ -595,12 +628,14 @@ export function createWorld(ctx) {
       }
       case "end": {
         // Missing tools never keep anyone out: they cost points and are named
-        // on the result, as the setup panel would still show them pending
+        // on the result, as the Setup panel would still show them pending
         const missing = pendingTools();
         finished = true;
         hud.goal("");
-        hud.toast(t("created"), "good");
-        const info = [missing.length ? t("missedTools", { tools: missing.map((id) => TOOLS[id].label).join(", ") }) : "", portalTip].filter(Boolean).join(" ");
+        if (!missing.length) {
+          hud.toast(t("allGreen"), "good");
+        }
+        const info = [t("vegetablesCount", { n: vegetables }), missing.length ? t("missedTools", { tools: missing.map((id) => TOOLS[id].label).join(", ") }) : "", finishTip].filter(Boolean).join(" ");
         ctx.finish((restartsDone >= 2 ? 100 : 0) - missing.length * 40, info);
         return;
       }
@@ -699,6 +734,14 @@ export const CSS =
 .guinea-run .gr-w0-card[data-state="ok"]::before {
   content: "\\2713  ";
 }
+.guinea-run .gr-w0-veg {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #fff1d6;
+  color: #8a4b00;
+  font-weight: 800;
+  white-space: nowrap;
+}
 @media (max-width: 600px) {
   .guinea-run .gr-w0-panel {
     gap: 3px;
@@ -708,7 +751,8 @@ export const CSS =
   .guinea-run .gr-w0-panel strong {
     display: none;
   }
-  .guinea-run .gr-w0-card {
+  .guinea-run .gr-w0-card,
+  .guinea-run .gr-w0-veg {
     padding: 2px 6px;
   }
 }

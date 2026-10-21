@@ -250,19 +250,23 @@ export function createRunner(ctx, config) {
   function glow(model, color, intensity) {
     model.traverse((child) => {
       if (child.isMesh) {
-        const key = "glow:" + child.material.uuid + color + intensity;
-        let found = own.find((m) => m.userData.key === key);
-        if (!found) {
-          found = child.material.clone();
-          found.emissive = new THREE.Color(color);
-          found.emissiveIntensity = intensity;
-          found.userData.key = key;
-          own.push(found);
-        }
-        child.material = found;
+        child.material = glowMaterial(child.material, color, intensity);
       }
     });
     return model;
+  }
+
+  function glowMaterial(material, color, intensity) {
+    const key = "glow:" + material.uuid + color + intensity;
+    let found = own.find((m) => m.userData.key === key);
+    if (!found) {
+      found = material.clone();
+      found.emissive = new THREE.Color(color);
+      found.emissiveIntensity = intensity;
+      found.userData.key = key;
+      own.push(found);
+    }
+    return found;
   }
 
   /* ---------- Scenery ---------- */
@@ -640,6 +644,61 @@ export function createRunner(ctx, config) {
     scenery.trees.instanceMatrix.needsUpdate = true;
   }
 
+  /* ---------- Instanced pickups ---------- */
+
+  // Items the world marks `instanced` (many copies of one model, like the
+  // vegetables) are drawn by one InstancedMesh per mesh of their model; each
+  // object of the track only keeps its place and its sign
+  const POOL_SIZE = 40;
+  const pools = {};
+  const poolMeshes = [];
+  for (const [kind, def] of Object.entries(config.items || {})) {
+    if (!def.model || !def.instanced) {
+      continue;
+    }
+    const height = def.big ? 0.95 : 0.75;
+    const parts = instancedModel(def.model, POOL_SIZE, height);
+    if (!parts) {
+      continue;
+    }
+    for (const part of parts) {
+      part.mesh.count = 0;
+      part.mesh.material = glowMaterial(part.mesh.material, def.glow || def.color, def.glowIntensity || 0.35);
+      poolMeshes.push(part.mesh);
+    }
+    pools[kind] = { parts, half: height / 2, n: 0 };
+  }
+
+  /** Writes the instances of every pool from the items on the track: one pass a frame. */
+  function drawPools(time) {
+    for (const kind in pools) {
+      pools[kind].n = 0;
+    }
+    for (const object of objects) {
+      const pool = object.pool;
+      if (!pool || object.removed || !object.mesh.visible || object.detail === 0 || pool.n >= POOL_SIZE) {
+        continue;
+      }
+      euler.set(0, time * 2.2 + object.at, 0);
+      quaternion.setFromEuler(euler);
+      position.set(object.mesh.position.x, object.mesh.position.y - pool.half, object.mesh.position.z);
+      scale.set(1, 1, 1);
+      matrix.compose(position, quaternion, scale);
+      setInstance(pool.parts, pool.n, matrix);
+      pool.n += 1;
+    }
+    for (const kind in pools) {
+      const pool = pools[kind];
+      for (const part of pool.parts) {
+        part.mesh.count = pool.n;
+        part.mesh.instanceMatrix.needsUpdate = true;
+      }
+    }
+  }
+
+  // Kinds whose name sign shows only the first time one comes (config.labelOnce)
+  const labelled = new Set();
+
   /* ---------- Objects of the track ---------- */
 
   const shapes = {
@@ -908,6 +967,14 @@ export function createRunner(ctx, config) {
   function itemMesh(kind, withLabel) {
     const def = config.items[kind];
     const group = new THREE.Group();
+    if (pools[kind]) {
+      if (def.label && withLabel !== false) {
+        const sign = paint.sign("item", def.label, { color: def.color, height: 0.4, glyph: def.signGlyph || null });
+        sign.position.y = 0.72;
+        group.add(sign);
+      }
+      return group;
+    }
     // A salesforce model when the world names one (def.model), the glyph tile otherwise
     let tile = def.model ? fitModel(def.model, { h: def.big ? 0.95 : 0.75 }) : null;
     if (tile) {
@@ -1275,10 +1342,15 @@ export function createRunner(ctx, config) {
     },
     /** options: { label: false } leaves the name off (rows of the same item). */
     spawnItem(kind, lane, at, y, options) {
-      const mesh = itemMesh(kind, options && options.label);
+      let label = options && options.label;
+      if (config.labelOnce && config.labelOnce.includes(kind)) {
+        label = !labelled.has(kind);
+        labelled.add(kind);
+      }
+      const mesh = itemMesh(kind, label);
       const height = y === undefined ? 0.85 : y;
       mesh.position.y = height;
-      return add({ type: "item", kind, def: config.items[kind], lane, x: LANES[lane], at, y: height, mesh, depth: 1 });
+      return add({ type: "item", kind, def: config.items[kind], lane, x: LANES[lane], at, y: height, mesh, depth: 1, pool: pools[kind] || null });
     },
     spawnPower(kind, lane, at) {
       const mesh = powerMesh(kind);
@@ -1439,6 +1511,7 @@ export function createRunner(ctx, config) {
       placeScenery(time);
       collide(events, time);
       objects = objects.filter((object) => !object.removed);
+      drawPools(time);
       markDoorLane();
       showPace();
       placeCamera(dt);
@@ -1511,6 +1584,10 @@ export function createRunner(ctx, config) {
         thing.dispose();
       }
       for (const mesh of scenery.instanced) {
+        mesh.dispose();
+      }
+      for (const mesh of poolMeshes) {
+        root.remove(mesh);
         mesh.dispose();
       }
       for (const material of own) {
@@ -1747,8 +1824,11 @@ export function createRunner(ctx, config) {
       return;
     }
     if (config.obstacles[first].move === "jump" && random() < 0.6) {
-      // A reward over a hurdle, for the ones who jump
-      runner.spawnItem(pick(items), lanes[0], at, 2, { label: false });
+      // An arc of rewards over a hurdle, for the ones who jump
+      const kind = pick(items);
+      runner.spawnItem(kind, lanes[0], at - 1.8, 1.35, { label: false });
+      runner.spawnItem(kind, lanes[0], at, 1.95, { label: false });
+      runner.spawnItem(kind, lanes[0], at + 1.8, 1.35, { label: false });
     } else if (!doubles || random() < 0.5) {
       const lane = doubles ? lanes[2] : lanes[1];
       const kind = pick(items);
@@ -1835,7 +1915,9 @@ export function createRunner(ctx, config) {
       }
       if (object.type === "item" || object.type === "power") {
         // Only the tile turns: its name, a sprite, always faces the camera
-        object.mesh.children[0].rotation.y = time * 2.2 + object.at;
+        if (!object.pool && object.mesh.children[0]) {
+          object.mesh.children[0].rotation.y = time * 2.2 + object.at;
+        }
         object.mesh.position.y = object.y + Math.sin(time * 4 + object.at) * 0.08;
       }
       if (object.done) {
