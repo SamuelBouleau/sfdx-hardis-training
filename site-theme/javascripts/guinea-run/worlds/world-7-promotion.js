@@ -488,6 +488,7 @@ export function createWorld(ctx) {
         }
         if (NOT_APPROVED.includes(event.kind)) {
           runner.breakStreak();
+          runner.mercy();
           ctx.loseAttempt(t("notApproved", { id: STORY_LABELS[event.kind] }), t("notApprovedTip"));
           return;
         }

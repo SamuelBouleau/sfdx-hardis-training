@@ -41,9 +41,20 @@ const FAST_FALL_SPEED = -12;
 const DUCK_TIME = 0.75;
 const LANE_SPEED = 14;
 const HIT_INVULNERABLE = 2;
-// Every runner world goes this much slower than its sections say: they are
-// there to teach, a player who is not a gamer must finish them
+// Every runner world starts this much slower than its first section says:
+// they are there to teach, a player who is not a gamer must finish them
 const EASY_SPEED = 0.85;
+// Then the pace climbs with progress along the track, never with time spent:
+// pace = 1 + PACE_GAIN * ease(progress) + PACE_STEP per section passed, so
+// about +35 % at the end. A mistake takes MERCY_DROP off for a few seconds
+const PACE_GAIN = 0.32;
+const PACE_STEP = 0.03;
+const MERCY_DROP = 0.14;
+const MERCY_TIME = 5;
+// The pace levels the coach calls out ("Faster!")
+const PACE_CUES = [1.1, 1.2, 1.3];
+// The camera widens a little with the pace, so the speed is felt
+const FOV_PER_PACE = 8;
 const QUICK_BOOST = 1.35;
 const INPUT_BUFFER_S = 0.15;
 const SEGMENT_LENGTH = 20;
@@ -83,6 +94,7 @@ export const RUNNER_TEXTS = {
     r_teach_door: "Steer into the lane of your answer!",
     r_right: "Right door!",
     r_streak: "{{n}} in a row!",
+    r_faster: "Faster!",
     r_youHere: "you"
   },
   fr: {
@@ -97,6 +109,7 @@ export const RUNNER_TEXTS = {
     r_teach_door: "Prenez la voie de votre réponse !",
     r_right: "Bonne porte !",
     r_streak: "{{n}} d'affilée !",
+    r_faster: "Plus vite !",
     r_youHere: "vous"
   }
 };
@@ -140,6 +153,13 @@ export function createRunner(ctx, config) {
   let speedFactor = 1;
   let coachUntil = -10;
   let streak = 0;
+  // Mercy after a mistake: 1 right after it, back to 0 in MERCY_TIME seconds
+  let mercy = 0;
+  let cue = 0;
+  let paceShown = "";
+  // The start speed: the first section's, made easy. The sections after it
+  // do not set their own speed any more, the pace curve does
+  const startSpeed = (sections[0].speed || speedConfig.start) * EASY_SPEED;
   const taught = new Set();
   const script = (config.script || []).slice().sort((a, b) => a.at - b.at);
   while (scriptIndex < script.length && script[scriptIndex].at < distance) {
@@ -1235,6 +1255,14 @@ export function createRunner(ctx, config) {
     get stopped() {
       return Boolean(stopped);
     },
+    /** The pace now: 1 at the start, about 1.35 at the end, lower for a while after a mistake. */
+    get pace() {
+      return pace();
+    },
+    /** A mistake the world counted itself: the pace drops a notch for a few seconds. */
+    mercy() {
+      mercy = 1;
+    },
     player,
 
     spawnObstacle(kind, lane, at) {
@@ -1412,6 +1440,7 @@ export function createRunner(ctx, config) {
       collide(events, time);
       objects = objects.filter((object) => !object.removed);
       markDoorLane();
+      showPace();
       placeCamera(dt);
       pig.state = { running: moving, airborne: player.y > 0.01, ducking: player.duck > 0, speed: currentSpeed(), height: player.y };
       pig.object.position.set(player.x, player.y, 0);
@@ -1440,6 +1469,7 @@ export function createRunner(ctx, config) {
         case "hit":
           player.invulnerable = HIT_INVULNERABLE;
           player.hit = 0.6;
+          mercy = 1;
           runner.shake(0.35);
           ctx.loseAttempt(t(event.def.title), event.def.tip ? t(event.def.tip) : "");
           break;
@@ -1465,6 +1495,7 @@ export function createRunner(ctx, config) {
     wrongDoor(event) {
       player.invulnerable = HIT_INVULNERABLE;
       player.hit = 0.6;
+      mercy = 1;
       runner.shake(0.35);
       streak = 0;
       ctx.fx.burst(LANES[event.lane], 1.4, -0.5, { count: 24, colors: [0xea001e, 0xfe9339, 0x444444], speed: 3.5, up: 3 });
@@ -1550,6 +1581,7 @@ export function createRunner(ctx, config) {
         break;
       case "trap":
         player.hit = 0.6;
+        mercy = 1;
         streak = 0;
         ctx.loseAttempt(t(def.toast || "") || label, def.tip ? t(def.tip) : "");
         break;
@@ -1566,9 +1598,32 @@ export function createRunner(ctx, config) {
   }
 
   function currentSpeed() {
-    const index = sectionIndex;
-    const inSection = Math.min(Math.max(distance - starts[index], 0), sections[index].length) / sections[index].length;
-    return ((sections[index].speed || speedConfig.start + speedConfig.step * index) + speedConfig.ramp * inSection) * EASY_SPEED;
+    return startSpeed * pace();
+  }
+
+  /** The pace from progress alone: an ease-in curve, plus a small step per section. */
+  function basePace(at) {
+    const p = Math.min(1, Math.max(0, at / total));
+    return 1 + PACE_GAIN * (0.4 * p + 0.6 * p * p) + PACE_STEP * sectionAt(at);
+  }
+
+  function pace() {
+    return Math.max(0.88, basePace(distance) - MERCY_DROP * mercy);
+  }
+
+  /** "Faster!" when the pace passes a level, and data-pace for the checks. */
+  function showPace() {
+    const now = pace();
+    const text = now.toFixed(2);
+    if (text !== paceShown) {
+      paceShown = text;
+      ctx.setData("pace", text);
+    }
+    if (cue < PACE_CUES.length && basePace(distance) >= PACE_CUES[cue] && !stopped && runner.coach(say("r_faster"), 1300)) {
+      cue += 1;
+      ctx.sound.play("combo");
+      ctx.fx.burst(player.x, 1.2, -1, { count: 22, colors: [0xffb400, 0xff5d2d, 0xffd84d], speed: 4, up: 3 });
+    }
   }
 
   function sectionAt(d) {
@@ -1640,6 +1695,7 @@ export function createRunner(ctx, config) {
     player.invulnerable = Math.max(0, player.invulnerable - dt);
     player.quick = Math.max(0, player.quick - dt);
     player.hit = Math.max(0, player.hit - dt);
+    mercy = Math.max(0, mercy - dt / MERCY_TIME);
   }
 
   /** One row of the track: what the guinea pig meets at that distance. */
@@ -1713,7 +1769,11 @@ export function createRunner(ctx, config) {
     while (nextRowAt < horizon && nextRowAt < total - 20) {
       addRow(nextRowAt);
       const index = sectionAt(nextRowAt);
-      nextRowAt += Math.max(spacing[0], spacing[1] - index * 1.2 - random() * 4);
+      // The gap grows with the pace the guinea pig will have there, so the
+      // time to react never shrinks (above a second even at the end); later
+      // sections are only a little denser
+      const gap = Math.max(spacing[0], spacing[1] - index * 0.8 - random() * 4);
+      nextRowAt += gap * basePace(nextRowAt);
     }
   }
 
@@ -1889,7 +1949,7 @@ export function createRunner(ctx, config) {
     focus.lerp(wantedFocus, ease);
     shake = Math.max(0, shake - dt);
     const jitter = shake > 0 ? (Math.random() - 0.5) * shake : 0;
-    const fov = portrait ? 72 : 60;
+    const fov = Math.round(((portrait ? 72 : 60) + FOV_PER_PACE * Math.max(0, pace() - 1)) * 10) / 10;
     if (camera.fov !== fov) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -1906,6 +1966,11 @@ export function createRunner(ctx, config) {
   }
 
   // Ready for the intro card: the track is drawn before the first step
+  ctx.setData("pace", "1.00");
+  // A run started further down the track (guinea-at) does not call out the levels behind it
+  while (cue < PACE_CUES.length && basePace(distance) >= PACE_CUES[cue]) {
+    cue += 1;
+  }
   spawnAhead();
   placeScenery(0);
   updatePath();
