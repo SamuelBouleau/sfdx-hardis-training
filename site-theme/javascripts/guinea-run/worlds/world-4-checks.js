@@ -20,8 +20,8 @@
 import { SLDS, pictureBox, rounded, font, fitText, glyph } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump", "confirm"];
-// The Kenney packs: the CI machines behind the Pull Request, the yard along the lanes
-export const MODELS = ["space", "platform"];
+// The course's own items: CI runners, check statuses, Apex test flasks, Victor's note
+export const MODELS = ["salesforce"];
 
 const LANES = [-2.2, 0, 2.2];
 const SPAWN_Z = -22;
@@ -400,13 +400,17 @@ export function createWorld(ctx) {
     [-3.3, 0xffb400],
     [3.3, 0x9050e9]
   ]) {
-    const gate = model("gate_simple", { height: 2.9 }, x, SPAWN_Z - 1.6, 0);
+    // The arch stands on two CI runners: the check that reports the findings
+    const gate = model("ci-runner", { height: 2.6 }, x, SPAWN_Z - 1.6, 0, true);
     if (!gate) {
       const post = new THREE.Mesh(sourcePosts, paint.plain(colour));
       post.position.set(x, 1.4, SPAWN_Z - 1.5);
       root.add(post);
     }
   }
+  // One status over each CI runner behind the Pull Request, as its check says
+  const statusSlots = [];
+  let cloudity = null;
   buildYard();
 
   /** A Kenney model placed in the world, or null when the pack did not load. */
@@ -423,28 +427,62 @@ export function createWorld(ctx) {
 
   // Off the lanes only: nothing here is in the way of a finding or a fix
   function buildYard() {
-    // The CI servers the two checks run on, behind the Pull Request
-    model("machine_generator", { height: 1.0 }, -5.2, 2.4, 0.6, true);
-    model("machine_wireless", { height: 1.2 }, 5.1, 2.6, -0.6, true);
-    model("satelliteDish_large", { height: 1.8 }, -5.4, -1.2, 0.8);
-    model("satelliteDish", { height: 1.2 }, 5.3, -0.6, -0.9);
-    model("structure", { height: 2.4 }, 5.6, -8, -0.3);
-    model("machine_barrel", { height: 0.9 }, -5.0, -5, 0.4);
-    model("pipe_straight", { height: 0.5 }, -4.6, -12, Math.PI / 2);
-    model("barrels", { height: 0.9 }, 5.1, -15, 0.3);
-    // A friendly yard along the edges
+    // The runners the two checks of the Pull Request run on, each with its status
     [
-      ["crate", -4.4, -2.5, 0.2],
-      ["barrel", 4.4, -4, 0],
-      ["crate-strong", 4.5, -11, 0.5],
-      ["crate", -4.5, -17, 0.9],
-      ["barrel", -4.4, -9, 0]
-    ].forEach(([name, x, z, turn]) => model(name, { height: 0.75 }, x, z, turn));
-    for (const z of [-6, -14]) {
-      model("fence-straight", { width: 2.2 }, -4.1, z, Math.PI / 2);
-      model("fence-straight", { width: 2.2 }, 4.1, z + 2, Math.PI / 2);
+      [-4.9, 2.6, 0.5],
+      [4.9, 2.6, -0.5]
+    ].forEach(([x, z, turn], i) => {
+      model("ci-runner", { height: 1.5 }, x, z, turn, true);
+      const slot = {};
+      for (const status of ["pass", "warn", "fail"]) {
+        const item = model("check-" + status, { height: 0.8 }, x, z, turn);
+        if (item) {
+          item.position.y = 1.65;
+          item.visible = false;
+          slot[status] = item;
+        }
+      }
+      statusSlots[i] = slot;
+    });
+    // Next to the Pull Request card, the Pull Request itself
+    const merge = model("pull-request", { height: 0.9 }, -4.1, 4.4, 0.3);
+    if (merge) {
+      merge.rotation.x = -0.2;
+    }
+    // More CI jobs down the yard, and the target org up in the sky
+    model("ci-runner", { height: 1.4 }, -5.0, -6, 0.4);
+    model("ci-runner", { height: 1.4 }, 5.0, -10, -0.4);
+    model("ci-runner", { height: 1.4 }, -5.0, -15, 0.4);
+    const sky = [
+      [-7, 6.5, -20, 3],
+      [7.5, 5.5, -16, 2.4]
+    ];
+    for (const [x, y, z, h] of sky) {
+      const org = model("org-cloud", { height: h }, x, z, 0);
+      if (org) {
+        org.position.y = y;
+      }
+    }
+    // The end: the Cloudity mark rises over the lanes
+    cloudity = model("cloudity-logo", { height: 2 }, 0, -2.5, 0, true);
+    if (cloudity) {
+      cloudity.position.y = 0.6;
+      cloudity.visible = false;
     }
   }
+
+  function showStatus(i, status) {
+    const slot = statusSlots[i];
+    if (!slot) {
+      return;
+    }
+    const wanted = { ok: "pass", warn: "warn", fail: "fail" }[status];
+    for (const [name, item] of Object.entries(slot)) {
+      item.visible = name === wanted;
+    }
+  }
+
+  const cloudityScale = cloudity ? cloudity.scale.x : 1;
   // Lane markers on the ground, lit under the guinea pig
   const markerGeometry = paint.geometry("w4-marker", () => new THREE.PlaneGeometry(1.9, 1.2));
   const markerOn = paint.plain(0xffb400, { transparent: true, opacity: 0.6, depthWrite: false });
@@ -540,6 +578,8 @@ export function createWorld(ctx) {
     prView.checks[1].note = lint[1];
     prView.box = box;
     drawPr();
+    showStatus(0, deploy[0]);
+    showStatus(1, lint[0]);
   }
   drawPr();
 
@@ -664,8 +704,17 @@ export function createWorld(ctx) {
       card.castShadow = true;
     }
     let coin = null;
+    if (def.tone === "test") {
+      // A real Apex test carries its flask
+      const flask = ctx.models && ctx.models.get("apex-test", { height: 0.45, shadows: false });
+      if (flask) {
+        flask.position.y = 0.97;
+        group.add(flask);
+      }
+    }
     if (def.tone === "golden") {
-      coin = ctx.models && ctx.models.get("coin-gold", { height: 0.5, shadows: false });
+      // Victor's note, always the note
+      coin = ctx.models && ctx.models.get("note", { height: 0.6, shadows: false });
       if (coin) {
         coin.position.y = 1.9;
         group.add(coin);
@@ -785,6 +834,7 @@ export function createWorld(ctx) {
   // What the player missed, said on the result screen
   const missed = [];
   const seenDetail = {};
+  let cloudRise = 0;
 
   ctx.setData("lane", player.lane);
   ctx.setData("review", "pending");
@@ -1362,6 +1412,7 @@ export function createWorld(ctx) {
       state.done = true;
       ctx.setData("review", "changes");
       hud.goal("");
+
       ctx.fx.burst(player.x, 1.2, PIG_Z, { count: 60, speed: 5, up: 6, life: 1.4 });
       ctx.sound.play("happy");
       requestButton.disabled = true;
@@ -1394,6 +1445,13 @@ export function createWorld(ctx) {
         prView.box = "merged";
         drawPr();
         hud.toast(t("fixMerged"), "good");
+        // The review is done: the panel steps aside for the Cloudity mark
+        panel.hidden = true;
+        if (cloudity) {
+          cloudity.visible = true;
+          cloudRise = 0.001;
+        }
+        ctx.fx.burst(0, 2, -2.5, { count: 60, speed: 5, up: 6, life: 1.4 });
         ctx.sound.play("gate");
       });
       after(6.2, () => ctx.finish(state.merges === 0 && state.wrong === 0 ? 300 : 150, missed.join(" ")));
@@ -1533,6 +1591,15 @@ export function createWorld(ctx) {
         if (bannerTime <= 0) {
           banner.classList.remove("is-shown");
         }
+      }
+      if (cloudity && cloudRise > 0 && cloudRise < 1) {
+        // The Cloudity mark pops up with a little overshoot
+        cloudRise = Math.min(1, cloudRise + dt * 1.6);
+        const k = cloudRise;
+        cloudity.scale.setScalar(cloudityScale * (k < 0.7 ? k / 0.7 * 1.15 : 1.15 - ((k - 0.7) / 0.3) * 0.15));
+      }
+      if (cloudity && cloudRise >= 1) {
+        cloudity.rotation.y = Math.sin(time * 1.5) * 0.3;
       }
       placePig(dt);
       placeCamera(time, dt);

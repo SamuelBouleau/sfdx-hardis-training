@@ -14,7 +14,7 @@ import { SLDS, fitText, glyph } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump", "duck", "confirm"];
 
-/** The Kenney office pack: desk, chair, plant, rug, bookcase. */
+/** The Kenney office pack (desk, chair, plant, rug, bookcase); the Salesforce items always load. */
 export const MODELS = ["office"];
 
 export const TEXTS = {
@@ -263,6 +263,7 @@ export function createWorld(ctx) {
     }
     thing.position.set(x, y, z);
     thing.rotation.y = turn || 0;
+    thing.userData.size = thing.scale.x;
     root.add(thing);
     return thing;
   }
@@ -284,9 +285,14 @@ export function createWorld(ctx) {
   const wall = new THREE.Mesh(paint.geometry("wall", () => new THREE.BoxGeometry(5.2, 2.8, 0.12)), paint.plain(0xfde7f0, { roughness: 0.9 }));
   wall.position.set(0, 1.4, -2.1);
   root.add(wall);
-  const plaque = new THREE.Mesh(paint.geometry("plaque", () => new THREE.PlaneGeometry(1.3, 0.63)), paint.plaque());
-  plaque.position.set(-1.45, 2.1, -2.03);
-  root.add(plaque);
+  // The Cloudity logo on the wall, in 3D; the flat plaque if the items did not load
+  if (!model("cloudity-logo", { width: 1.1 }, -1.75, 2.15, -2.0)) {
+    const plaque = new THREE.Mesh(paint.geometry("plaque", () => new THREE.PlaneGeometry(1.3, 0.63)), paint.plaque());
+    plaque.position.set(-1.45, 2.1, -2.03);
+    root.add(plaque);
+  }
+  // What the Pull Request carries: the package of the delta, on the desk
+  model("package-xml", { height: 0.3 }, 0.62, 0.8, -1.05, -0.4);
   if (!model("pottedPlant", { height: 1.1 }, 1.75, 0, -1.3)) {
     const pot = new THREE.Mesh(paint.geometry("pot", () => new THREE.CylinderGeometry(0.2, 0.15, 0.36, 18)), paint.plain(0x0176d3));
     pot.position.set(1.7, 0.18, -1.3);
@@ -354,10 +360,30 @@ export function createWorld(ctx) {
     paint.plain(0x222222)
   ]);
   const screenMaterial = monitor.material[4];
+  // Above the monitor, the status of the check in 3D: it follows the screen
+  const STATUS = { wait: "check-warn", fail: "check-fail", green: "check-pass", done: "pull-request" };
+  const statusItems = {};
+  for (const [state, item] of Object.entries(STATUS)) {
+    const thing = model(item, { height: 0.42, shadows: false }, 0.35, 1.98, -1.25);
+    if (thing) {
+      thing.visible = false;
+      statusItems[state] = thing;
+    }
+  }
+  let statusShown = null;
+  let statusPop = 0;
   function setMonitor(name) {
     screenMaterial.map = screens[name];
     screenMaterial.emissiveMap = screens[name];
     screenMaterial.needsUpdate = true;
+    if (statusShown) {
+      statusShown.visible = false;
+    }
+    statusShown = statusItems[name] || null;
+    if (statusShown) {
+      statusShown.visible = true;
+      statusPop = 0;
+    }
   }
   monitor.position.set(0, 1.32, -1.25);
   monitor.rotation.y = 0;
@@ -727,6 +753,14 @@ export function createWorld(ctx) {
       pig.object.position.y = SEAT + Math.sin(bounce * Math.PI * 2) * 0.12 * (bounce > 0 ? 1 : 0);
       pig.hitWobble(wobble);
       pig.state = { running: false };
+      if (statusShown) {
+        // It pops in, then turns slowly over the monitor
+        statusPop = Math.min(1, statusPop + dt * 3);
+        const pop = 1 - Math.pow(1 - statusPop, 3);
+        statusShown.scale.setScalar(statusShown.userData.size * (0.4 + 0.6 * pop));
+        statusShown.rotation.y = Math.sin(time * 1.3) * 0.5;
+        statusShown.position.y = 1.98 + Math.sin(time * 2) * 0.03;
+      }
     },
     idleCamera(time) {
       placeCamera(time);
