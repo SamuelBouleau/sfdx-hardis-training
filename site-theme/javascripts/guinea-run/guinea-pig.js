@@ -189,6 +189,9 @@ export function createGuineaPig(THREE, options) {
     for (const foot of feet) {
       foot.visible = false;
     }
+    // Blender's -Y comes out of the exporter as +Z: half a turn puts the nose
+    // on -Z, where the game has always pointed it
+    model.rotation.y = Math.PI;
     group.add(model);
     rig.model = model;
     rig.mixer = new THREE.AnimationMixer(model);

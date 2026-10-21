@@ -329,11 +329,11 @@ def animations(rig):
     }, 12, loop=False)
     # Up on its back legs, nose high, front paws off the ground
     keys(rig, "sit", {
-        0: pose(root=(Z, Z), body=((0, 0, 0.06), (28, 0, 0)), head=(Z, (-12, 0, 0)),
+        0: pose(root=((0, 0, -0.08), Z), body=((0, 0, 0.0), (28, 0, 0)), head=(Z, (-12, 0, 0)),
                 **{"leg.FL": (Z, (-30, 0, 0)), "leg.FR": (Z, (-30, 0, 0)), "leg.BL": (Z, (-28, 0, 0)), "leg.BR": (Z, (-28, 0, 0))}),
-        40: pose(root=(Z, Z), body=((0, 0, 0.07), (30, 0, 0), (1.02, 1, 1.02)), head=(Z, (-16, 0, 4)),
+        40: pose(root=((0, 0, -0.08), Z), body=((0, 0, 0.01), (30, 0, 0), (1.02, 1, 1.02)), head=(Z, (-16, 0, 4)),
                  **{"leg.FL": (Z, (-36, 0, 0)), "leg.FR": (Z, (-26, 0, 0)), "leg.BL": (Z, (-28, 0, 0)), "leg.BR": (Z, (-28, 0, 0))}),
-        80: pose(root=(Z, Z), body=((0, 0, 0.06), (28, 0, 0)), head=(Z, (-12, 0, 0)),
+        80: pose(root=((0, 0, -0.08), Z), body=((0, 0, 0.0), (28, 0, 0)), head=(Z, (-12, 0, 0)),
                  **{"leg.FL": (Z, (-30, 0, 0)), "leg.FR": (Z, (-30, 0, 0)), "leg.BL": (Z, (-28, 0, 0)), "leg.BR": (Z, (-28, 0, 0))}),
     }, 80)
     # Popcorning: the happy hop of a guinea pig, with a twist in the air
