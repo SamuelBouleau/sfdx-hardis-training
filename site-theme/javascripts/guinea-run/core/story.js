@@ -24,9 +24,9 @@ export const WORLDS = [
 /** The deployment actions of Labs 2.3 and 2.4, and where each belongs. */
 export const DEPLOYMENT_ACTIONS = [
   { id: "deliverability", type: "manual", label: "Set Email Deliverability to All Email", when: "pre", order: 1, lab: "2.4" },
-  { id: "backfill", type: "apex", label: "Backfill Crew Size on existing installations", when: "post", order: 1, lab: "2.3" },
-  { id: "refdata", type: "data", label: "Load crew capacity reference data", when: "post", order: 2, lab: "2.4" },
-  { id: "schedule", type: "schedule-batch", label: "Schedule the nightly crew capacity recalculation", when: "post", order: 3, lab: "2.4" }
+  { id: "backfill", type: "apex", label: "Backfill Customer Tier on existing accounts", when: "post", order: 1, lab: "2.3" },
+  { id: "refdata", type: "data", label: "Load the customer tier reference data", when: "post", order: 2, lab: "2.4" },
+  { id: "schedule", type: "schedule-batch", label: "Schedule the nightly customer tier recalculation", when: "post", order: 3, lab: "2.4" }
 ];
 
 /**

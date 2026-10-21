@@ -1,26 +1,26 @@
 /*
- * World 4, Pass the checks (Labs 2.5 and 3.2): a lane defense in front of a
+ * World 4, Pass the checks: a lane defense in front of a
  * Pull Request. The findings of its two checks march down three lanes towards
  * it, and the guinea pig throws fixes at the first finding of its lane.
  *
- * Lab 2.5 is the order of the waves. Grey MegaLinter warnings come first: they
+ * The first part is the order of the waves. Grey MegaLinter warnings come first: they
  * do not block, and a fix spent on one is time lost. Then the red errors, led
  * by pmd:OperationWithLimitsInLoop, which runs again behind itself while it
  * lives, the way a query in a loop does. Then a busy Monday: the boss counts
- * installations, and at 101 it throws Too many SOQL queries. Beating it is the
- * fix of the lab, one query outside the loop, and the longer code drops the
+ * accounts, and at 101 it throws Too many SOQL queries. Beating it is the
+ * usual fix, one query outside the loop, and the longer code drops the
  * coverage to 76.92%: the last wave brings tests to catch, and tests that
  * assert nothing to throw away.
  *
- * Lab 3.2 is the finale: both checks green, Mariia's US-052 waits for a review
- * with a big green merge button, and the layout lost Total_Capacity_kW__c on
+ * The finale: both checks green, Mariia's US-052 waits for a review with a
+ * big green merge button, and the Opportunity layout lost Next_Step__c on
  * the way. Spotting it and asking for the change wins; merging costs an
  * attempt.
  */
 import { SLDS, pictureBox, rounded, fitText, glyph } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump", "confirm"];
-// The course's own items: CI runners, check statuses, Apex test flasks, Victor's note
+// The world's own items: CI runners, check statuses, Apex test flasks, Victor's note
 /** On a phone, toasts and tips sit above the pads: the track runs up the middle. */
 export const PHONE_MESSAGES = "bottom";
 
@@ -36,7 +36,7 @@ const THROW_COOLDOWN = 0.2;
 const WASTED_STUN = 0.5;
 const CLONE_AFTER = 6;
 
-// The numbers of Lab 2.5
+// The numbers of the checks
 const COVERAGE_LOOP = 81;
 const COVERAGE_FIXED = 76.92;
 const COVERAGE_TARGET = 80;
@@ -51,26 +51,28 @@ const PACE_GAIN = 0.36;
 const MERCY = 0.2;
 const MERCY_FADE = 0.04;
 
-// The Information section of the Installation layout, before US-052
+// The Opportunity Information section of Opportunity-Opportunity Layout, before US-052
 const LAYOUT = [
-  ["Account", "Account__c"],
-  ["Status", "Status__c"],
-  ["Crew Size", "Crew_Size__c"],
-  ["Install Date", "Install_Date__c"],
-  ["Roof Type", "Roof_Type__c"],
-  ["Crew Capacity Cap", "Crew_Capacity_Cap__c"],
-  ["Total Capacity kW", "Total_Capacity_kW__c"],
-  ["External Id", "External_Id__c"],
-  ["Panels Required", "Panels_Required__c"],
-  ["Crew Notes", "Crew_Notes__c"],
-  ["Signed Off By", "Signed_Off_By__c"]
+  ["Opportunity Name", "Name"],
+  ["Account Name", "AccountId"],
+  ["Type", "Type"],
+  ["Lead Source", "LeadSource"],
+  ["Close Date", "CloseDate"],
+  ["Next Step", "Next_Step__c"],
+  ["Stage", "StageName"],
+  ["Amount", "Amount"],
+  ["Probability (%)", "Probability"],
+  ["Discount", "Discount__c"],
+  ["Description", "Description"]
 ];
-const MOVED = "Crew_Capacity_Cap__c";
-const DROPPED = "Total_Capacity_kW__c";
+const MOVED = "CloseDate";
+const DROPPED = "Next_Step__c";
+// A required field, with its own answer when the comment lands on it
+const REQUIRED = "StageName";
 
 export const TEXTS = {
   en: {
-    intro: "The findings of your Pull Request's checks march on it down three lanes. Stop the errors, keep the coverage over 80%, then review Mariia's Pull Request before you merge it.",
+    intro: "Your next story, US-016, computes the tier in Apex. The findings of its Pull Request's checks march on it down three lanes. Stop the errors, keep the coverage over 80%, then review Mariia's Pull Request before you merge it.",
     how1: "Left and right arrows, or swipe, to change lane",
     how2: "Up, Space or a tap throws a fix down your lane",
     how3: "Stop the red errors, let the grey warnings pass",
@@ -97,7 +99,7 @@ export const TEXTS = {
     chip_warnTrivy: "Warning: Trivy",
     chip_warnActions: "Warning: workflows",
     chip_loop: "SOQL in a loop",
-    chip_required: "Crew_Size__c missing",
+    chip_required: "LastName missing",
     chip_select: "SELECT in loop",
     chip_golden: "Hardcoded Id",
     chip_test: "Real test",
@@ -122,7 +124,7 @@ export const TEXTS = {
     w2_title: "Wave 2: errors",
     w2_sub: "A red error blocks the merge. Stop every one.",
     w3_title: "A busy Monday",
-    w3_sub: "101 installations checked at once.",
+    w3_sub: "101 accounts updated at once.",
     w4_title: "Wave 4: tests",
     w4_sub: "Catch the tests that assert something. Throw away the others.",
     w5_title: "Mariia's Pull Request",
@@ -131,18 +133,18 @@ export const TEXTS = {
     warnShot: "A warning does not block: that fix was time lost",
     warnLesson: "Warnings pass, errors block",
     errorReached: "Merging is blocked: {{finding}}",
-    tip_loop: "Query once, outside the loop, into a Map<Id, Date>, then loop over the ids: one query, whatever the size of the list.",
-    tip_required: "Crew_Size__c is required since Lab 2.3: every test that inserts an installation sets Crew_Size__c = 2.",
+    tip_loop: "Query the contacts once, outside the loop, into a Map<Id, List<Contact>>, then loop over the accounts: one query, whatever the size of the list.",
+    tip_required: "LastName is required on Contact: every test that inserts a contact sets LastName.",
     tip_select: "Salesforce allows 100 SOQL queries per transaction. Query once, outside the loop.",
     tip_limit: "The loop works in every test and fails on the first busy day. Query once, outside the loop, and index what you get back.",
     fix_loop: "Query once, outside the loop",
-    fix_required: "Crew_Size__c = 2",
+    fix_required: "LastName = 'Test'",
     fix_select: "One query for the whole list",
     loopAgain: "The loop runs again: one more query",
     bossHit: "Bulkify",
     bossDown: "One query, whatever the size of the list",
     limitHit: "System.LimitException: Too many SOQL queries: 101",
-    coverageDrop: "Cannot merge into integration: code coverage 76.92% is under the 80% target",
+    coverageDrop: "Cannot merge into the integration branch: code coverage 76.92% is under the 80% target",
     testCaught: "+0.9% {{name}}",
     testShot: "You threw away a real test",
     fakeCaught: "No assertion: a test that only lifts the percentage makes the number lie",
@@ -153,16 +155,16 @@ export const TEXTS = {
     goldenTitle: "Hardcoded Id",
     goldenDetail: "100% coverage, deploys fine",
     checksGreen: "Both checks green",
-    ownMerged: "Squash and merge: US-027 merged into the integration branch",
-    prInto: "into integration from US-027-schedule-by-availability",
-    mariiaInto: "Mariia Pyvovarchuk wants to merge into integration",
+    ownMerged: "Squash and merge: US-016 merged into the integration branch",
+    prInto: "into the integration branch from features/US-016-tier-from-contacts",
+    mariiaInto: "Mariia Pyvovarchuk wants to merge into the integration branch",
     running: "running",
     passing: "passing",
     blocked: "Merging is blocked",
-    ready: "Ready to merge into integration",
+    ready: "Ready to merge into the integration branch",
     merged: "Merged",
-    review_desc: "Installation layout: the crew capacity cap moves to the second column",
-    review_task: "Files changed: Installation Layout, Information section",
+    review_desc: "Opportunity layout: Delivery Date joins the second column, and Close Date moves there next to it",
+    review_task: "Files changed: Opportunity-Opportunity Layout, Opportunity Information section",
     review_step1: "Compare Before and After",
     review_step2: "Drag the comment",
     review_step3: "Request changes",
@@ -172,34 +174,34 @@ export const TEXTS = {
     review_cardHint: "Drag it onto the line of the field that is gone",
     review_movedShort: "moves to column 2",
     review_movedIn: "moved here",
+    review_new: "new",
     review_missing: "nowhere in After",
     mergeCaption: "Green checks only mean it will deploy",
     review_before: "Before",
     review_after: "After",
     review_empty: "Empty column",
     review_column2: "Column 2",
-    review_readonly: "read only",
-    pick_moved: "It moved: it comes back in the second column. That is the story.",
-    pick_you: "That one is you, US-014: still on the layout.",
+    pick_moved: "It moved: it comes back in the second column, next to Delivery Date. That is the story.",
+    pick_required: "Stage is required on every opportunity: still there, in the first column.",
     pick_still: "Still there, in the first column",
-    pick_found: "Total_Capacity_kW__c leaves the layout, and the description does not say so",
+    pick_found: "Next_Step__c leaves the layout, and the description does not say so",
     request_hint: "First drop the comment on the line of the field that is gone.",
-    comment: "Total_Capacity_kW__c comes off the layout with this change, and the description does not say so. I think it went missing with the move: can you put it back in the second column, under the cap, read only?",
+    comment: "Next_Step__c comes off the layout with this change, and the description does not say so. I think it went missing with the move: can you put it back in the second column, under Close Date?",
     mergeTitle: "Merged too early",
     mergeTip: "Green checks mean this will deploy, not this is right. Read the diff, comment on the removed line and ask for the change. If you merged too early: Restore branch, and review the fix in a new Pull Request.",
-    mergedBody: "Total_Capacity_kW__c is off the layout in the helios-integration org, and the merge deleted Mariia's branch, which her fix starts from.",
+    mergedBody: "Next_Step__c is off the layout in the integration org, and the merge deleted Mariia's branch, which her fix starts from.",
     mariia_open: "US-052 is open, and its checks are green: it waits for you.",
-    mariia_fix: "Good catch, it went missing with the move. Total_Capacity_kW__c is back in the second column, under the cap, read only.",
-    mariia_merged: "You merged it? Planners will look for the capacity on Monday morning.",
+    mariia_fix: "Good catch, it went missing when I moved Close Date. Next_Step__c is back in the second column, under Close Date.",
+    mariia_merged: "You merged it? Sales reps will look for the next step on Monday morning.",
     fixMerged: "Squash and merge: US-052 merged into the integration branch",
     rerun: "Her new commit: the checks run again",
     faster: "Faster!",
     coverageShort: "Coverage still under 80%: in a real project the check would refuse it",
-    missedCoverage: "The coverage stayed at {{coverage}}%: in Lab 2.5 the deployment check refuses anything under 80%, and the two tests of schedulableOn are what lets it through.",
-    missedMerge: "You merged US-052 before the fix: in Lab 3.2 that takes Total_Capacity_kW__c off the layout in the helios-integration org, and Restore branch is the way back."
+    missedCoverage: "The coverage stayed at {{coverage}}%: the deployment check refuses anything under 80%, and the two tests of AccountTierService are what lets it through.",
+    missedMerge: "You merged US-052 before the fix: that takes Next_Step__c off the layout in the integration org, and Restore branch is the way back."
   },
   fr: {
-    intro: "Les trouvailles des contrôles de votre Pull Request marchent sur elle par trois couloirs. Arrêtez les erreurs, gardez la couverture au-dessus de 80 %, puis relisez la Pull Request de Mariia avant de la merger.",
+    intro: "Votre story suivante, US-016, calcule le niveau en Apex. Les trouvailles des contrôles de sa Pull Request marchent sur elle par trois couloirs. Arrêtez les erreurs, gardez la couverture au-dessus de 80 %, puis relisez la Pull Request de Mariia avant de la merger.",
     how1: "Flèches gauche et droite, ou glisser, pour changer de couloir",
     how2: "Haut, Espace ou un tap lance une correction",
     how3: "Arrêtez les erreurs rouges, laissez passer les gris",
@@ -226,7 +228,7 @@ export const TEXTS = {
     chip_warnTrivy: "Avertissement Trivy",
     chip_warnActions: "Avertissement workflows",
     chip_loop: "SOQL en boucle",
-    chip_required: "Crew_Size__c manquant",
+    chip_required: "LastName manquant",
     chip_select: "SELECT en boucle",
     chip_golden: "Id en dur",
     chip_test: "Vrai test",
@@ -251,7 +253,7 @@ export const TEXTS = {
     w2_title: "Vague 2 : les erreurs",
     w2_sub: "Une erreur rouge bloque le merge. Arrêtez-les toutes.",
     w3_title: "Un lundi chargé",
-    w3_sub: "101 installations vérifiées d'un coup.",
+    w3_sub: "101 comptes mis à jour d'un coup.",
     w4_title: "Vague 4 : les tests",
     w4_sub: "Attrapez les tests qui vérifient quelque chose. Jetez les autres.",
     w5_title: "La Pull Request de Mariia",
@@ -260,18 +262,18 @@ export const TEXTS = {
     warnShot: "Un avertissement ne bloque pas : cette correction, c'est du temps perdu",
     warnLesson: "Les avertissements passent, les erreurs bloquent",
     errorReached: "Merging is blocked : {{finding}}",
-    tip_loop: "Une seule requête, hors de la boucle, dans une Map<Id, Date>, puis la boucle sur les ids : une requête, quelle que soit la taille de la liste.",
-    tip_required: "Crew_Size__c est obligatoire depuis le Lab 2.3 : chaque test qui insère une installation renseigne Crew_Size__c = 2.",
+    tip_loop: "Une seule requête sur les contacts, hors de la boucle, dans une Map<Id, List<Contact>>, puis la boucle sur les comptes : une requête, quelle que soit la taille de la liste.",
+    tip_required: "LastName est obligatoire sur Contact : chaque test qui insère un contact renseigne LastName.",
     tip_select: "Salesforce autorise 100 requêtes SOQL par transaction. Une seule requête, hors de la boucle.",
     tip_limit: "La boucle marche dans tous les tests et échoue le premier jour chargé. Une seule requête, hors de la boucle, et indexez ce qu'elle renvoie.",
     fix_loop: "Une requête, hors de la boucle",
-    fix_required: "Crew_Size__c = 2",
+    fix_required: "LastName = 'Test'",
     fix_select: "Une requête pour toute la liste",
     loopAgain: "La boucle repasse : une requête de plus",
     bossHit: "Bulkifier",
     bossDown: "Une requête, quelle que soit la taille de la liste",
     limitHit: "System.LimitException: Too many SOQL queries: 101",
-    coverageDrop: "Cannot merge into integration: code coverage 76.92% is under the 80% target",
+    coverageDrop: "Cannot merge into the integration branch: code coverage 76.92% is under the 80% target",
     testCaught: "+0,9 % {{name}}",
     testShot: "Vous avez jeté un vrai test",
     fakeCaught: "Aucune assertion : un test qui ne fait que monter le pourcentage fait mentir le nombre",
@@ -282,16 +284,16 @@ export const TEXTS = {
     goldenTitle: "Id en dur",
     goldenDetail: "100 % de couverture, se déploie bien",
     checksGreen: "Les deux contrôles au vert",
-    ownMerged: "Squash and merge : US-027 mergée dans la branch integration",
-    prInto: "vers integration depuis US-027-schedule-by-availability",
-    mariiaInto: "Mariia Pyvovarchuk veut merger dans integration",
+    ownMerged: "Squash and merge : US-016 mergée dans la branch integration",
+    prInto: "vers la branch integration depuis features/US-016-tier-from-contacts",
+    mariiaInto: "Mariia Pyvovarchuk veut merger dans la branch integration",
     running: "en cours",
     passing: "réussi",
     blocked: "Merging is blocked",
-    ready: "Ready to merge into integration",
+    ready: "Ready to merge into the integration branch",
     merged: "Merged",
-    review_desc: "Présentation de page Installation : le plafond de capacité de l'équipe passe dans la deuxième colonne",
-    review_task: "Files changed : présentation de page Installation, section Information",
+    review_desc: "Présentation de page Opportunité : Delivery Date arrive dans la deuxième colonne, et Close Date y passe à côté",
+    review_task: "Files changed : Opportunity-Opportunity Layout, section Opportunity Information",
     review_step1: "Comparer Avant et Après",
     review_step2: "Glisser le commentaire",
     review_step3: "Request changes",
@@ -301,31 +303,31 @@ export const TEXTS = {
     review_cardHint: "Glissez-le sur la ligne du champ disparu",
     review_movedShort: "passe en colonne 2",
     review_movedIn: "déplacé ici",
+    review_new: "nouveau",
     review_missing: "nulle part dans Après",
     mergeCaption: "Des contrôles verts veulent seulement dire que ça se déploie",
     review_before: "Avant",
     review_after: "Après",
     review_empty: "Colonne vide",
     review_column2: "Colonne 2",
-    review_readonly: "lecture seule",
-    pick_moved: "Il a bougé : il revient dans la deuxième colonne. C'est la story.",
-    pick_you: "Celui-là, c'est vous, US-014 : toujours sur la présentation de page.",
+    pick_moved: "Il a bougé : il revient dans la deuxième colonne, à côté de Delivery Date. C'est la story.",
+    pick_required: "Stage est obligatoire sur chaque opportunité : toujours là, dans la première colonne.",
     pick_still: "Toujours là, dans la première colonne",
-    pick_found: "Total_Capacity_kW__c sort de la présentation de page, et la description n'en dit rien",
+    pick_found: "Next_Step__c sort de la présentation de page, et la description n'en dit rien",
     request_hint: "Posez d'abord le commentaire sur la ligne du champ disparu.",
-    comment: "Total_Capacity_kW__c comes off the layout with this change, and the description does not say so. I think it went missing with the move: can you put it back in the second column, under the cap, read only?",
+    comment: "Next_Step__c comes off the layout with this change, and the description does not say so. I think it went missing with the move: can you put it back in the second column, under Close Date?",
     mergeTitle: "Mergée trop tôt",
     mergeTip: "Des contrôles verts veulent dire que ça se déploiera, pas que c'est juste. Lisez le diff, commentez la ligne supprimée et demandez la correction. Mergé trop tôt : Restore branch, puis relisez la correction dans une nouvelle Pull Request.",
-    mergedBody: "Total_Capacity_kW__c n'est plus sur la présentation de page dans l'org helios-integration, et le merge a supprimé la branch de Mariia, d'où part sa correction.",
+    mergedBody: "Next_Step__c n'est plus sur la présentation de page dans l'org d'integration, et le merge a supprimé la branch de Mariia, d'où part sa correction.",
     mariia_open: "US-052 est ouverte, et ses contrôles sont verts : elle vous attend.",
-    mariia_fix: "Bien vu, il s'est perdu dans le déplacement. Total_Capacity_kW__c est revenu dans la deuxième colonne, sous le plafond, en lecture seule.",
-    mariia_merged: "Tu l'as mergée ? Les planificateurs chercheront la capacité lundi matin.",
+    mariia_fix: "Bien vu, il s'est perdu quand j'ai déplacé Close Date. Next_Step__c est revenu dans la deuxième colonne, sous Close Date.",
+    mariia_merged: "Tu l'as mergée ? Les commerciaux chercheront la prochaine étape lundi matin.",
     fixMerged: "Squash and merge : US-052 mergée dans la branch integration",
     rerun: "Son nouveau commit : les contrôles repartent",
     faster: "Plus vite !",
     coverageShort: "Couverture toujours sous 80 % : sur un vrai projet, le contrôle la refuserait",
-    missedCoverage: "La couverture est restée à {{coverage}} % : au Lab 2.5, le contrôle de déploiement refuse tout ce qui est sous 80 %, et ce sont les deux tests de schedulableOn qui la font passer.",
-    missedMerge: "Vous avez mergé US-052 avant la correction : au Lab 3.2, cela retire Total_Capacity_kW__c de la présentation de page dans l'org helios-integration, et Restore branch est le chemin du retour."
+    missedCoverage: "La couverture est restée à {{coverage}} % : le contrôle de déploiement refuse tout ce qui est sous 80 %, et ce sont les deux tests d'AccountTierService qui la font passer.",
+    missedMerge: "Vous avez mergé US-052 avant la correction : cela retire Next_Step__c de la présentation de page dans l'org d'integration, et Restore branch est le chemin du retour."
   }
 };
 
@@ -339,19 +341,8 @@ export const QUOTES = [
   { lab: "2.5", text: "[sfdx-hardis][apextest] Test run code coverage (org wide) 76.92% should be greater than 80%" },
   { lab: "2.5", text: "Mega-Linter" },
   { lab: "2.5", text: "code-analyzer-apex" },
-  { lab: "2.5", text: "InstallationScheduler.cls" },
-  { lab: "2.5", text: "schedulableOnRefusesBeforeThePanelsArrive" },
-  { lab: "2.5", text: "schedulableOnIgnoresInstallationsWithNoBatch" },
-  { lab: "2.5", text: "Crew_Size__c = 2" },
-  { lab: "2.5", text: "Panel_Batch__c" },
-  { lab: "2.5", text: "Map<Id, Date> latestArrival" },
-  { lab: "2.5", text: "US-027" },
   { lab: "1.6", text: "Success with warnings" },
   { lab: "3.1", text: "Simulate Deployment to Major Org" },
-  { lab: "3.2", text: "US-052" },
-  { lab: "3.2", text: "The Installation layout in two columns" },
-  { lab: "3.2", text: "Total_Capacity_kW__c" },
-  { lab: "3.2", text: "Crew_Capacity_Cap__c" },
   { lab: "3.2", text: "Files changed" },
   { lab: "3.2", text: "Request changes" },
   { lab: "3.2", text: "Squash and merge" },
@@ -363,23 +354,23 @@ export const QUOTES = [
 // What marches down the lanes. tone: warning (grey, let it pass), error (red,
 // stop it), test (green, catch it), fake (pale, throw it away), golden.
 const KINDS = {
-  warnDebug: { tone: "warning", title: "(Low)  pmd:AvoidDebugStatements", detail: "InstallationScheduler.cls", speed: 2.48 },
+  warnDebug: { tone: "warning", title: "(Low)  pmd:AvoidDebugStatements", detail: "AccountTierService.cls", speed: 2.48 },
   warnDoc: { tone: "warning", title: "(Low)  pmd:ApexDoc", detail: "Missing ApexDoc comment", speed: 2.32 },
   warnTrivy: { tone: "warning", title: "REPOSITORY_TRIVY", detail: "DISABLE_ERRORS_LINTERS", speed: 2.64 },
   warnActions: { tone: "warning", title: "GitHub Actions workflows", detail: "Success with warnings", speed: 2.4 },
   loop: { tone: "error", title: "(Moderate)  pmd:OperationWithLimitsInLoop", detail: "Avoid operations in loops that may hit governor limits", speed: 1.84, hp: 1, clones: true, fix: "fix_loop", tip: "tip_loop", points: 50 },
-  required: { tone: "error", title: "REQUIRED_FIELD_MISSING", detail: "Required fields are missing: [Crew_Size__c]", speed: 1.36, hp: 2, fix: "fix_required", tip: "tip_required", points: 80 },
-  select: { tone: "error", title: "SELECT Arrival_Date__c", detail: "FROM Panel_Batch__c", speed: 2.72, hp: 1, fix: "fix_select", tip: "tip_select", points: 30 },
+  required: { tone: "error", title: "REQUIRED_FIELD_MISSING", detail: "Required fields are missing: [LastName]", speed: 1.36, hp: 2, fix: "fix_required", tip: "tip_required", points: 80 },
+  select: { tone: "error", title: "SELECT Id, Title", detail: "FROM Contact", speed: 2.72, hp: 1, fix: "fix_select", tip: "tip_select", points: 30 },
   golden: { tone: "golden", speed: 3.68, hp: 1 },
   test: { tone: "test", speed: 2.24 },
   fake: { tone: "fake", speed: 2.24 }
 };
 const WARNINGS = ["warnDebug", "warnDoc", "warnTrivy", "warnActions"];
 const TEST_NAMES = [
-  "schedulableOnRefusesBeforeThePanelsArrive",
-  "schedulableOnIgnoresInstallationsWithNoBatch",
-  "System.assert(tooEarly.isEmpty(), ...)",
-  "System.assertEquals(1, lateEnough.size(), ...)"
+  "tierIsGoldForAccountsWithManyContacts",
+  "tierStaysEmptyForAccountsWithNoContacts",
+  "System.assertEquals('Gold', acme.Customer_Tier__c, ...)",
+  "System.assertEquals(null, initech.Customer_Tier__c, ...)"
 ];
 const TONES = {
   warning: { color: SLDS.grey, icon: "warning", side: 0x706e6b },
@@ -549,8 +540,8 @@ export function createWorld(ctx) {
   pr.rotation.x = -0.8;
   root.add(pr);
   const prView = {
-    title: "US-027 Check several installations against panel availability at once",
-    short: "Pull Request US-027",
+    title: "US-016 Compute the customer tier from contacts",
+    short: "Pull Request US-016",
     sub: t("prInto"),
     checks: [
       { name: "Simulate Deployment to Major Org", label: t("checkDeploy"), status: "run", note: t("running") },
@@ -768,7 +759,7 @@ export function createWorld(ctx) {
     return object;
   }
 
-  // The boss: a big System.LimitException counting installations
+  // The boss: a big System.LimitException counting accounts
   const bossCanvas = document.createElement("canvas");
   bossCanvas.width = 768;
   bossCanvas.height = 300;
@@ -925,7 +916,7 @@ export function createWorld(ctx) {
       }
     } else if (n === 2) {
       setChecks(["ok", "81%"], ["fail", t("noteErrors")], "blocked");
-      hud.tick("(Moderate)  pmd:OperationWithLimitsInLoop  force-app/main/default/classes/InstallationScheduler.cls");
+      hud.tick("(Moderate)  pmd:OperationWithLimitsInLoop  force-app/main/default/classes/AccountTierService.cls");
       const order = ["loop", "warnDoc", "loop", "required", "warnTrivy", "loop", "warnDebug", "required", "loop", "warnActions", "loop"];
       order.forEach((kind, i) => {
         lane = pickLane(lane);
@@ -935,7 +926,7 @@ export function createWorld(ctx) {
       queue.push({ at: 11.6, kind: "golden", lane: (lane + 1) % 3 });
       queue.sort((a, b) => a.at - b.at);
     } else if (n === 3) {
-      source.material = sourceMaterial("Installation__c x 101");
+      source.material = sourceMaterial("Account x 101");
       boss.active = true;
       boss.group.visible = true;
       boss.hp = BOSS_HP;
@@ -944,10 +935,10 @@ export function createWorld(ctx) {
       boss.nextMove = 3;
       boss.nextShot = 1.4;
       drawBoss();
-      hud.tick("for (Id installationId : installationIds) { [SELECT ... FROM Panel_Batch__c] }");
+      hud.tick("for (Account acc : accounts) { [SELECT ... FROM Contact WHERE AccountId = :acc.Id] }");
       hud.toast("System.LimitException: Too many SOQL queries: 101", "bad");
     } else if (n === 4) {
-      source.material = sourceMaterial("InstallationSchedulerTest.cls");
+      source.material = sourceMaterial("AccountTierServiceTest.cls");
       queueTests(0.8);
     } else if (n === 5) {
       openReview();
@@ -1110,7 +1101,7 @@ export function createWorld(ctx) {
         kill(o, false);
       }
     }
-    hud.tick("Map<Id, Date> latestArrival = new Map<Id, Date>();");
+    hud.tick("Map<Id, List<Contact>> contactsByAccount = new Map<Id, List<Contact>>();");
     setChecks(["run", t("running")], ["ok", t("passing")], "blocked");
     after(1.4, () => {
       coverage = COVERAGE_FIXED;
@@ -1363,7 +1354,7 @@ export function createWorld(ctx) {
 
   function openReview() {
     phase = "review";
-    prView.title = "US-052 The Installation layout in two columns";
+    prView.title = "US-052 Delivery date on opportunities";
     prView.short = "Pull Request US-052";
     prView.sub = t("mariiaInto");
     source.material = sourceMaterial("US-052");
@@ -1401,7 +1392,7 @@ export function createWorld(ctx) {
     const head = el("div", "gr-w4-head", panel);
     el("span", "gr-w4-prtile", head, "PR");
     const titles = el("div", "", head);
-    el("strong", "", titles, "US-052 The Installation layout in two columns");
+    el("strong", "", titles, "US-052 Delivery date on opportunities");
     el("span", "", titles, t("mariiaInto"));
     const checks = el("div", "gr-w4-checks", head);
     const checkNodes = ["Simulate Deployment to Major Org", "Mega-Linter"].map((name) => el("span", "gr-w4-check is-ok", checks, name));
@@ -1472,8 +1463,13 @@ export function createWorld(ctx) {
     el("span", "gr-w4-c2", afterCol2, t("review_column2"));
     const capCell = el("span", "gr-w4-field is-static is-moved", afterCol2);
     el("em", "gr-w4-arrow", capCell, t("review_movedIn"));
-    el("span", "", capCell, "Crew Capacity Cap");
+    el("span", "", capCell, "Close Date");
     capCell.title = MOVED;
+    // What US-052 is about: the new field, next to the close date
+    const newCell = el("span", "gr-w4-field is-static", afterCol2);
+    el("em", "gr-w4-arrow", newCell, t("review_new"));
+    el("span", "", newCell, "Delivery Date");
+    newCell.title = "Delivery_Date__c";
 
     const actions = el("div", "gr-w4-actions", panel);
     const hint = el("p", "gr-w4-hint", actions, t("request_hint"));
@@ -1615,7 +1611,7 @@ export function createWorld(ctx) {
       }
       ctx.points(-10);
       ctx.sound.play("wrong");
-      const key = api === MOVED ? "pick_moved" : api === "Panels_Required__c" ? "pick_you" : "pick_still";
+      const key = api === MOVED ? "pick_moved" : api === REQUIRED ? "pick_required" : "pick_still";
       if (!tipsShown[key] && hud.tip) {
         tipsShown[key] = true;
         hud.tip(t(key), 4000);
@@ -1646,7 +1642,9 @@ export function createWorld(ctx) {
       after(1.2, () => {
         hud.chat("mariia", t("mariia_fix"), 6000);
         const back = el("span", "gr-w4-field is-static is-back", afterCol2);
-        el("span", "", back, "Total Capacity kW (" + t("review_readonly") + ")");
+        el("span", "", back, "Next Step");
+        // Back where it was asked: under Close Date
+        afterCol2.insertBefore(back, capCell.nextSibling);
         back.title = DROPPED;
         hud.tick(t("rerun"));
         for (const node of checkNodes) {

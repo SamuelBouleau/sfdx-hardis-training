@@ -1,19 +1,19 @@
 /*
- * World 8, Release to production (Lab 3.6): the last world, a musical run.
+ * World 8, Release to the production org: the last world, a musical run.
  * The guinea pig runs to the music and the player only jumps.
  *
- * The run follows the steps of the lab: the three checks worth checking, the
- * rehearsal in preprod, the production Pull Request and its check read like
- * it matters, the merge and the deployment watched to its end, then the
- * verification in production.
+ * The run follows the steps of a release: the three checks worth checking,
+ * the rehearsal in the preprod org, the production Pull Request and its check
+ * read like it matters, the merge and the deployment watched to its end, then
+ * the verification in the production org.
  *
  * The rehearsal is musical: preprod plays the same riff as production, eight
  * bars of it, and there a mistake costs nothing (a release that fails in
  * preprod has cost you nothing). In production the same riff comes back with
  * the full band, with one thing more that preprod did not have: drift.
  *
- * The finale is the DORA card of Lab 3.6, with the lab's own numbers, and two
- * questions about what they really say.
+ * The finale is a DORA card after a first release, and two questions about
+ * what its numbers really say.
  */
 import { createLevel, createMusicalRun, MUSICAL_TEXTS, MUSICAL_CSS, endMissedInfo, musicalWorld } from "./musical.js";
 import { melody } from "../core/music.js";
@@ -21,7 +21,7 @@ import { SLDS } from "../core/painter.js";
 
 export const PADS = ["jump"];
 // The salesforce items (components, checks, runners, orgs, the rocket, the Cloudity logo and the
-// course badge), the Kenney springs, trees and bushes far behind, and the bonus vegetables
+// badge), the Kenney springs, trees and bushes far behind, and the bonus vegetables
 export const MODELS = ["salesforce", "platform", "nature", "vegetables"];
 
 const SCENERY = [
@@ -49,9 +49,9 @@ const RIFF = ["x.x.", "X-x-", "g.o.", "xx..", "x.g.", "o-X-", "x..x", "G-x-"];
 
 export const TEXTS = {
   en: Object.assign({}, MUSICAL_TEXTS.en, {
-    intro: "UAT signed off. The release goes to production this evening: rehearse the song in preprod, then play it for real.",
+    intro: "UAT signed off. The release goes to the production org this evening: rehearse the song in the preprod org, then play it for real.",
     how1: "Jump with Up, Space or a tap when the ring closes",
-    how2: "In preprod a mistake costs nothing: learn the riff there",
+    how2: "In the preprod org a mistake costs nothing: learn the riff there",
     how3: "In production, stop on what you did not expect",
     note: "The rating is about the period, not about you. I wish someone had told me that on my first release. - V.",
     path0: "Checks",
@@ -60,28 +60,28 @@ export const TEXTS = {
     path3: "Deploy",
     path4: "Verify",
     arch0: "1 · Three checks",
-    arch1: "2 · preprod",
-    arch2: "3 · main",
+    arch1: "2 · preprod org",
+    arch2: "3 · main branch",
     arch3: "4 · Merge, and stay",
     arch4: "5 · Verify",
     goal0: "Jump for the three checks worth checking",
-    goal1: "Rehearse in preprod: learn the riff, mistakes are free",
+    goal1: "Rehearse in the preprod org: learn the riff, mistakes are free",
     goal1manual: "The first check stops red, on purpose: press Mark as done",
     goal2: "The Pull Request to the main branch: read the check like it matters",
     goal3: "The same riff, for real. Watch for drift",
-    goal4: "Verify in production: the new story, and an old one",
-    coachRehearse: "preprod: the same riff as production, for free",
-    coachProd: "Same riff as preprod, with one surprise",
+    goal4: "Verify in the production org: the new story, and an old one",
+    coachRehearse: "The preprod org: the same riff as production, for free",
+    coachProd: "Same riff as the preprod org, with one surprise",
     coachQuick: "Quick Deploy: the tests already ran during the validation",
     coachVerify: "The most common incident is an old feature breaking",
     s_check1: "UAT signed off",
     s_check2: "Manual steps",
     s_check3: "Look at prod",
     s_jwt: "sf org login jwt",
-    s_jwt2: "helios-prod org",
+    s_jwt2: "production org",
     s_quick: "Quick Deploy",
-    s_v1: "Panels Required",
-    s_v2: "Timeline",
+    s_v1: "Customer Tier",
+    s_v2: "Contacts",
     s_v3: "Record saves",
     s_green: "Signed off?",
     s_fail: "Fails here",
@@ -93,25 +93,25 @@ export const TEXTS = {
     s_dora: "DORA metrics",
     p_check1: "UAT signed off: somebody tested it and said yes",
     p_check2: "The manual steps of the release, known before you create anything",
-    p_check3: "The helios-prod org carries what the course seeded, nothing else yet",
-    p_jwt: "sf org login jwt: the key of Lab 3.1 works",
-    p_jwt2: "sf org login jwt: the first JWT login into the helios-prod org",
+    p_check3: "Look at the production org first: know what is already there before you deploy",
+    p_jwt: "sf org login jwt: the certificate key of the preprod org works",
+    p_jwt2: "sf org login jwt: the first JWT login into the production org",
     p_quick: "Quick Deploy. Apex tests: Already run during the validation",
-    p_v1: "Panels Required: the crew sees how many panels a job needs",
-    p_v2: "The timeline component still works",
+    p_v1: "Acme Corp shows Customer Tier: Gold. The new story works",
+    p_v2: "The contacts of Acme Corp still show: an older feature still works",
     p_v3: "A record saves: the old features still work",
     o_green: "Green is not signed off",
     o_green_tip: "Is UAT genuinely signed off? Not \"the deployment was green\": somebody tested it and said yes.",
-    o_fail: "Failed in preprod",
-    o_fail_tip: "That is what preprod is for: a release that fails here has cost you nothing.",
+    o_fail: "Failed in the preprod org",
+    o_fail_tip: "That is what the preprod org is for: a release that fails here has cost you nothing.",
     o_prod: "Failed in production",
-    o_prod_tip: "Rehearse in preprod: a release that deploys there cleanly has very little left to surprise you with.",
-    o_drift: "Fails in production, worked in preprod",
-    o_drift_tip: "Production drifted: an extra validation rule, a record type, real data. Keep preprod as close to production as you can.",
+    o_prod_tip: "Rehearse in the preprod org: a release that deploys there cleanly has very little left to surprise you with.",
+    o_drift: "Fails in production, worked in the preprod org",
+    o_drift_tip: "The production org drifted: an extra validation rule, a record type, real data. Keep the preprod org as close to production as you can.",
     o_half: "The deployment half-succeeded",
     o_half_tip: "Deployments are atomic: a post-deployment action failed. Re-run the action, do not re-run the deployment.",
     o_old: "An old feature broke",
-    o_old_tip: "Check something that already worked still works: open an installation, its timeline, save a record.",
+    o_old_tip: "Check something that already worked still works: open an account, its contacts, save a record.",
     o_tests: "Apex tests ran again",
     o_tests_tip: "The validation already ran the tests: the merge job applies it, as a Quick Deploy.",
     o_latemain: "The manual step was never done",
@@ -119,7 +119,7 @@ export const TEXTS = {
     stopHeader: "1 to do by hand",
     stopButton: "Mark as done",
     stopDone1: "Mark as done in preprod, then Re-run all jobs: green",
-    stopDone2: "Done in production: the last org that needed the click",
+    stopDone2: "Done in the production org: the last org that needed the click",
     choiceHeader: "Read the check",
     q0: "The Metadata row of the comment says: 1 deleted",
     q0d: "You did not expect anything to go.",
@@ -147,16 +147,16 @@ export const TEXTS = {
     q2cTip: "A red deployment job is exactly what the failure rate counts.",
     q2Ok: "Small numbers move in big steps. The rating is about the period, not about you.",
     choose: "Up and down choose, Enter answers. Or tap.",
-    shipped: "You have shipped once, and the DORA tab says exactly that.",
+    shipped: "You have shipped once, and the DORA metrics say exactly that.",
     info_checks: "You skipped {{n}} of the three checks of step 1: know the manual steps and look at production before you create anything.",
-    info_verify: "You verified {{n}} of 3 things in production: the most common incident after a release is an old feature breaking.",
+    info_verify: "You verified {{n}} of 3 things in the production org: the most common incident after a release is an old feature breaking.",
     info_quick: "You missed Quick Deploy: the validation already ran the tests.",
     info_coins: "You ate {{got}} of {{total}} vegetables."
   }),
   fr: Object.assign({}, MUSICAL_TEXTS.fr, {
-    intro: "La recette UAT est validée. La release part en production ce soir : répétez le morceau en preprod, puis jouez-le pour de vrai.",
+    intro: "La recette UAT est validée. La release part dans l'org de production ce soir : répétez le morceau dans l'org preprod, puis jouez-le pour de vrai.",
     how1: "Sautez avec Haut, Espace ou en touchant quand l'anneau se referme",
-    how2: "En preprod, une erreur ne coûte rien : apprenez le riff là",
+    how2: "Dans l'org preprod, une erreur ne coûte rien : apprenez le riff là",
     how3: "En production, arrêtez-vous sur ce que vous n'attendiez pas",
     note: "La note porte sur la période, pas sur vous. J'aurais aimé qu'on me le dise à ma première release. - V.",
     path0: "Contrôles",
@@ -165,28 +165,28 @@ export const TEXTS = {
     path3: "Déploiement",
     path4: "Vérifier",
     arch0: "1 · Trois contrôles",
-    arch1: "2 · preprod",
-    arch2: "3 · main",
+    arch1: "2 · org preprod",
+    arch2: "3 · branch main",
     arch3: "4 · Merger, et rester",
     arch4: "5 · Vérifier",
     goal0: "Sautez pour les trois contrôles qui valent la peine",
-    goal1: "Répétez en preprod : apprenez le riff, les erreurs sont gratuites",
+    goal1: "Répétez dans l'org preprod : apprenez le riff, les erreurs sont gratuites",
     goal1manual: "Le premier contrôle s'arrête en rouge, exprès : appuyez sur Mark as done",
     goal2: "La Pull Request vers la branch main : lisez le contrôle comme si ça comptait",
     goal3: "Le même riff, pour de vrai. Attention à la dérive",
-    goal4: "Vérifiez en production : la nouvelle story, et une ancienne",
-    coachRehearse: "preprod : le même riff qu'en production, gratuitement",
-    coachProd: "Le même riff qu'en preprod, avec une surprise",
+    goal4: "Vérifiez dans l'org de production : la nouvelle story, et une ancienne",
+    coachRehearse: "L'org preprod : le même riff qu'en production, gratuitement",
+    coachProd: "Le même riff que dans l'org preprod, avec une surprise",
     coachQuick: "Quick Deploy : les tests ont déjà tourné pendant la validation",
     coachVerify: "L'incident le plus courant, c'est une ancienne fonctionnalité qui casse",
     s_check1: "UAT validée",
     s_check2: "Étapes manuelles",
     s_check3: "Regarder la prod",
     s_jwt: "sf org login jwt",
-    s_jwt2: "org helios-prod",
+    s_jwt2: "org de production",
     s_quick: "Quick Deploy",
-    s_v1: "Panels Required",
-    s_v2: "Timeline",
+    s_v1: "Customer Tier",
+    s_v2: "Contacts",
     s_v3: "Enregistrement OK",
     s_green: "Validée ?",
     s_fail: "Échoue ici",
@@ -198,25 +198,25 @@ export const TEXTS = {
     s_dora: "Métriques DORA",
     p_check1: "UAT validée : quelqu'un a testé et a dit oui",
     p_check2: "Les étapes manuelles de la release, connues avant de créer quoi que ce soit",
-    p_check3: "L'org helios-prod contient ce que le cours y a mis, rien d'autre pour l'instant",
-    p_jwt: "sf org login jwt : la clé du Lab 3.1 marche",
-    p_jwt2: "sf org login jwt : la première connexion JWT à l'org helios-prod",
+    p_check3: "Regardez d'abord l'org de production : sachez ce qui s'y trouve déjà avant de déployer",
+    p_jwt: "sf org login jwt : la clé du certificat de l'org preprod marche",
+    p_jwt2: "sf org login jwt : la première connexion JWT à l'org de production",
     p_quick: "Quick Deploy. Apex tests: Already run during the validation",
-    p_v1: "Panels Required : l'équipe voit combien de panneaux demande un chantier",
-    p_v2: "Le composant timeline marche toujours",
+    p_v1: "Acme Corp affiche Customer Tier: Gold. La nouvelle story marche",
+    p_v2: "Les contacts d'Acme Corp s'affichent toujours : une fonctionnalité plus ancienne marche encore",
     p_v3: "Un enregistrement se sauve : les anciennes fonctionnalités marchent toujours",
     o_green: "Vert n'est pas validé",
     o_green_tip: "La recette UAT est-elle vraiment validée ? Pas \"le déploiement était vert\" : quelqu'un a testé et a dit oui.",
-    o_fail: "Échec en preprod",
-    o_fail_tip: "C'est à ça que sert preprod : une release qui échoue ici ne vous a rien coûté.",
+    o_fail: "Échec dans l'org preprod",
+    o_fail_tip: "C'est à ça que sert l'org preprod : une release qui échoue ici ne vous a rien coûté.",
     o_prod: "Échec en production",
-    o_prod_tip: "Répétez en preprod : une release qui s'y déploie proprement n'a presque plus de surprise en réserve.",
-    o_drift: "Échoue en production, marchait en preprod",
-    o_drift_tip: "La production a dérivé : une règle de validation en plus, un type d'enregistrement, de vraies données. Gardez preprod aussi proche de la production que possible.",
+    o_prod_tip: "Répétez dans l'org preprod : une release qui s'y déploie proprement n'a presque plus de surprise en réserve.",
+    o_drift: "Échoue en production, marchait dans l'org preprod",
+    o_drift_tip: "L'org de production a dérivé : une règle de validation en plus, un type d'enregistrement, de vraies données. Gardez l'org preprod aussi proche de la production que possible.",
     o_half: "Le déploiement a réussi à moitié",
     o_half_tip: "Les déploiements sont atomiques : une action post-deployment a échoué. Relancez l'action, pas le déploiement.",
     o_old: "Une ancienne fonctionnalité a cassé",
-    o_old_tip: "Vérifiez que ce qui marchait marche encore : ouvrez une installation, sa timeline, enregistrez un enregistrement.",
+    o_old_tip: "Vérifiez que ce qui marchait marche encore : ouvrez un compte, ses contacts, enregistrez un enregistrement.",
     o_tests: "Les tests Apex ont tourné à nouveau",
     o_tests_tip: "La validation a déjà exécuté les tests : le job du merge l'applique, en Quick Deploy.",
     o_latemain: "L'étape manuelle n'a jamais été faite",
@@ -224,7 +224,7 @@ export const TEXTS = {
     stopHeader: "1 to do by hand",
     stopButton: "Mark as done",
     stopDone1: "Mark as done in preprod, puis Re-run all jobs : vert",
-    stopDone2: "Fait en production : la dernière org qui avait besoin du clic",
+    stopDone2: "Fait dans l'org de production : la dernière org qui avait besoin du clic",
     choiceHeader: "Lisez le contrôle",
     q0: "La ligne Metadata du commentaire dit : 1 deleted",
     q0d: "Vous ne vous attendiez à aucune suppression.",
@@ -252,15 +252,15 @@ export const TEXTS = {
     q2cTip: "Un job de déploiement rouge, c'est exactement ce que compte le failure rate.",
     q2Ok: "Les petits nombres bougent par grands pas. La note porte sur la période, pas sur vous.",
     choose: "Haut et bas choisissent, Entrée répond. Ou touchez.",
-    shipped: "Vous avez livré une fois, et l'onglet DORA dit exactement ça.",
+    shipped: "Vous avez livré une fois, et les métriques DORA disent exactement ça.",
     info_checks: "Vous avez sauté {{n}} des trois contrôles de l'étape 1 : connaissez les étapes manuelles et regardez la production avant de créer quoi que ce soit.",
-    info_verify: "Vous avez vérifié {{n}} choses sur 3 en production : l'incident le plus courant après une release, c'est une ancienne fonctionnalité qui casse.",
+    info_verify: "Vous avez vérifié {{n}} choses sur 3 dans l'org de production : l'incident le plus courant après une release, c'est une ancienne fonctionnalité qui casse.",
     info_quick: "Vous avez raté le Quick Deploy : la validation a déjà exécuté les tests.",
     info_coins: "Vous avez mangé {{got}} légumes sur {{total}}."
   })
 };
 
-/** The strings taken word for word from the labs, checked by scripts/verify/check-easter-egg.mjs. */
+/** The product words taken word for word from the labs, checked by scripts/verify/check-easter-egg.mjs. */
 export const QUOTES = [
   { lab: "1.6", text: "Already run during the validation" },
   { lab: "2.4", text: "Mark as done" },
@@ -270,20 +270,16 @@ export const QUOTES = [
   { lab: "3.6", text: "Re-run all jobs" },
   { lab: "3.6", text: "Mark as done in preprod" },
   { lab: "3.6", text: "Process Deployment (sfdx-hardis)" },
-  { lab: "3.6", text: "helios-prod" },
   { lab: "3.6", text: "Deployments per week" },
   { lab: "3.6", text: "Lead time" },
   { lab: "3.6", text: "Failure rate" },
   { lab: "3.6", text: "Recovery" },
   { lab: "3.6", text: "Rework" },
   { lab: "3.6", text: "No data" },
-  { lab: "3.6", text: "Last 90 days" },
-  { lab: "3.6", text: "5.7 d" },
-  { lab: "3.6", text: "0.1 d" },
-  { lab: "3.6", text: "50 %" }
+  { lab: "3.6", text: "Last 90 days" }
 ];
 
-// The numbers of the DORA card in Lab 3.6
+// The numbers of a DORA card after a first release
 const DORA = [
   { metric: "Deployments per week", value: "0.1 / week", rating: "Low" },
   { metric: "Lead time (median)", value: "5.7 d", rating: "High" },
@@ -479,7 +475,7 @@ export function createWorld(ctx) {
     pitModel: "check-fail",
     checkpointModel: "check-pass",
     // The release: the rocket takes off when the world is done, past the Cloudity logo
-    // (the shell shows the course badge itself, beside its celebration card)
+    // (the shell shows the badge itself, beside its celebration card)
     finish: [{ name: "rocket", height: 3.6 }],
     finishLine: { name: "cloudity-logo", height: 1.3 },
     callbacks: {

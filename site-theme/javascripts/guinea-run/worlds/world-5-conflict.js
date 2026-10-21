@@ -1,12 +1,14 @@
 /*
- * World 5, Resolve the conflict (Labs 2.7 and 3.4): VS Code's merge editor,
- * three rounds, while the guinea pig sits at its desk in front of the monitor.
+ * World 5, Resolve the conflict: VS Code's merge editor, three rounds, while
+ * the guinea pig sits at its desk in front of the monitor.
  *
- * Round 1 is the permission set of Lab 2.7: mechanical, take both, then read
- * the Result, because git merges lines, not permissions. Round 2 is the
- * Installation record page: each side added one field at the same place, and
- * keeping both is plainly right. Round 3 is Lab 3.4: three Pull Requests on
- * a Friday afternoon, put in the order a release manager picks.
+ * Round 1 is the Sales_Manager permission set: US-014 granted
+ * Account.Customer_Tier__c and Mariia's US-018 granted Account.Region__c at
+ * the same place. Mechanical, take both, then read the Result, because git
+ * merges lines, not permissions. Round 2 is the Account record page: each side
+ * added one field at the same place, and keeping both is plainly right.
+ * Round 3: three Pull Requests on a Friday afternoon, put in the order a
+ * release manager picks.
  *
  * Everything is HTML in ctx.hud.layer, one list of rows for the keyboard
  * (up and down pick a row, left and right a button, Enter presses it), and
@@ -19,10 +21,11 @@ export const PADS = ["left", "right", "jump", "duck", "confirm"];
 // The office furniture of the story, and the Salesforce things on the desks
 export const MODELS = ["office", "salesforce"];
 
-const PERMSET_FILE = "Helios_Delivery_Manager.permissionset-meta.xml";
-const PAGE_FILE = "Installation_Record_Page.flexipage-meta.xml";
-const FIELD_CAP = "    <field>Installation__c.Crew_Capacity_Cap__c</field>";
-const FIELD_NOTES = "    <field>Installation__c.Crew_Notes__c</field>";
+const PERMSET_FILE = "Sales_Manager.permissionset-meta.xml";
+const PAGE_FILE = "Account_Record_Page.flexipage-meta.xml";
+// Mariia's field comes in from the integration branch, yours is the current one
+const FIELD_HERS = "    <field>Account.Region__c</field>";
+const FIELD_YOURS = "    <field>Account.Customer_Tier__c</field>";
 const HEAD = "<<<<<<< HEAD";
 const SPLIT = "=======";
 const THEIRS = ">>>>>>> origin/integration";
@@ -41,7 +44,7 @@ export const TEXTS = {
   en: {
     intro:
       "Mariia merged first, on the files you touched. Merge your work with hers, then put three Pull Requests in order as release manager.",
-    how1: "Take both sides: tap Accept Incoming, then Accept Current",
+    how1: "Take both sides: tap Accept Current, then Accept Incoming",
     how2: "On the record page, keep both fields: Accept Incoming and Accept Current",
     how3: "Arrows move, Enter presses, drag the cards to order them",
     g_r1_take: "Accept Incoming and Accept Current",
@@ -57,7 +60,7 @@ export const TEXTS = {
     fix_marker: "Accept a side first",
     fix_oneSide: "Take both sides!",
     fix_dup: "Add the four lines: two blocks",
-    fix_failing: "Send US-020 back to Mariia",
+    fix_failing: "Send US-062 back to Mariia",
     fix_smaller: "The smaller one goes first",
     screenConflict: "Conflict",
     screenMerged: "Merged",
@@ -68,20 +71,20 @@ export const TEXTS = {
     round: "Round {{n}} / 3",
     r1_task:
       "Mariia merged this morning. You did not. Build the Result from both sides, read it, then Complete Merge.",
-    r2_task: "You added Panels_Required__c to the Installation record page. Mariia added Crew_Capacity_Cap__c at the same place. The page has room for both.",
+    r2_task: "You added Customer_Tier__c to the Account record page. Mariia added Region__c at the same place. The page has room for both.",
     r3_task:
       "Friday afternoon. Three stories were planned for this week's release. Put them in the order you would merge them.",
     accepted: "Accepted",
     split: "Add the four lines: two blocks",
-    sort: "Sort: Crew_Capacity_Cap__c first",
+    sort: "Sort: Customer_Tier__c first",
     slot1: "Merge first",
     slot2: "Merge second",
     slot3: "Send back to its author",
     checksGreen: "checks green",
     checksFailing: "checks failing",
     sizeSmall: "small: one <fieldPermissions> block",
-    sizeBig: "bigger: a flow, a field, a layout, a grant",
-    sizeFail: "InstallationSchedulerTest does not compile",
+    sizeBig: "bigger: a field, a layout, a grant",
+    sizeFail: "KeyAccountsServiceTest does not compile",
     mergeOrder: "Merge in this order",
     moveUp: "Move up",
     moveDown: "Move down",
@@ -92,53 +95,53 @@ export const TEXTS = {
     touch: "Tap a button",
     touchR3: "Drag a card, or use its arrows",
     stampMerge: "Merge complete",
-    stampRelease: "Released: US-019, then US-018",
+    stampRelease: "Released: US-056, then US-052",
     timeBonus: "Time bonus +{{n}}",
-    c_r1: "Morning! US-018 is in the integration branch. I granted Crew_Capacity_Cap__c on Helios_Delivery_Manager, one line from yours, I think.",
-    c_mariia2: "Sorry, I put Crew_Capacity_Cap__c on the Installation record page too, right where you put yours.",
+    c_r1: "Morning! US-018 is in the integration branch. I granted Region__c on Sales_Manager, one line from yours, I think.",
+    c_mariia2: "Sorry, I put Region__c on the Account record page too, right where you put yours.",
     c_romain3:
       "Green, small, nothing in its way. Thanks for taking mine first.",
     c_mariia3:
-      "Fair. I will fix InstallationSchedulerTest, it lands on Monday.",
+      "Fair. I will fix KeyAccountsServiceTest, it lands on Monday.",
     ok_both: "Both grants kept",
     ok_r1: "Two complete blocks, in alphabetical order",
     ok_r1_unsorted: "Two blocks, but not in alphabetical order",
-    ok_r3: "US-019, then US-018, and US-020 back to Mariia",
+    ok_r3: "US-056, then US-052, and US-062 back to Mariia",
     e_marker: "The check fails on a conflict marker.",
     e_marker_tip:
       "Search the whole repository for <<<<<<<, ======= and >>>>>>>. A marker in an XML file is sometimes syntactically tolerated by git and always fatal to Salesforce.",
-    e_lostYours: "Your Crew_Notes__c grant quietly disappeared",
-    e_lostHers: "Mariia's Crew_Capacity_Cap__c grant quietly disappeared",
+    e_lostYours: "Your Customer_Tier__c grant quietly disappeared",
+    e_lostHers: "Mariia's Region__c grant quietly disappeared",
     e_oneSide_tip:
       "Take both is the right answer for almost every permission set conflict. Choosing one side is how a teammate's permission quietly disappears, and nobody notices until somebody cannot see a field.",
     e_dup:
       "Element field is duplicated at this location in type PermissionSetFieldPermissions",
     e_dup_tip:
       "One <fieldPermissions> block names one field: the fix is two blocks, not one block with two <field> lines.",
-    e_failing: "US-020 is failing, and it is in the release",
+    e_failing: "US-062 is failing, and it is in the release",
     e_failing_tip:
       "A failing Pull Request is not a decision, it is a task for its author. Send it back with one comment, and leave it open.",
     e_smaller: "The bigger one went first",
     e_smaller_tip:
       "All else equal, merge the smaller one first: its author has less to redo if the other one lands badly.",
     info_unsorted:
-      "Your two blocks were not in alphabetical order: Salesforce writes them Crew_Capacity_Cap__c first, and so does the lab.",
+      "Your two blocks were not in alphabetical order: Salesforce writes Customer_Tier__c first, then Region__c.",
     tickMerged: "Merged #{{n}} {{title}} into the integration branch",
-    tickDeployed: "Deployed to the helios-integration org: both grants are there",
+    tickDeployed: "Deployed to the integration org: both grants are there",
     tickBack:
-      "Comment on #3: InstallationSchedulerTest does not compile, earliestInstallDate returns a Datetime",
+      "Comment on #3: KeyAccountsServiceTest does not compile, addManagers returns a Set, not a List",
     screenBad: "Not deployable",
     fix_page: "Take both fields!",
     ok_page: "Both fields on the record page",
-    e_pageLostYours: "Panels Required is gone from the record page",
-    e_pageLostHers: "Mariia's Crew Capacity Cap is gone from the record page",
+    e_pageLostYours: "Customer Tier is gone from the record page",
+    e_pageLostHers: "Mariia's Region field is gone from the record page",
     e_page_tip: "Each side added one complete field block. Accept Incoming alone drops your field, Accept Current alone drops Mariia's: click both, and the page shows the two fields.",
     prList: "Pull Requests · integration branch",
   },
   fr: {
     intro:
       "Mariia a mergé avant vous, sur les fichiers que vous avez touchés. Fusionnez votre travail avec le sien, puis mettez trois Pull Requests dans l'ordre en release manager.",
-    how1: "Prenez les deux : Accept Incoming, puis Accept Current",
+    how1: "Prenez les deux : Accept Current, puis Accept Incoming",
     how2: "Sur la page d'enregistrement, gardez les deux champs : Accept Incoming et Accept Current",
     how3: "Flèches pour bouger, Entrée pour valider, glissez les cartes",
     g_r1_take: "Accept Incoming et Accept Current",
@@ -154,7 +157,7 @@ export const TEXTS = {
     fix_marker: "Acceptez d'abord un côté",
     fix_oneSide: "Prenez les deux côtés !",
     fix_dup: "Ajoutez les quatre lignes : deux blocs",
-    fix_failing: "Renvoyez US-020 à Mariia",
+    fix_failing: "Renvoyez US-062 à Mariia",
     fix_smaller: "La plus petite passe d'abord",
     screenConflict: "Conflit",
     screenMerged: "Mergé",
@@ -165,20 +168,20 @@ export const TEXTS = {
     round: "Manche {{n}} / 3",
     r1_task:
       "Mariia a mergé ce matin. Pas vous. Construisez le Result avec les deux côtés, lisez-le, puis Complete Merge.",
-    r2_task: "Vous avez ajouté Panels_Required__c à la page d'enregistrement Installation. Mariia a ajouté Crew_Capacity_Cap__c au même endroit. La page a de la place pour les deux.",
+    r2_task: "Vous avez ajouté Customer_Tier__c à la page d'enregistrement Compte. Mariia a ajouté Region__c au même endroit. La page a de la place pour les deux.",
     r3_task:
       "Vendredi après-midi. Trois stories étaient prévues pour la release de la semaine. Mettez-les dans l'ordre où vous les mergeriez.",
     accepted: "Accepté",
     split: "Ajouter les quatre lignes : deux blocs",
-    sort: "Trier : Crew_Capacity_Cap__c en premier",
+    sort: "Trier : Customer_Tier__c en premier",
     slot1: "Merger en premier",
     slot2: "Merger en second",
     slot3: "Renvoyer à son auteur",
     checksGreen: "contrôles verts",
     checksFailing: "contrôles en échec",
     sizeSmall: "petite : un bloc <fieldPermissions>",
-    sizeBig: "plus grosse : un flow, un champ, un layout, un accès",
-    sizeFail: "InstallationSchedulerTest ne compile pas",
+    sizeBig: "plus grosse : un champ, un layout, un accès",
+    sizeFail: "KeyAccountsServiceTest ne compile pas",
     mergeOrder: "Merger dans cet ordre",
     moveUp: "Monter",
     moveDown: "Descendre",
@@ -190,46 +193,46 @@ export const TEXTS = {
     touch: "Touchez un bouton",
     touchR3: "Faites glisser une carte, ou utilisez ses flèches",
     stampMerge: "Merge terminé",
-    stampRelease: "En release : US-019, puis US-018",
+    stampRelease: "En release : US-056, puis US-052",
     timeBonus: "Bonus de temps +{{n}}",
-    c_r1: "Salut ! US-018 est dans la branch integration. J'ai donné Crew_Capacity_Cap__c sur Helios_Delivery_Manager, à une ligne du tien, je crois.",
-    c_mariia2: "Désolée, j'ai aussi mis Crew_Capacity_Cap__c sur la page d'enregistrement Installation, juste là où tu as mis le tien.",
+    c_r1: "Salut ! US-018 est dans la branch integration. J'ai donné Region__c sur Sales_Manager, à une ligne du tien, je crois.",
+    c_mariia2: "Désolée, j'ai aussi mis Region__c sur la page d'enregistrement Compte, juste là où tu as mis le tien.",
     c_romain3:
       "Verte, petite, rien sur son chemin. Merci d'avoir pris la mienne en premier.",
     c_mariia3:
-      "D'accord. Je répare InstallationSchedulerTest, elle passera lundi.",
+      "D'accord. Je répare KeyAccountsServiceTest, elle passera lundi.",
     ok_both: "Les deux accès gardés",
     ok_r1: "Deux blocs complets, par ordre alphabétique",
     ok_r1_unsorted: "Deux blocs, mais pas par ordre alphabétique",
-    ok_r3: "US-019, puis US-018, et US-020 repart chez Mariia",
+    ok_r3: "US-056, puis US-052, et US-062 repart chez Mariia",
     e_marker: "Le contrôle échoue sur un marqueur de conflit.",
     e_marker_tip:
       "Cherchez <<<<<<<, ======= et >>>>>>> dans tout le repository. Un marqueur dans un fichier XML est parfois toléré syntaxiquement par git et toujours fatal pour Salesforce.",
-    e_lostYours: "Votre accès Crew_Notes__c a disparu en silence",
-    e_lostHers: "L'accès Crew_Capacity_Cap__c de Mariia a disparu en silence",
+    e_lostYours: "Votre accès Customer_Tier__c a disparu en silence",
+    e_lostHers: "L'accès Region__c de Mariia a disparu en silence",
     e_oneSide_tip:
       "Prendre les deux est la bonne réponse pour presque tous les conflits de permission set. Choisir un côté est la façon dont la permission d'un collègue disparaît en silence, sans que personne s'en aperçoive avant que quelqu'un ne voie plus un champ.",
     e_dup:
       "Element field is duplicated at this location in type PermissionSetFieldPermissions",
     e_dup_tip:
       "Un bloc <fieldPermissions> nomme un champ : la correction est deux blocs, pas un bloc avec deux lignes <field>.",
-    e_failing: "US-020 est en échec, et elle est dans la release",
+    e_failing: "US-062 est en échec, et elle est dans la release",
     e_failing_tip:
       "Une Pull Request en échec n'est pas une décision, c'est une tâche pour son auteur. Renvoyez-la avec un commentaire, et laissez-la ouverte.",
     e_smaller: "La plus grosse est passée en premier",
     e_smaller_tip:
       "Toutes choses égales par ailleurs, mergez la plus petite d'abord : son auteur a moins à refaire si l'autre atterrit mal.",
     info_unsorted:
-      "Vos deux blocs n'étaient pas par ordre alphabétique : Salesforce les écrit avec Crew_Capacity_Cap__c en premier, et le lab aussi.",
+      "Vos deux blocs n'étaient pas par ordre alphabétique : Salesforce écrit Customer_Tier__c en premier, puis Region__c.",
     tickMerged: "#{{n}} {{title}} mergée dans la branch integration",
-    tickDeployed: "Déployé sur l'org helios-integration : les deux accès sont là",
+    tickDeployed: "Déployé sur l'org d'integration : les deux accès sont là",
     tickBack:
-      "Commentaire sur #3 : InstallationSchedulerTest ne compile pas, earliestInstallDate renvoie un Datetime",
+      "Commentaire sur #3 : KeyAccountsServiceTest ne compile pas, addManagers renvoie un Set, pas une List",
     screenBad: "Pas déployable",
     fix_page: "Prenez les deux champs !",
     ok_page: "Les deux champs sur la page d'enregistrement",
-    e_pageLostYours: "Panels Required a disparu de la page d'enregistrement",
-    e_pageLostHers: "Le Crew Capacity Cap de Mariia a disparu de la page d'enregistrement",
+    e_pageLostYours: "Customer Tier a disparu de la page d'enregistrement",
+    e_pageLostHers: "Le champ Region de Mariia a disparu de la page d'enregistrement",
     e_page_tip: "Chaque côté a ajouté un bloc de champ complet. Accept Incoming seul retire votre champ, Accept Current seul retire celui de Mariia : cliquez sur les deux, et la page montre les deux champs.",
     prList: "Pull Requests · branch integration",
   },
@@ -240,9 +243,6 @@ export const QUOTES = [
   { lab: "2.7", text: "Accept Incoming" },
   { lab: "2.7", text: "Accept Current" },
   { lab: "2.7", text: "Complete Merge" },
-  { lab: "2.7", text: "Helios_Delivery_Manager.permissionset-meta.xml" },
-  { lab: "2.7", text: "Installation__c.Crew_Notes__c" },
-  { lab: "2.7", text: "Installation__c.Crew_Capacity_Cap__c" },
   { lab: "2.7", text: "<<<<<<< HEAD" },
   { lab: "2.7", text: ">>>>>>> origin/integration" },
   { lab: "2.7", text: "<fieldPermissions>" },
@@ -253,40 +253,34 @@ export const QUOTES = [
     lab: "2.7",
     text: "Element field is duplicated at this location in type PermissionSetFieldPermissions",
   },
-  { lab: "3.4", text: "US-018 Cap the crew size" },
-  { lab: "3.4", text: "US-019 Quote PDF" },
-  { lab: "3.4", text: "US-020 Refactor InstallationScheduler" },
-  { lab: "3.4", text: "InstallationSchedulerTest" },
-  { lab: "3.4", text: "earliestInstallDate" },
   { lab: "3.4", text: "Mariia Pyvovarchuk" },
   { lab: "3.4", text: "Romain Panda" },
-  { lab: "3.4", text: "Helios_Delivery_Manager" },
 ];
 
-// The three Pull Requests of Lab 3.4, numbered as in training-universe.json
+// The three Pull Requests of the Friday release: the two green ones share Sales_Manager
 const PRS = {
-  "018": {
+  "052": {
     n: 1,
-    title: "US-018 Cap the crew size",
+    title: "US-052 Delivery date on opportunities",
     author: "Mariia Pyvovarchuk",
     ok: true,
-    touches: "Installation_Assign_Crew, Helios_Delivery_Manager",
+    touches: "Opportunity Layout, Sales_Manager",
     size: "sizeBig",
   },
-  "019": {
+  "056": {
     n: 2,
-    title: "US-019 Quote PDF",
+    title: "US-056 Case escalation email",
     author: "Romain Panda",
     ok: true,
-    touches: "Helios_Delivery_Manager",
+    touches: "Sales_Manager",
     size: "sizeSmall",
   },
-  "020": {
+  "062": {
     n: 3,
-    title: "US-020 Refactor InstallationScheduler",
+    title: "US-062 Key accounts group",
     author: "Mariia Pyvovarchuk",
     ok: false,
-    touches: "InstallationScheduler",
+    touches: "KeyAccountsService",
     size: "sizeFail",
   },
 };
@@ -296,14 +290,14 @@ const PAGE_FIELDS = {
   in: [
     "<itemInstances>",
     "    <fieldInstance>",
-    "        <fieldItem>Record.Crew_Capacity_Cap__c</fieldItem>",
+    "        <fieldItem>Record.Region__c</fieldItem>",
     "    </fieldInstance>",
     "</itemInstances>",
   ],
   cur: [
     "<itemInstances>",
     "    <fieldInstance>",
-    "        <fieldItem>Record.Panels_Required__c</fieldItem>",
+    "        <fieldItem>Record.Customer_Tier__c</fieldItem>",
     "    </fieldInstance>",
     "</itemInstances>",
   ],
@@ -680,7 +674,7 @@ export function createWorld(ctx) {
       const shown = round === 3;
       pr.node.visible = shown;
       pr.sign.visible = shown;
-      const back = r3.back && id === "020";
+      const back = r3.back && id === "062";
       const ease = Math.min(1, dt * 5);
       pr.x += ((back ? -2.3 : -0.8 + i * 0.8) - pr.x) * ease;
       pr.z += ((back ? -0.6 : -1.15) - pr.z) * ease;
@@ -745,7 +739,7 @@ export function createWorld(ctx) {
 
   /* ---------- State ---------- */
 
-  // The mistakes already paid for, and what was done differently from the lab
+  // The mistakes already paid for, and what was done differently from the best path
   const mistakes = new Set();
   const missed = [];
 
@@ -763,7 +757,7 @@ export function createWorld(ctx) {
   const r2 = { accepted: [] };
   // Round 3: the order of the cards, and the one picked up with the keyboard
   const r3 = {
-    order: ["018", "019", "020"],
+    order: ["052", "056", "062"],
     grabbed: null,
     merged: [],
     back: false,
@@ -826,7 +820,7 @@ export function createWorld(ctx) {
       if (!r1.split) {
         return "g_r1_split";
       }
-      return r1.accepted[0] === "in" ? "g_complete" : "g_r1_sort";
+      return r1.accepted[0] === "cur" ? "g_complete" : "g_r1_sort";
     }
     if (round === 2) {
       return r2.accepted.length < 2 ? "g_r1_take" : "g_complete";
@@ -1051,7 +1045,7 @@ export function createWorld(ctx) {
         ),
       );
     }
-    line(incoming, FIELD_CAP, "in");
+    line(incoming, FIELD_HERS, "in");
     lines(incoming, ["    <readable>true</readable>", "</fieldPermissions>"]);
 
     const current = pane(grid, "cur", "Current", "HEAD");
@@ -1067,7 +1061,7 @@ export function createWorld(ctx) {
         ),
       );
     }
-    line(current, FIELD_NOTES, "cur");
+    line(current, FIELD_YOURS, "cur");
     lines(current, ["    <readable>true</readable>", "</fieldPermissions>"]);
     if (accept.length) {
       rows.push(accept);
@@ -1078,12 +1072,12 @@ export function createWorld(ctx) {
     lines(result, ["<fieldPermissions>", "    <editable>true</editable>"]);
     if (!r1.accepted.length) {
       line(result, HEAD, "marker");
-      line(result, FIELD_NOTES, "cur");
+      line(result, FIELD_YOURS, "cur");
       line(result, SPLIT, "marker");
-      line(result, FIELD_CAP, "in");
+      line(result, FIELD_HERS, "in");
       line(result, THEIRS, "marker");
     } else {
-      const fieldOf = (side) => (side === "in" ? FIELD_CAP : FIELD_NOTES);
+      const fieldOf = (side) => (side === "in" ? FIELD_HERS : FIELD_YOURS);
       line(result, fieldOf(r1.accepted[0]), r1.accepted[0]);
       if (r1.split) {
         lines(
@@ -1107,7 +1101,7 @@ export function createWorld(ctx) {
       fix.classList.add("gr-w5-lens--result");
       if (!r1.split) {
         rows.push([button(fix, t("split"), "gr-w5-lensbtn", splitBlocks)]);
-      } else if (r1.accepted[0] !== "in") {
+      } else if (r1.accepted[0] !== "cur") {
         rows.push([button(fix, t("sort"), "gr-w5-lensbtn", sortBlocks)]);
       }
     }
@@ -1179,7 +1173,7 @@ export function createWorld(ctx) {
         "gr-w5-pr" +
           (r3.grabbed === id ? " is-grabbed" : "") +
           (r3.merged.includes(id) ? " is-merged" : "") +
-          (r3.back && id === "020" ? " is-back" : ""),
+          (r3.back && id === "062" ? " is-back" : ""),
         () => grabCard(id),
       );
       card.replaceChildren();
@@ -1198,7 +1192,7 @@ export function createWorld(ctx) {
       el("span", "gr-w5-prtouch", card, pr.touches + " · " + t(pr.size));
       if (r3.merged.includes(id)) {
         el("span", "gr-w5-prstate is-merged", card, t("merged"));
-      } else if (r3.back && id === "020") {
+      } else if (r3.back && id === "062") {
         el("span", "gr-w5-prstate is-back", card, t("backToAuthor"));
       }
       const arrows = el("span", "gr-w5-arrows", item);
@@ -1282,7 +1276,7 @@ export function createWorld(ctx) {
     ctx.sound.play("pickup");
     spark(14);
     render();
-    cursorOn(rows.length - (r1.accepted[0] === "in" ? 1 : 2));
+    cursorOn(rows.length - (r1.accepted[0] === "cur" ? 1 : 2));
   }
 
   function sortBlocks() {
@@ -1310,7 +1304,7 @@ export function createWorld(ctx) {
       wrong("dup", t("e_dup"), t("e_dup_tip"), "dup");
       return;
     }
-    const sorted = r1.accepted[0] === "in";
+    const sorted = r1.accepted[0] === "cur";
     if (!sorted) {
       missed.push("info_unsorted");
     }
@@ -1444,12 +1438,12 @@ export function createWorld(ctx) {
 
   function mergeInOrder() {
     r3.grabbed = null;
-    if (r3.order[2] !== "020") {
+    if (r3.order[2] !== "062") {
       render();
       wrong("failing", t("e_failing"), t("e_failing_tip"));
       return;
     }
-    if (r3.order[0] !== "019") {
+    if (r3.order[0] !== "056") {
       render();
       wrong("smaller", t("e_smaller"), t("e_smaller_tip"));
       return;
@@ -1464,16 +1458,16 @@ export function createWorld(ctx) {
     setGoal("g_r3_merge");
     // One at a time, each deployment finished before the next merge
     later(0.8, () => {
-      r3.merged.push("019");
-      hud.tick(t("tickMerged", { n: 2, title: PRS["019"].title }));
+      r3.merged.push("056");
+      hud.tick(t("tickMerged", { n: 2, title: PRS["056"].title }));
       hud.chat("romain", t("c_romain3"), 4000);
       ctx.sound.play("gate");
       render();
     });
     later(1.8, () => hud.tick(t("tickDeployed")));
     later(2.6, () => {
-      r3.merged.push("018");
-      hud.tick(t("tickMerged", { n: 1, title: PRS["018"].title }));
+      r3.merged.push("052");
+      hud.tick(t("tickMerged", { n: 1, title: PRS["052"].title }));
       ctx.sound.play("gate");
       render();
     });

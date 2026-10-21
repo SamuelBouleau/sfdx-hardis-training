@@ -1,5 +1,5 @@
 /*
- * World 3, Open the Pull Request (Labs 1.6, 2.2, 2.3, 2.4): a puzzle at the
+ * World 3, Open the Pull Request: a puzzle at the
  * desk. The guinea pig sits in front of its Pull Request and gets it green:
  * 1. pick the right base branch: a User Story starts in integration
  * 2. answer the deployment check: three real failures and their fixes
@@ -36,7 +36,7 @@ export const TEXTS = {
     monitorGreen: "All checks passed",
     monitorDone: "Ready to merge",
     note: "A PR template is a reminder of what to write, not something to hand in as it came. Nobody reads mine either. - V.",
-    prTitle: "US-014 Show the crew how many panels a job needs",
+    prTitle: "US-014 Show the customer tier on accounts",
     step1: "1. Base",
     step2: "2. Deployment check",
     step3: "3. Deployment actions",
@@ -52,17 +52,17 @@ export const TEXTS = {
     checkFailed: "Simulate Deployment failed",
     checkGreen: "All checks have passed",
     q1: "The check fails on the permission set:",
-    q1a: "Add Installation__c.Panels_Required__c to the Pull Request, next to the permission set",
-    q1b: "Create the field by hand in the helios-integration org",
-    q1c: "Remove Helios_Delivery_Crew from the Pull Request",
+    q1a: "Add Account.Customer_Tier__c to the Pull Request, next to the permission set",
+    q1b: "Create the field by hand in the integration org",
+    q1c: "Remove Sales_Rep from the Pull Request",
     q1bTip: "Anything you do by hand in one org, you will have to do in every org. The field must travel with the permission set.",
     q1cTip: "Without its permission set, the field deploys green and nobody can see it.",
     q1Ok: "A permission set grants a field: they travel together.",
-    q2: "A teammate's flow, on the same Pull Request now, fails with:",
-    q2a: "Is it in the package? Retrieve Crew_Warning_Sent__c with the Metadata Retriever, commit, publish again",
+    q2: "A teammate's Flow, on the same Pull Request now, fails with:",
+    q2a: "Is it in the package? Retrieve Account.Tier_Updated__c with the Metadata Retriever, commit, publish again",
     q2b: "Is it in the org? Open Setup and check the field exists",
     q2c: "Re-run all jobs until it passes",
-    q2bTip: "The field does exist in the org. A pipeline never reads a developer's org: what is not committed does not exist. Ask is it in the package before is it in the org.",
+    q2bTip: "The field does exist in your teammate's dev sandbox. A pipeline never reads a developer's org: what is not committed does not exist. Ask is it in the package before is it in the org.",
     q2cTip: "Nothing changes between two runs: the field is still not in the package.",
     q2Ok: "Ask 'is it in the package' before 'is it in the org'.",
     q3: "Mega-Linter is still running. The merge box says:",
@@ -82,8 +82,8 @@ export const TEXTS = {
     reset: "Start the board again",
     commit: "Commit and push the actions",
     planMissing: "Place every card first",
-    decoy: "Write the manual steps in a Confluence page",
-    decoyTip: "A manual step that gets done, versus one that lives in a Confluence page nobody opens: declare it as a manual action.",
+    decoy: "Write the manual steps in the team wiki",
+    decoyTip: "A manual step that gets done, versus one that lives in a wiki page nobody opens: declare it as a manual action.",
     wrongPre: "{{label}} cannot run before the deployment: what it needs only exists once the metadata is deployed.",
     wrongPost: "{{label}} must happen with the org as it was, before anything is deployed.",
     wrongOrder: "The reference data must be loaded before the batch that reads it is scheduled.",
@@ -115,7 +115,7 @@ export const TEXTS = {
     monitorGreen: "Tous les contrôles passent",
     monitorDone: "Prête pour le merge",
     note: "Un template de PR rappelle quoi écrire, ce n'est pas un formulaire à rendre tel quel. Personne ne lit le mien non plus. - V.",
-    prTitle: "US-014 Show the crew how many panels a job needs",
+    prTitle: "US-014 Show the customer tier on accounts",
     step1: "1. Base",
     step2: "2. Contrôle de déploiement",
     step3: "3. Actions de déploiement",
@@ -131,17 +131,17 @@ export const TEXTS = {
     checkFailed: "Simulate Deployment en échec",
     checkGreen: "Tous les contrôles sont passés",
     q1: "Le contrôle échoue sur le permission set :",
-    q1a: "Ajouter Installation__c.Panels_Required__c à la Pull Request, à côté du permission set",
-    q1b: "Créer le champ à la main dans l'org helios-integration",
-    q1c: "Retirer Helios_Delivery_Crew de la Pull Request",
+    q1a: "Ajouter Account.Customer_Tier__c à la Pull Request, à côté du permission set",
+    q1b: "Créer le champ à la main dans l'org d'integration",
+    q1c: "Retirer Sales_Rep de la Pull Request",
     q1bTip: "Tout ce que vous faites à la main dans une org, vous devrez le faire dans chaque org. Le champ doit voyager avec le permission set.",
     q1cTip: "Sans son permission set, le champ se déploie au vert et personne ne le voit.",
     q1Ok: "Un permission set accorde un champ : ils voyagent ensemble.",
-    q2: "Le flow d'une collègue, sur la même Pull Request maintenant, échoue avec :",
-    q2a: "Est-ce dans le package ? Récupérer Crew_Warning_Sent__c avec le Metadata Retriever, commiter, republier",
+    q2: "Le Flow d'une collègue, sur la même Pull Request maintenant, échoue avec :",
+    q2a: "Est-ce dans le package ? Récupérer Account.Tier_Updated__c avec le Metadata Retriever, commiter, republier",
     q2b: "Est-ce dans l'org ? Ouvrir Setup et vérifier que le champ existe",
     q2c: "Relancer tous les jobs jusqu'à ce que ça passe",
-    q2bTip: "Le champ existe bien dans l'org. Un pipeline ne lit jamais l'org d'un développeur : ce qui n'est pas commité n'existe pas. Demandez-vous s'il est dans le package avant de vous demander s'il est dans l'org.",
+    q2bTip: "Le champ existe bien dans la sandbox de dev de votre collègue. Un pipeline ne lit jamais l'org d'un développeur : ce qui n'est pas commité n'existe pas. Demandez-vous s'il est dans le package avant de vous demander s'il est dans l'org.",
     q2cTip: "Rien ne change entre deux exécutions : le champ n'est toujours pas dans le package.",
     q2Ok: "Demandez-vous « est-ce dans le package » avant « est-ce dans l'org ».",
     q3: "Mega-Linter tourne encore. La zone de merge dit :",
@@ -161,8 +161,8 @@ export const TEXTS = {
     reset: "Recommencer le tableau",
     commit: "Commiter et pousser les actions",
     planMissing: "Placez d'abord toutes les cartes",
-    decoy: "Écrire les étapes manuelles dans une page Confluence",
-    decoyTip: "Une étape manuelle qui se fait, contre une étape qui vit dans une page Confluence que personne n'ouvre : déclarez-la comme action manuelle.",
+    decoy: "Écrire les étapes manuelles dans le wiki de l'équipe",
+    decoyTip: "Une étape manuelle qui se fait, contre une étape qui vit dans une page de wiki que personne n'ouvre : déclarez-la comme action manuelle.",
     wrongPre: "{{label}} ne peut pas s'exécuter avant le déploiement : ce dont elle a besoin n'existe qu'une fois les metadata déployées.",
     wrongPost: "{{label}} doit se faire avec l'org telle qu'elle était, avant tout déploiement.",
     wrongOrder: "Les données de référence doivent être chargées avant de planifier le batch qui les lit.",
@@ -179,24 +179,20 @@ export const TEXTS = {
   }
 };
 
-/** The strings taken word for word from the labs, checked by scripts/verify/check-easter-egg.mjs. */
+/** The product words the game shows and the labs also say, word for word, checked by scripts/verify/check-easter-egg.mjs. */
 export const QUOTES = [
   { lab: "1.6", text: "INVALID_CROSS_REFERENCE_KEY" },
-  { lab: "2.2", text: "Crew_Warning_Sent__c" },
   { lab: "2.2", text: "Metadata Retriever" },
   { lab: "2.3", text: "After Metadata Deployment" },
-  { lab: "2.3", text: "Backfill Crew Size on existing installations" },
   { lab: "2.4", text: "Before Metadata Deployment" },
-  { lab: "2.4", text: "Set Email Deliverability to All Email" },
-  { lab: "2.4", text: "Load crew capacity reference data" },
-  { lab: "2.4", text: "Schedule the nightly crew capacity recalculation" }
+  { lab: "2.4", text: "Set Email Deliverability to All Email" }
 ];
 
-// The failing checks: the exact errors of the labs, and the answers
+// The failing checks: real-looking errors, and the answers
 const QUESTIONS = [
   {
     id: "q1",
-    error: "Helios_Delivery_Crew: INVALID_CROSS_REFERENCE_KEY: In field: field - no CustomField named Installation__c.Panels_Required__c found",
+    error: "Sales_Rep: INVALID_CROSS_REFERENCE_KEY: In field: field - no CustomField named Account.Customer_Tier__c found",
     answers: [
       { key: "q1a", ok: true },
       { key: "q1b", tip: "q1bTip" },
@@ -206,7 +202,7 @@ const QUESTIONS = [
   },
   {
     id: "q2",
-    error: 'The field "Crew_Warning_Sent__c" for the object "Installation__c" doesn\'t exist.',
+    error: 'The field "Tier_Updated__c" for the object "Account" doesn\'t exist.',
     answers: [
       { key: "q2a", ok: true },
       { key: "q2b", tip: "q2bTip" },

@@ -1,21 +1,22 @@
 /*
- * World 6, Deploy to integration (Lab 3.3, with the actions of Labs 2.3 and
- * 2.4): a musical run along the deployment job. The guinea pig runs to the
- * music, the player only jumps, and the track is the log of Lab 3.3 in its
- * five parts: authentication, the package, the pre-deployment actions, the
- * Salesforce deployment, the post-deployment actions.
+ * World 6, Deploy to the integration org: a musical run along the deployment
+ * job. The guinea pig runs to the music, the player only jumps, and the track
+ * is the deployment log in its five parts: authentication, the package, the
+ * pre-deployment actions, the Salesforce deployment, the post-deployment
+ * actions.
  *
  * The track is built from the plan the player declared in world 3:
  * - the manual action declared before the deployment is a button to press on
  *   the way (or at the barrier, with a jump): Mark as done
  * - an action declared in the wrong place fails with its real error, as a
  *   block to jump over
- * - the backfill declared after the deployment turns the 30 installations
- *   nobody can save into green checks; without it they stay, as blocks
+ * - the backfill declared after the deployment turns the 30 accounts nobody
+ *   can save into green checks; without it they stay, as blocks
  *
- * The bosses: the .forceignore fog of Romain's US-056 (the deployment log
- * shows the walls it hides), the green lie of Lab 2.3, and the three failed
- * actions of Mariia's US-062, each with its own way out, chosen on the beat.
+ * The bosses: the .forceignore fog of Romain Panda's US-056 (the deployment
+ * log shows the walls it hides), the green lie (a green deployment, and 30
+ * accounts nobody can save), and the three failed actions of Mariia's US-062,
+ * each with its own way out, chosen on the beat.
  */
 import { createLevel, createMusicalRun, MUSICAL_TEXTS, MUSICAL_CSS, endMissedInfo, musicalWorld } from "./musical.js";
 import { melody } from "../core/music.js";
@@ -78,10 +79,10 @@ export const TEXTS = {
     coachPackage: "1 file in your Pull Request, about sixty in the package: delta is off",
     coachQuick: "Quick Deploy: the check already ran the tests",
     coachLog: "Jump for the log: it shows what .forceignore hides!",
-    coachFogOut: "Crew_W* also matched Crew_Workload__c: name the file exactly",
+    coachFogOut: "Tier_* also matched Tier_Updated__c: name the file exactly",
     coachGreen: "Green is not working: look at the records",
     meter: "Components: {{n}}",
-    p_auth: "Part 1 of the log says auth URL. On preprod and main it says JWT.",
+    p_auth: "Part 1 of the log says auth URL. On the preprod and main branches it says JWT.",
     p_quick: "Deployment mode: FULL + Quick Deploy",
     p_log: "Deployment log read: the walls .forceignore hid show up",
     o_auth: "No authentication found for org integration",
@@ -90,17 +91,17 @@ export const TEXTS = {
     o_empty_tip: "With delta off it should not happen: check that manifest/package.xml is still in the branch and still lists something.",
     o_tests: "Apex tests ran again",
     o_tests_tip: "The check of the Pull Request already validated this package, tests included. The merge job applies that validation: Quick Deploy.",
-    o_fog: "no CustomField named Installation__c.Crew_Workload__c found",
-    o_fog_tip: "A .forceignore line is a pattern: Crew_W*.field-meta.xml also hid Crew_Workload__c. Read the log, then name the file exactly.",
+    o_fog: "no CustomField named Account.Tier_Updated__c found",
+    o_fog_tip: "A .forceignore line is a pattern: Tier_*.field-meta.xml also hid Tier_Updated__c, a field the release needs. Read the log, then name the file exactly.",
     o_drift: "The org drifted",
     o_drift_tip: "Somebody changed the org by hand, and the deployment overwrote it without a word: nothing compares.",
-    o_record: "We hit a snag. Review the following fields: Crew Size",
+    o_record: "We hit a snag. Review the following fields: Customer Tier",
     o_record_tip: "Salesforce enforces a required field on save, not on the data already there. Ship a backfill as a post-deployment Apex action.",
-    o_prebackfill: "Invalid type: CrewSizeBackfillBatch",
+    o_prebackfill: "Invalid type: AccountTierBackfill",
     o_prebackfill_tip: "The Apex action ran before the deployment: the class only exists once the metadata is deployed. Declare it After Metadata Deployment.",
-    o_prerefdata: "{Crew_Capacity__c} is missing in the Target",
-    o_prerefdata_tip: "The data import ran before the object it fills was deployed. Declare it after the deployment.",
-    o_preschedule: "Invalid type: CrewCapacityBatch",
+    o_prerefdata: "{Tier_Threshold__c} is missing in the Target",
+    o_prerefdata_tip: "The data import ran before the field it fills was deployed. Declare it after the deployment.",
+    o_preschedule: "Invalid type: AccountTierBatch",
     o_preschedule_tip: "The batch was scheduled before its class was deployed. Declare it after the deployment, after the data it reads.",
     o_latemanual: "Deliverability was declared too late",
     o_latemanual_tip: "Set Email Deliverability to All Email must happen with the org as it was: Before Metadata Deployment.",
@@ -111,7 +112,7 @@ export const TEXTS = {
     s_invalid: "Invalid type",
     s_target: "Missing in Target",
     s_tests: "Apex tests",
-    s_fog: "Crew_W*",
+    s_fog: "Tier_*",
     s_drift: "Changed by hand",
     s_record: "Can't save",
     s_late: "Too late",
@@ -127,18 +128,18 @@ export const TEXTS = {
     stopOnTheWay: "Pressed on the way: the release did not even wait",
     choiceHeader: "US-062: 1 failed",
     romainFog: "# My scratch test fields, never versioned. That wildcard was mine, sorry.",
-    fogTick: "**/objects/Installation__c/fields/Crew_W*.field-meta.xml",
+    fogTick: "**/objects/Account/fields/Tier_*.field-meta.xml",
     greenLie: "Deployment succeeded. All checks passed.",
-    greenLieTwist: "30 installations can no longer be saved",
-    backfillRuns: "Crew size backfill started: the records save again",
+    greenLieTwist: "30 accounts can no longer be saved",
+    backfillRuns: "Customer Tier backfill started: the accounts save again",
     backfillMissing: "No backfill declared: jump the records nobody can save",
     mariiaFail: "My three actions run after the merge only: the check never ran them. Pick the right way out for each.",
     failTick: "System.QueryException: List has no rows for assignment to SObject",
-    r1: "Crew Leads group action: failed",
-    r1d: "The action is right, the org had no group. Now the Helios_Crew_Leads group exists.",
-    r2: "Crew capacity action: failed",
-    r2d: "The action is wrong: it calls CrewCapacityBach, a typo.",
-    r3: "Deployment user action: stopped",
+    r1: "Add sales managers to the Key Accounts group: failed",
+    r1d: "The action is right, the org had no group. Now the Key_Accounts group exists.",
+    r2: "Recalculate account scores once: failed",
+    r2d: "The action is wrong: it calls the class AccountScoreBach, a typo.",
+    r3: "Add the deployment user to the Key Accounts group: stopped",
     r3d: "You already did it by hand in Setup.",
     optRetry: "Retry",
     optFix: "Move to a fix Pull Request",
@@ -154,12 +155,12 @@ export const TEXTS = {
     t2done: "Nothing ran: the action is wrong. Fix Pull Request.",
     t3retry: "Already done by hand: Mark as done.",
     t3fix: "The action is right and already done: Mark as done.",
-    endSign: "helios-integration org",
-    arrived: "US-014 is in the helios-integration org, and it works.",
+    endSign: "the integration org",
+    arrived: "US-014 is in the integration org, and it works: Acme Corp shows Customer Tier: Gold.",
     info_coins: "You ate {{got}} of {{total}} vegetables.",
-    info_log: "You did not read the deployment log: in Lab 3.3, it names the .forceignore line that hid Crew_Workload__c.",
+    info_log: "You did not read the deployment log: it names the .forceignore line that hid Account.Tier_Updated__c.",
     info_quick: "You missed Quick Deploy: the check already ran the tests, so the merge job takes seconds.",
-    info_backfill: "No backfill after the deployment in World 3: in Lab 2.3, 30 installations could not be saved.",
+    info_backfill: "No backfill after the deployment in World 3: 30 accounts could not be saved until it ran.",
     info_misplaced: "{{n}} deployment actions sat in the wrong place in World 3, and failed here."
   }),
   fr: Object.assign({}, MUSICAL_TEXTS.fr, {
@@ -191,10 +192,10 @@ export const TEXTS = {
     coachPackage: "1 fichier dans votre Pull Request, une soixantaine dans le package : le delta est désactivé",
     coachQuick: "Quick Deploy : le contrôle a déjà exécuté les tests",
     coachLog: "Sautez pour le log : il montre ce que cache .forceignore !",
-    coachFogOut: "Crew_W* attrapait aussi Crew_Workload__c : nommez le fichier exactement",
+    coachFogOut: "Tier_* attrapait aussi Tier_Updated__c : nommez le fichier exactement",
     coachGreen: "Vert ne veut pas dire que ça marche : regardez les enregistrements",
     meter: "Composants : {{n}}",
-    p_auth: "La partie 1 du log dit auth URL. Sur preprod et main, elle dit JWT.",
+    p_auth: "La partie 1 du log dit auth URL. Sur les branches preprod et main, elle dit JWT.",
     p_quick: "Deployment mode: FULL + Quick Deploy",
     p_log: "Log de déploiement lu : les murs cachés par .forceignore apparaissent",
     o_auth: "No authentication found for org integration",
@@ -203,17 +204,17 @@ export const TEXTS = {
     o_empty_tip: "Avec le delta désactivé, ça ne devrait pas arriver : vérifiez que manifest/package.xml est toujours dans la branch et liste toujours quelque chose.",
     o_tests: "Les tests Apex ont tourné à nouveau",
     o_tests_tip: "Le contrôle de la Pull Request a déjà validé ce package, tests compris. Le job du merge applique cette validation : le Quick Deploy.",
-    o_fog: "no CustomField named Installation__c.Crew_Workload__c found",
-    o_fog_tip: "Une ligne de .forceignore est un motif : Crew_W*.field-meta.xml cachait aussi Crew_Workload__c. Lisez le log, puis nommez le fichier exactement.",
+    o_fog: "no CustomField named Account.Tier_Updated__c found",
+    o_fog_tip: "Une ligne de .forceignore est un motif : Tier_*.field-meta.xml cachait aussi Tier_Updated__c, un champ dont la release a besoin. Lisez le log, puis nommez le fichier exactement.",
     o_drift: "L'org a dérivé",
     o_drift_tip: "Quelqu'un a modifié l'org à la main, et le déploiement l'a écrasée sans un mot : rien ne compare.",
-    o_record: "We hit a snag. Review the following fields: Crew Size",
+    o_record: "We hit a snag. Review the following fields: Customer Tier",
     o_record_tip: "Salesforce impose un champ obligatoire à l'enregistrement, pas sur les données déjà là. Livrez un backfill en action Apex post-deployment.",
-    o_prebackfill: "Invalid type: CrewSizeBackfillBatch",
+    o_prebackfill: "Invalid type: AccountTierBackfill",
     o_prebackfill_tip: "L'action Apex s'est exécutée avant le déploiement : la classe n'existe qu'une fois les metadata déployées. Déclarez-la After Metadata Deployment.",
-    o_prerefdata: "{Crew_Capacity__c} is missing in the Target",
-    o_prerefdata_tip: "L'import de données s'est exécuté avant le déploiement de l'objet qu'il remplit. Déclarez-le après le déploiement.",
-    o_preschedule: "Invalid type: CrewCapacityBatch",
+    o_prerefdata: "{Tier_Threshold__c} is missing in the Target",
+    o_prerefdata_tip: "L'import de données s'est exécuté avant le déploiement du champ qu'il remplit. Déclarez-le après le déploiement.",
+    o_preschedule: "Invalid type: AccountTierBatch",
     o_preschedule_tip: "Le batch a été planifié avant le déploiement de sa classe. Déclarez-le après le déploiement, après les données qu'il lit.",
     o_latemanual: "Délivrabilité déclarée trop tard",
     o_latemanual_tip: "Set Email Deliverability to All Email doit se faire avec l'org telle qu'elle était : Before Metadata Deployment.",
@@ -224,7 +225,7 @@ export const TEXTS = {
     s_invalid: "Invalid type",
     s_target: "Missing in Target",
     s_tests: "Tests Apex",
-    s_fog: "Crew_W*",
+    s_fog: "Tier_*",
     s_drift: "Modifié à la main",
     s_record: "Bloqué",
     s_late: "Trop tard",
@@ -240,18 +241,18 @@ export const TEXTS = {
     stopOnTheWay: "Appuyé en passant : la release n'a même pas attendu",
     choiceHeader: "US-062 : 1 en échec",
     romainFog: "# My scratch test fields, never versioned. Ce joker était le mien, désolé.",
-    fogTick: "**/objects/Installation__c/fields/Crew_W*.field-meta.xml",
+    fogTick: "**/objects/Account/fields/Tier_*.field-meta.xml",
     greenLie: "Déploiement réussi. Tous les contrôles sont passés.",
-    greenLieTwist: "30 installations ne peuvent plus être enregistrées",
-    backfillRuns: "Crew size backfill started : les enregistrements se sauvent à nouveau",
+    greenLieTwist: "30 comptes ne peuvent plus être enregistrés",
+    backfillRuns: "Backfill de Customer Tier démarré : les comptes s'enregistrent à nouveau",
     backfillMissing: "Pas de backfill déclaré : sautez les enregistrements que personne ne peut sauver",
     mariiaFail: "Mes trois actions ne tournent qu'après le merge : le contrôle ne les a jamais exécutées. Choisissez la bonne sortie pour chacune.",
     failTick: "System.QueryException: List has no rows for assignment to SObject",
-    r1: "Action du groupe Crew Leads : en échec",
-    r1d: "L'action est juste, il manquait le groupe à l'org. Le groupe Helios_Crew_Leads existe maintenant.",
-    r2: "Action de capacité des équipes : en échec",
-    r2d: "L'action est fausse : elle appelle CrewCapacityBach, une faute de frappe.",
-    r3: "Action de l'utilisateur de déploiement : arrêtée",
+    r1: "Ajouter les sales managers au groupe Key Accounts : en échec",
+    r1d: "L'action est juste, il manquait le groupe à l'org. Le groupe Key_Accounts existe maintenant.",
+    r2: "Recalculer une fois le score des comptes : en échec",
+    r2d: "L'action est fausse : elle appelle la classe AccountScoreBach, une faute de frappe.",
+    r3: "Ajouter l'utilisateur de déploiement au groupe Key Accounts : arrêtée",
     r3d: "Vous l'avez déjà fait à la main dans Setup.",
     optRetry: "Retry",
     optFix: "Pull Request de correction",
@@ -267,33 +268,27 @@ export const TEXTS = {
     t2done: "Rien n'a tourné : l'action est fausse. Pull Request de correction.",
     t3retry: "Déjà fait à la main : Mark as done.",
     t3fix: "L'action est juste et déjà faite : Mark as done.",
-    endSign: "org helios-integration",
-    arrived: "US-014 est dans l'org helios-integration, et ça marche.",
+    endSign: "l'org d'integration",
+    arrived: "US-014 est dans l'org d'integration, et ça marche : Acme Corp affiche Customer Tier: Gold.",
     info_coins: "Vous avez mangé {{got}} légumes sur {{total}}.",
-    info_log: "Vous n'avez pas lu le log de déploiement : dans le Lab 3.3, il nomme la ligne de .forceignore qui cachait Crew_Workload__c.",
+    info_log: "Vous n'avez pas lu le log de déploiement : il nomme la ligne de .forceignore qui cachait Account.Tier_Updated__c.",
     info_quick: "Vous avez raté le Quick Deploy : le contrôle a déjà exécuté les tests, donc le job du merge prend quelques secondes.",
-    info_backfill: "Pas de backfill après le déploiement dans le Monde 3 : dans le Lab 2.3, 30 installations ne pouvaient plus être enregistrées.",
+    info_backfill: "Pas de backfill après le déploiement dans le Monde 3 : 30 comptes ne pouvaient plus être enregistrés tant qu'il n'avait pas tourné.",
     info_misplaced: "{{n}} actions de déploiement étaient mal placées dans le Monde 3, et ont échoué ici."
   })
 };
 
-/** The strings taken word for word from the labs, checked by scripts/verify/check-easter-egg.mjs. */
+/** The product words and error texts taken word for word from the labs, checked by scripts/verify/check-easter-egg.mjs. */
 export const QUOTES = [
   { lab: "1.6", text: "No authentication found for org integration" },
   { lab: "2.3", text: "We hit a snag" },
-  { lab: "2.3", text: "Invalid type: CrewSizeBackfillBatch" },
-  { lab: "2.3", text: "Crew size backfill started" },
+  { lab: "2.3", text: "Invalid type" },
   { lab: "2.4", text: "is missing in the Target" },
   { lab: "2.4", text: "Mark as done" },
   { lab: "2.4", text: "1 to do by hand" },
   { lab: "2.4", text: "Set Email Deliverability to All Email" },
   { lab: "3.3", text: "List has no rows for assignment to SObject" },
-  { lab: "3.3", text: "CrewCapacityBach" },
-  { lab: "3.3", text: "Helios_Crew_Leads" },
-  { lab: "3.3", text: "My scratch test fields, never versioned" },
   { lab: "3.3", text: "Deployment mode: FULL + Quick Deploy" },
-  { lab: "3.3", text: "Crew_W*.field-meta.xml" },
-  { lab: "3.3", text: "no CustomField named Installation__c.Crew_Workload__c found" },
   { lab: "3.3", text: "nothing to deploy" },
   { lab: "3.3", text: "auth URL" },
   { lab: "3.3", text: "Retry" }
@@ -472,7 +467,7 @@ export function createWorld(ctx) {
   say(0, () => {
     hud.setPath([t("path0"), t("path1"), t("path2"), t("path3"), t("path4")], 0);
     hud.goal(t("goal0"));
-    hud.tick("Login to the helios-integration org: auth URL");
+    hud.tick("Login to the integration org: auth URL");
   });
   say(7 * BAR - 1, (api) => api.coach(t("coachArc"), 2400));
   say(6 * BAR, () => {
@@ -555,7 +550,7 @@ export function createWorld(ctx) {
     // A gap is a failed check to fall in; a checkpoint is a check that passed
     pitModel: "check-fail",
     checkpointModel: "check-pass",
-    // helios-integration: the org the deployment reaches, and the Cloudity logo on the finish line
+    // The integration org: the org the deployment reaches, and the Cloudity logo on the finish line
     finish: [{ name: "org-cloud", height: 3 }],
     finishLine: { name: "cloudity-logo", height: 1.3 },
     callbacks: {
@@ -611,7 +606,7 @@ export function createWorld(ctx) {
   function missedInfo() {
     const lines = [];
     const s = run.stats;
-    // What the plan of World 3 got wrong comes first: it is what the lab is about
+    // What the plan of World 3 got wrong comes first: it is what this world is about
     if (!(verdict.backfill.ok && post.includes("backfill"))) {
       lines.push(t("info_backfill"));
     } else if (misplaced > 0) {

@@ -10,7 +10,7 @@
 const TEXTS = {
   en: {
     title: "Guinea Run",
-    subtitle: "You are the change of US-014. Travel the pipeline, from a laptop with nothing installed to production.",
+    subtitle: "You are US-014 at Cloudity: show the customer tier on accounts. Travel the pipeline, from a laptop with nothing installed to production.",
     loading: "Loading the pipeline...",
     mapTitle: "The pipeline of US-014",
     mapHint: "Finish a world to open the next one. Your progress stays in this browser.",
@@ -83,7 +83,7 @@ const TEXTS = {
     w0_pitch: "Install the tools every sfdx-hardis project needs, until the Setup panel is all green.",
     w0_rule: "Installed but not found? Close VS Code completely and open it again.",
     w1_name: "Build it in the org",
-    w1_pitch: "Start US-014 on its own branch, then build the Panels Required field in Setup.",
+    w1_pitch: "Start US-014 on its own branch, then build the Customer Tier field on Account in Setup.",
     w1_rule: "A field no permission grants is invisible to everybody, the admin who created it included.",
     w2_name: "Retrieve and commit",
     w2_pitch: "Recent Changes lists everything you touched. Commit only what US-014 needs.",
@@ -107,13 +107,13 @@ const TEXTS = {
     w8_pitch: "The main branch, the last one. Deploy fast, then read what your DORA metrics say.",
     w8_rule: "Days, not weeks: a long lead time means work is sitting somewhere.",
     creditsTitle: "US-014 is in production",
-    creditsText: "The crew now sees how many panels a job needs. You did every step of the pipeline.",
-    teaser: "Friday, 17:40. Saves of cancelled installations are refused...",
+    creditsText: "Sales reps now see the tier of every customer. You did every step of the pipeline.",
+    teaser: "Friday, 17:40. Closed cases can no longer be saved in production...",
     allDone: "Every world done. Replay any of them for three stars."
   },
   fr: {
     title: "Guinea Run",
-    subtitle: "Vous êtes le changement de US-014. Traversez le pipeline, d'un poste où rien n'est installé jusqu'en production.",
+    subtitle: "Vous êtes US-014 chez Cloudity : afficher le niveau client sur les comptes. Traversez le pipeline, d'un poste où rien n'est installé jusqu'en production.",
     loading: "Chargement du pipeline...",
     mapTitle: "Le pipeline de US-014",
     mapHint: "Terminez un monde pour ouvrir le suivant. Votre progression reste dans ce navigateur.",
@@ -186,7 +186,7 @@ const TEXTS = {
     w0_pitch: "Installez les outils dont tout projet sfdx-hardis a besoin, jusqu'à ce que le panneau Setup soit tout vert.",
     w0_rule: "Installé mais introuvable ? Fermez complètement VS Code et rouvrez-le.",
     w1_name: "Construire dans l'org",
-    w1_pitch: "Démarrez US-014 sur sa propre branch, puis créez le champ Panels Required dans Setup.",
+    w1_pitch: "Démarrez US-014 sur sa propre branch, puis créez le champ Customer Tier sur Compte dans Setup.",
     w1_rule: "Un champ qu'aucune permission n'accorde est invisible pour tout le monde, y compris l'admin qui l'a créé.",
     w2_name: "Récupérer et commiter",
     w2_pitch: "Recent Changes liste tout ce que vous avez touché. Ne commitez que ce dont US-014 a besoin.",
@@ -210,8 +210,8 @@ const TEXTS = {
     w8_pitch: "La branch main, la dernière. Déployez vite, puis lisez ce que disent vos métriques DORA.",
     w8_rule: "Des jours, pas des semaines : un lead time long veut dire que du travail attend quelque part.",
     creditsTitle: "US-014 est en production",
-    creditsText: "L'équipe voit maintenant combien de panneaux demande un chantier. Vous avez fait chaque étape du pipeline.",
-    teaser: "Vendredi, 17 h 40. Les enregistrements d'installations annulées sont refusés...",
+    creditsText: "Les commerciaux voient maintenant le niveau de chaque client. Vous avez fait chaque étape du pipeline.",
+    teaser: "Vendredi, 17 h 40. Les requêtes fermées ne peuvent plus être enregistrées en production...",
     allDone: "Tous les mondes sont terminés. Rejouez-les pour trois étoiles."
   }
 };

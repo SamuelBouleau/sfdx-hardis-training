@@ -81,7 +81,7 @@ export const MUSICAL_TEXTS = {
     mu_choiceTouch: "Jump when the right answer lights up, or tap it",
     mu_streak: "Streak x{{n}}",
     mu_perfect: "On the beat!",
-    mu_soft: "In preprod, a mistake costs nothing",
+    mu_soft: "In the preprod org, a mistake costs nothing",
     mu_checkpoint: "Checkpoint",
     mu_faster: "Faster!",
     mu_mercy: "A little slower, for a few bars",
@@ -103,7 +103,7 @@ export const MUSICAL_TEXTS = {
     mu_choiceTouch: "Sautez quand la bonne réponse s'allume, ou touchez-la",
     mu_streak: "Série x{{n}}",
     mu_perfect: "Pile sur le temps !",
-    mu_soft: "En preprod, une erreur ne coûte rien",
+    mu_soft: "Dans l'org preprod, une erreur ne coûte rien",
     mu_checkpoint: "Checkpoint",
     mu_faster: "Plus vite !",
     mu_mercy: "Un peu plus lent, quelques mesures",
@@ -2317,7 +2317,7 @@ export function createMusicalRun(ctx, def) {
     launch() {
       launchAt = engine.time;
     },
-    /** The reward (the course badge) grows in over the finish. */
+    /** The reward (the badge) grows in over the finish. */
     celebrate() {
       rewardAt = engine.time;
     },
