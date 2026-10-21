@@ -1,34 +1,39 @@
 /*
  * World 1, Build it in the org (Labs 1.3 and 1.4): a side-on platformer
- * through the screens a contributor clicks, in the order of the labs.
+ * through what a contributor does, in the order of the labs.
  *
  * Lab 1.3 first: New User Story, the type, the name, the org, and the branch
  * it creates. Two answers of the command are traps that give way under the
  * guinea pig, the way the lab warns: Fix is for something already delivered,
  * and Create new scratch org fails after a long wait.
  *
- * Then Lab 1.4, screen by screen: Orgs Manager > Open, Setup, Object Manager,
- * the field wizard, field-level security (the Visible header is bumped twice:
- * once ticks everything, the second time clears the column), the layout, Save.
- * The part to get next glows; the others wait their turn.
+ * Then Lab 1.4, one stop per metadata the story creates or updates: the
+ * custom field Installation__c.Panels_Required__c, the page layout
+ * Installation Layout, then the permission sets Helios_Delivery_Crew and
+ * Helios_Delivery_Manager. Between the field and the layout, a trap: keeping
+ * Visible ticked for the profiles, when access goes through a permission set.
  *
  * The twist is the lab's warning: after Save the guinea pig is a ghost, because
  * a field no permission grants is invisible to everybody, the admin who
- * created it included. It climbs on through the permission sets, and only
- * Read Access on Helios Delivery Manager, the one you hold, makes it visible
- * again. The crew gets Read Access only, as in the lab: Edit Access floats
- * above the crew's row as a temptation.
+ * created it included. Only Helios_Delivery_Manager, the permission set you
+ * hold, makes it visible again. The crew gets Read Access only, as in the lab:
+ * Edit Access floats above the crew's row as a temptation.
  *
- * The world comes to the guinea pig as solar panels too: 39 of them, the
- * number INST-00001 needs (23 + 16), shown in its Panels Required field at
- * the end.
+ * Vegetables are bonus points all along, as in world 0. At the end the record
+ * INST-00001 shows Panels Required: 39, the 23 + 16 of its timeline.
  */
 import { SLDS, rounded, fitText, glyph, font, pictureBox } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump"];
-// The course's own items for what the guinea pig picks up and dodges; Kenney flags
-// and far-away islands for the scenery
-export const MODELS = ["salesforce", "platform", "nature"];
+// The course's own items for the parts of the story; Kenney flags and far-away
+// islands for the scenery; the vegetables for the bonus points
+export const MODELS = ["salesforce", "platform", "nature", "vegetables"];
+
+// The bonus vegetables, one kind per model of the vegetables pack (as in world 0)
+const VEGETABLES = ["fennel", "carrot", "bellPepper", "cucumber", "romaine", "parsley"];
+const VEGETABLE_MODELS = { fennel: "fennel", carrot: "carrot", bellPepper: "bell-pepper", cucumber: "cucumber", romaine: "romaine", parsley: "parsley" };
+const VEGETABLE_COLORS = { fennel: "#7BC96F", carrot: "#FF8A3D", bellPepper: "#E8473B", cucumber: "#3E9B4F", romaine: "#8CD17D", parsley: "#2E844A" };
+const VEGETABLE_POINTS = 15;
 
 // Which item each part shows: what it means in the lab
 function partItem(def) {
@@ -38,40 +43,35 @@ function partItem(def) {
     "US-014-panels-required": "ticket",
     "Reuse scratch org helios-dev": "scratch-cloud",
     "features/US-014-panels-required": "branch",
-    Open: "scratch-cloud",
-    Installation: "record",
-    Installations: "record",
-    "Installation Layout": "record",
-    Save: "check-pass",
-    Next: "check-pass"
+    Open: "scratch-cloud"
   };
-  return BY_LABEL[def.label] || (def.kind === "perm" ? "permission-set" : "custom-field");
+  return def.item || BY_LABEL[def.label] || "custom-field";
 }
 
 export const TEXTS = {
   en: {
-    intro: "US-014, Show the crew how many panels a job needs. Start it on its own branch, then build the Panels Required field in Setup, screen by screen.",
+    intro: "US-014, Show the crew how many panels a job needs. Start it on its own branch, then build it in Setup: one field, one layout, two permission sets.",
     how1: "Run with Left and Right, jump with Up or Space",
-    how2: "Grab the glowing part: it is the next click of the lab",
-    how3: "Load the solar panels and reach INST-00001",
+    how2: "Grab the glowing item: the next step of the lab",
+    how3: "Eat vegetables for bonus points, reach INST-00001",
     goalNext: "Next: {{label}}",
     goalEnd: "Run to INST-00001",
     c_start: "Run right and jump the gaps!",
     faster: "Faster!",
     c_trap: "Wrong answer: jump back up!",
-    c_bump: "Jump into the Visible box from below, twice!",
     c_hazard: "Wait for the red cross to move, then go",
     c_fall: "Back at the last flag: try again",
-    c_ghost: "Invisible! Grab Read Access to be seen again",
+    c_ghost: "Invisible! Grab Helios_Delivery_Manager to be seen again",
     c_visible: "Visible again! Run to INST-00001",
     c_lift: "Ride the Edit button up",
+    coachVeg: "Yum! Vegetables are bonus points",
     note: "Created a field and cannot see it? Nobody can. Grant it in a permission set, never a profile, then look at a real record before you call it done. - V.",
     path0: "New User Story",
-    path1: "Custom field",
+    path1: "Field and layout",
     path2: "Permission sets",
     path3: "Record page",
     parts: "Parts",
-    panels: "Panels",
+    vegetablesCount: "Vegetables: {{n}}.",
     invisible: "Invisible",
     q_type: "What type of User Story do you want to create?",
     q_org: "Which Salesforce org do you want to work in?",
@@ -81,68 +81,69 @@ export const TEXTS = {
     o_fix_tip: "US-014 adds something that was not there: answer Feature: a new capability or an improvement.",
     o_create: "The command fails after a long wait",
     o_create_tip: "Never take Create new scratch org here: a Developer Edition Dev Hub keeps only three alive. Take Reuse scratch org helios-dev.",
+    o_profile: "The profiles would get the field",
+    o_profile_tip: "Clear Visible for every profile on the field-level security screen: in this project access goes through a permission set, never a profile.",
     o_valid: "Save fails with a validation rule error",
     o_valid_tip: "The Helios org refuses an installation date in the past. If you changed the date by accident, put it back to a future date.",
     o_crewEdit: "Leave Edit Access unticked on the crew",
     o_crewEdit_tip: "A crew member reads how many panels to load, they do not decide the number.",
     v_hazard: "Validation rule",
-    v_hazardDetail: "date in the past",
     v_pit: "Session expired or invalid",
-    v_required: "Required",
     v_ghostSign: "Panels Required: visible to nobody",
-    v_typeStep: "Step 1. Choose the field type",
-    v_detailStep: "Step 2. Enter the details",
-    v_flsStep: "Step 3. Field-level security",
-    v_layoutStep: "Step 4. Add to page layouts",
+    v_orgAlias: "Org · ALIAS",
+    v_profileKeep: "Keep Visible ticked for the profiles",
+    v_profileClear: "Clear Visible for every profile",
+    m_field: "Created: the Number field that tells the crew how many panels to load",
+    m_layout: "Updated: puts Panels Required on the Installation record page",
+    m_crew: "Updated: Read Access for the crew, who load the panels",
+    m_manager: "Updated: Read and Edit Access for the planners, you included",
     branch: "git checkout -b features/US-014-panels-required",
     target: "Target branch: integration",
     fieldName: "Field Name: Panels_Required (Salesforce adds __c when it saves)",
-    allTicked: "Every profile ticked: once more clears the column",
-    cleared: "Visible cleared: access goes through a permission set",
     saved: "Panels_Required__c saved",
     ghost: "Panels Required is invisible to everybody, you included",
     ghostTick: "No profile, no permission set grants it yet",
     crewRead: "The crew can read it. You still cannot: you hold Helios Delivery Manager",
     mgrRead: "Visible again: Helios Delivery Manager grants it to you",
-    mgrEdit: "Planners can fill it in",
     refresh: "Refresh: one more attempt",
     info_ghost: "You reached INST-00001 still invisible: in the lab, without Read Access on Helios Delivery Manager the record shows you nothing.",
-    info_save: "You skipped Save: in the lab, the field only exists once it is saved.",
-    info_crew: "You skipped Read Access for Helios Delivery Crew: in the lab, the crew could not see the field.",
-    info_visible: "You left Visible ticked for the profiles: in the lab, access goes through a permission set, not a profile.",
+    info_field: "You skipped the custom field: in the lab, Panels_Required__c is what the whole story builds.",
+    info_crew: "You skipped Helios_Delivery_Crew: in the lab, the crew could not see the field.",
     info_layout: "You skipped Installation Layout: in the lab, that is what puts the field on the record page.",
-    info_edit: "You skipped Edit Access for the planners: in the lab, Helios Delivery Manager must be able to fill it in.",
-    info_text: "You skipped Description or Help Text: in the lab, they make the generated documentation readable.",
     info_other: "Also missed: {{list}}.",
-    info_panels: "{{n}} of {{total}} panels loaded: the crew needs every one.",
     outOfOrder: "{{label}}, out of order: in the lab, {{first}} comes first",
-    done: "Panels Required on INST-00001: {{n}}",
-    allPanels: "{{n}} panels: the right quantity on the van",
-    somePanels: "{{n}} of {{total}} panels loaded"
+    done: "Panels Required on INST-00001: {{n}}, the 23 + 16 of its timeline",
+    doneGhost: "INST-00001 shows no Panels Required: nothing grants it to you",
+    veg_fennel: "Fennel",
+    veg_carrot: "Carrot",
+    veg_bellPepper: "Bell pepper",
+    veg_cucumber: "Cucumber",
+    veg_romaine: "Romaine",
+    veg_parsley: "Parsley"
   },
   fr: {
-    intro: "US-014, Show the crew how many panels a job needs. Démarrez-la sur sa propre branch, puis créez le champ Panels Required dans Setup, écran par écran.",
+    intro: "US-014, Show the crew how many panels a job needs. Démarrez-la sur sa propre branch, puis construisez-la dans Setup : un champ, une présentation de page, deux permission sets.",
     how1: "Courez avec Gauche et Droite, sautez avec Haut ou Espace",
-    how2: "Prenez la pièce qui brille : c'est le prochain clic du lab",
-    how3: "Chargez les panneaux solaires et atteignez INST-00001",
+    how2: "Prenez l'élément qui brille : la prochaine étape du lab",
+    how3: "Mangez des légumes pour des points bonus, atteignez INST-00001",
     goalNext: "Suivant : {{label}}",
     goalEnd: "Courez vers INST-00001",
     c_start: "Courez à droite et sautez les trous !",
     faster: "Plus vite !",
     c_trap: "Mauvaise réponse : remontez d'un saut !",
-    c_bump: "Sautez sous la case Visible, deux fois !",
     c_hazard: "Attendez que la croix rouge bouge, puis passez",
     c_fall: "Retour au dernier drapeau : réessayez",
-    c_ghost: "Invisible ! Prenez Read Access pour réapparaître",
+    c_ghost: "Invisible ! Prenez Helios_Delivery_Manager pour réapparaître",
     c_visible: "De nouveau visible ! Courez vers INST-00001",
     c_lift: "Montez sur le bouton Edit",
+    coachVeg: "Miam ! Les légumes, ce sont des points bonus",
     note: "Vous avez créé un champ et vous ne le voyez pas ? Personne ne le voit. Accordez-le dans un permission set, jamais un profil, puis regardez un vrai enregistrement avant de dire que c'est fini. - V.",
     path0: "New User Story",
-    path1: "Champ personnalisé",
+    path1: "Champ et présentation",
     path2: "Permission sets",
     path3: "Page d'enregistrement",
     parts: "Pièces",
-    panels: "Panneaux",
+    vegetablesCount: "Légumes : {{n}}.",
     invisible: "Invisible",
     q_type: "What type of User Story do you want to create?",
     q_org: "Which Salesforce org do you want to work in?",
@@ -152,44 +153,45 @@ export const TEXTS = {
     o_fix_tip: "US-014 ajoute quelque chose qui n'existait pas : répondez Feature: a new capability or an improvement.",
     o_create: "La commande échoue après une longue attente",
     o_create_tip: "Ne prenez jamais Create new scratch org ici : un Dev Hub Developer Edition n'en garde que trois en vie. Prenez Reuse scratch org helios-dev.",
+    o_profile: "Les profils auraient le champ",
+    o_profile_tip: "Décochez Visible pour tous les profils sur l'écran de sécurité au niveau du champ : dans ce projet l'accès passe par un permission set, jamais par un profil.",
     o_valid: "L'enregistrement échoue avec une erreur de règle de validation",
     o_valid_tip: "L'org Helios refuse une date d'installation dans le passé. Si vous avez changé la date par erreur, remettez une date future.",
     o_crewEdit: "Laissez Edit Access décoché pour l'équipe",
     o_crewEdit_tip: "Un membre de l'équipe lit combien de panneaux charger, il ne décide pas du nombre.",
     v_hazard: "Validation rule",
-    v_hazardDetail: "date dans le passé",
     v_pit: "Session expired or invalid",
-    v_required: "Required",
     v_ghostSign: "Panels Required : visible par personne",
-    v_typeStep: "Step 1. Choose the field type",
-    v_detailStep: "Step 2. Enter the details",
-    v_flsStep: "Step 3. Field-level security",
-    v_layoutStep: "Step 4. Add to page layouts",
+    v_orgAlias: "Org · ALIAS",
+    v_profileKeep: "Garder Visible coché pour les profils",
+    v_profileClear: "Décocher Visible pour tous les profils",
+    m_field: "Créé : le champ Number qui dit à l'équipe combien de panneaux charger",
+    m_layout: "Mis à jour : met Panels Required sur la page d'enregistrement Installation",
+    m_crew: "Mis à jour : Read Access pour l'équipe, qui charge les panneaux",
+    m_manager: "Mis à jour : Read Access et Edit Access pour les planificateurs, vous compris",
     branch: "git checkout -b features/US-014-panels-required",
     target: "Branch cible : integration",
     fieldName: "Field Name : Panels_Required (Salesforce ajoute __c à l'enregistrement)",
-    allTicked: "Tous les profils cochés : encore une fois vide la colonne",
-    cleared: "Visible décoché : l'accès passe par un permission set",
     saved: "Panels_Required__c enregistré",
     ghost: "Panels Required est invisible pour tout le monde, vous compris",
     ghostTick: "Aucun profil, aucun permission set ne l'accorde encore",
     crewRead: "L'équipe peut le lire. Vous, toujours pas : vous avez Helios Delivery Manager",
     mgrRead: "De nouveau visible : Helios Delivery Manager vous l'accorde",
-    mgrEdit: "Les planificateurs peuvent le remplir",
     refresh: "Refresh : un essai de plus",
     info_ghost: "Vous avez atteint INST-00001 encore invisible : dans le lab, sans Read Access sur Helios Delivery Manager, l'enregistrement ne vous montre rien.",
-    info_save: "Vous avez sauté Save : dans le lab, le champ n'existe qu'une fois enregistré.",
-    info_crew: "Vous avez sauté Read Access pour Helios Delivery Crew : dans le lab, l'équipe ne voyait pas le champ.",
-    info_visible: "Vous avez laissé Visible coché pour les profils : dans le lab, l'accès passe par un permission set, pas par un profil.",
+    info_field: "Vous avez sauté le champ personnalisé : dans le lab, Panels_Required__c est ce que toute la story construit.",
+    info_crew: "Vous avez sauté Helios_Delivery_Crew : dans le lab, l'équipe ne voyait pas le champ.",
     info_layout: "Vous avez sauté Installation Layout : dans le lab, c'est ce qui met le champ sur la page d'enregistrement.",
-    info_edit: "Vous avez sauté Edit Access pour les planificateurs : dans le lab, Helios Delivery Manager doit pouvoir le remplir.",
-    info_text: "Vous avez sauté Description ou Help Text : dans le lab, ils rendent la documentation générée lisible.",
     info_other: "Également manqué : {{list}}.",
-    info_panels: "{{n}} panneaux chargés sur {{total}} : l'équipe a besoin de chacun.",
     outOfOrder: "{{label}}, dans le désordre : dans le lab, {{first}} vient d'abord",
-    done: "Panels Required sur INST-00001 : {{n}}",
-    allPanels: "{{n}} panneaux : la bonne quantité dans la camionnette",
-    somePanels: "{{n}} panneaux chargés sur {{total}}"
+    done: "Panels Required sur INST-00001 : {{n}}, les 23 + 16 de sa timeline",
+    doneGhost: "INST-00001 ne montre pas Panels Required : rien ne vous l'accorde",
+    veg_fennel: "Fenouil",
+    veg_carrot: "Carotte",
+    veg_bellPepper: "Poivron",
+    veg_cucumber: "Concombre",
+    veg_romaine: "Romaine",
+    veg_parsley: "Persil"
   }
 };
 
@@ -215,12 +217,13 @@ export const QUOTES = [
   { lab: "1.4", text: "Panels Required" },
   { lab: "1.4", text: "Panels_Required" },
   { lab: "1.4", text: "Panels_Required__c" },
-  { lab: "1.4", text: "Decimal Places" },
-  { lab: "1.4", text: "Ask the planner if this is empty." },
+  { lab: "1.5", text: "Installation__c.Panels_Required__c" },
   { lab: "1.4", text: "Installation Layout" },
+  { lab: "1.5", text: "Installation__c-Installation Layout" },
   { lab: "1.4", text: "Setup > Permission Sets > Helios Delivery Crew" },
+  { lab: "1.4", text: "Helios_Delivery_Crew" },
   { lab: "1.4", text: "Helios Delivery Manager" },
-  { lab: "1.4", text: "Object Settings" },
+  { lab: "1.5", text: "Helios_Delivery_Manager" },
   { lab: "1.4", text: "Field Permissions" },
   { lab: "1.4", text: "Read Access" },
   { lab: "1.4", text: "Edit Access" },
@@ -253,10 +256,14 @@ const HEIGHT = 0.85;
 const STEP_UP = 0.45;
 const INVULNERABLE_S = 2;
 const PART_RADIUS = 0.85;
-const PANEL_RADIUS = 0.75;
+const VEGETABLE_RADIUS = 0.75;
+const VEGETABLE_HEIGHT = 0.6;
 const DEPTH = 2.4;
 const TRAP_S = 1.2;
-const END_X = 231;
+// Edit Access, the temptation above the crew's row
+const DECOY_X = 138.7;
+const DECOY_Y = 7;
+const END_X = 161.5;
 // The pace: what moves on its own (validation rules, lifts, traps) speeds up
 // with the parts taken, up to +35 % at the end, on an ease-in curve. The
 // guinea pig's own top speed follows a little (a third of it). A lost attempt
@@ -264,7 +271,7 @@ const END_X = 231;
 const PACE_GAIN = 0.55;
 const PACE_RUN_SHARE = 0.4;
 // The share of the parts taken at the gentle pace: the New User Story stage
-const PACE_CALM = 0.18;
+const PACE_CALM = 0.5;
 const MERCY_S = 5;
 const MERCY_FACTOR = 0.85;
 // How fast the pace may change, per second: never a jump
@@ -283,50 +290,36 @@ function levelPlatforms(t) {
     { x0: 24.5, x1: 34, top: 1.2, look: "answer", text: "Create new scratch org", trap: { title: "o_create", tip: "o_create_tip", delay: 1.8 } },
     { x0: 25.5, x1: 30.5, top: 3.8, h: 0.6, look: "answer", text: "Reuse scratch org helios-dev" },
     { x0: 32.5, x1: 40, top: 3.4, look: "branch", text: "features/US-014-panels-required" },
-    // Orgs Manager: read the ALIAS column
-    { x0: 40, x1: 44, top: 2.6, look: "row", text: "helios-integration", sub: "ALIAS" },
-    { x0: 44, x1: 47.7, top: 1.8, look: "row", text: "helios-uat", sub: "ALIAS" },
-    { x0: 47.7, x1: 53.5, top: 1, look: "row", text: "helios-dev", sub: "ALIAS", hot: true },
+    // Orgs Manager: read the ALIAS column, every row is an org
+    { x0: 40, x1: 44, top: 2.6, look: "row", text: "helios-integration", sub: t("v_orgAlias") },
+    { x0: 44, x1: 47.7, top: 1.8, look: "row", text: "helios-uat", sub: t("v_orgAlias") },
+    { x0: 47.7, x1: 53.5, top: 1, look: "row", text: "helios-dev", sub: t("v_orgAlias"), hot: true },
     // Setup > Object Manager > Installation
     { x0: 55.5, x1: 59, top: 1, look: "card", text: "Setup" },
     { x0: 61.6, x1: 70, top: 1, look: "card", text: "Object Manager" },
     { x0: 70, x1: 74, top: 1.4, look: "card", text: "Installation" },
-    { x0: 75, x1: 79, top: 2.6, look: "row", text: "Fields & Relationships", hot: true },
-    { x0: 81, x1: 85.5, top: 2.6, look: "button", text: "New" },
-    // The field wizard
-    { x0: 87, x1: 90.5, top: 2, look: "card", text: t("v_typeStep") },
-    { x0: 91.5, x1: 94, top: 2, look: "radio", text: "Text" },
-    { x0: 94.8, x1: 97.8, top: 3.6, look: "radio", text: "Number", hot: true },
-    { x0: 98.6, x1: 101, top: 2, look: "radio", text: "Checkbox" },
-    { x0: 102.5, x1: 108.5, top: 2.8, look: "input", text: "Panels Required", sub: "Field Label" },
-    { x0: 110, x1: 113.5, top: 2, look: "input", text: "4", sub: "Length" },
-    { x0: 115, x1: 118.5, top: 3.2, look: "input", text: "0", sub: "Decimal Places" },
-    { x0: 120, x1: 127, top: 2.4, look: "input", text: "How many panels the crew has to load for this installation.", sub: "Description" },
-    { x0: 123.2, x1: 124, top: 3.9, h: 1.5, look: "check", text: t("v_required"), unticked: true },
-    { x0: 128.5, x1: 133, top: 2.4, look: "input", text: "Ask the planner if this is empty.", sub: "Help Text" },
-    // Field-level security
-    { x0: 134, x1: 151, top: 2, look: "card", text: t("v_flsStep") },
-    { x0: 138, x1: 139.2, top: 3.8, h: 0.8, look: "check", text: "", unticked: false },
-    { x0: 140.5, x1: 141.7, top: 4.3, h: 0.8, look: "header", text: "Visible", bump: true },
-    { x0: 151, x1: 154, top: 3, look: "button", text: "Next" },
-    // The layout, and Save
-    { x0: 155.5, x1: 161, top: 3, look: "check", text: "Installation Layout" },
-    { x0: 163.6, x1: 172, top: 3, look: "button", text: "Save", big: true },
+    // The custom field, created
+    { x0: 75.5, x1: 84, top: 2.6, look: "meta", text: "Installation__c.Panels_Required__c", sub: "CustomField", line: "m_field" },
+    // Field-level security: the profiles, a trap, or cleared, the way of the lab
+    { x0: 85.5, x1: 92.5, top: 1.8, look: "answer", text: t("v_profileKeep"), trap: { title: "o_profile", tip: "o_profile_tip", delay: TRAP_S } },
+    { x0: 86.5, x1: 91.5, top: 4, h: 0.6, look: "answer", text: t("v_profileClear") },
+    // The page layout, updated, and Save
+    { x0: 93.5, x1: 101, top: 3.6, h: 2, look: "meta", text: "Installation__c-Installation Layout", sub: "Layout", line: "m_layout" },
+    { x0: 103.6, x1: 109, top: 3, look: "button", text: "Save", big: true, save: true },
     // After the twist: the permission sets
-    { x0: 173.5, x1: 177.5, top: 2.2, look: "card", text: "Setup > Permission Sets", ghost: true },
-    { x0: 178.5, x1: 182, top: 3.4, look: "row", text: "Object Settings", ghost: true },
-    { x0: 183.4, x1: 187.2, top: 3, look: "row", text: "Installations", ghost: true },
-    { x0: 188.5, x1: 191.7, top: 2, look: "button", text: "Edit", ghost: true, move: { axis: "y", amp: 2.4, speed: 0.95, lift: true } },
-    { x0: 192.8, x1: 201, top: 4.4, look: "fls", text: "Panels Required", sub: "Field Permissions", faint: true },
-    { x0: 202.4, x1: 207, top: 4.4, look: "card", text: "Helios Delivery Manager", ghost: true },
-    { x0: 208.5, x1: 217.5, top: 3.6, look: "fls", text: "Panels Required", sub: "Field Permissions", faint: true },
+    { x0: 110.3, x1: 115.5, top: 2.6, look: "card", text: "Setup > Permission Sets", ghost: true },
+    { x0: 115.5, x1: 124, top: 3.4, look: "meta", text: "Helios_Delivery_Crew", sub: "PermissionSet", line: "m_crew", ghost: true },
+    { x0: 125.5, x1: 128.7, top: 2, look: "button", text: "Edit", ghost: true, move: { axis: "y", amp: 2.4, speed: 0.95, lift: true } },
+    { x0: 129.8, x1: 138, top: 4.4, look: "fls", text: "Panels Required", sub: "Field Permissions", faint: true },
+    { x0: 139.4, x1: 148, top: 4.4, look: "meta", text: "Helios_Delivery_Manager", sub: "PermissionSet", line: "m_manager", ghost: true },
     // The record
-    { x0: 219, x1: 222.5, top: 2.8, look: "card", text: "App Launcher" },
-    { x0: 224, x1: 237, top: 2, h: 2.6, look: "record", text: "INST-00001" }
+    { x0: 149.5, x1: 153, top: 2.8, look: "card", text: "App Launcher" },
+    { x0: 154.5, x1: 167.5, top: 2, h: 2.6, look: "record", text: "INST-00001" }
   ];
 }
 
-// The parts, in the order they must be got. kind: answer (Lab 1.3), field, perm
+// The parts, in the order they must be got. kind: answer (Lab 1.3), org, meta
+// (one per metadata the story creates or updates, Lab 1.4)
 function levelParts() {
   return [
     { x: 5.5, y: 1.1, label: "New User Story", glyph: "star", color: SLDS.brand, kind: "answer" },
@@ -334,37 +327,20 @@ function levelParts() {
     { x: 21, y: 3.2, label: "US-014-panels-required", sign: "US-014", glyph: "code", color: SLDS.navy, kind: "answer" },
     { x: 28.5, y: 4.8, label: "Reuse scratch org helios-dev", sign: "Reuse helios-dev", glyph: "org", color: SLDS.teal, kind: "answer" },
     { x: 35, y: 4.4, label: "features/US-014-panels-required", sign: "Branch", glyph: "branch", color: SLDS.success, kind: "answer", event: "branch" },
-    { x: 52.4, y: 2, label: "Open", glyph: "cloud", color: SLDS.brand, kind: "field" },
-    { x: 68.8, y: 2, label: "Installation", glyph: "box", color: SLDS.warningDark, kind: "field" },
-    { x: 77, y: 3.6, label: "Fields & Relationships", glyph: "log", color: SLDS.brand, kind: "field" },
-    { x: 83.5, y: 3.6, label: "New", glyph: "star", color: SLDS.brand, kind: "field" },
-    { x: 96.3, y: 4.6, label: "Data Type: Number", sign: "Number", glyph: "hexagon", color: SLDS.purple, kind: "field" },
-    { x: 105.5, y: 3.8, label: "Field Label: Panels Required", sign: "Field Label", glyph: "code", color: SLDS.navy, kind: "field", event: "label" },
-    { x: 111.8, y: 3, label: "Length: 4", glyph: "code", color: SLDS.navy, kind: "field" },
-    { x: 116.75, y: 4.2, label: "Decimal Places: 0", glyph: "code", color: SLDS.navy, kind: "field" },
-    { x: 121.6, y: 3.4, label: "Description", glyph: "log", color: SLDS.teal, kind: "field" },
-    { x: 131, y: 3.4, label: "Help Text: Ask the planner if this is empty.", sign: "Help Text", glyph: "note", color: SLDS.teal, kind: "field" },
-    { x: 141.1, y: 3.8, label: "Visible", glyph: "eye", color: SLDS.grey, kind: "field", bump: true },
-    { x: 152.5, y: 4, label: "Next", glyph: "check", color: SLDS.brand, kind: "field" },
-    { x: 158.2, y: 4, label: "Installation Layout", glyph: "check", color: SLDS.success, kind: "field" },
-    { x: 167.5, y: 4, label: "Save", glyph: "check", color: SLDS.brand, kind: "field", event: "save" },
-    { x: 176, y: 3.2, label: "Helios Delivery Crew", glyph: "permset", color: SLDS.purple, kind: "perm" },
-    { x: 180.2, y: 4.4, label: "Object Settings", glyph: "gear", color: SLDS.purple, kind: "perm" },
-    { x: 186.2, y: 4, label: "Installations", glyph: "box", color: SLDS.warningDark, kind: "perm" },
-    { x: 190, y: 5.4, label: "Edit", glyph: "code", color: SLDS.brand, kind: "perm" },
-    { x: 196, y: 5.4, label: "Read Access", glyph: "eye", color: SLDS.success, kind: "perm", event: "crewRead" },
-    { x: 205, y: 5.4, label: "Helios Delivery Manager", glyph: "permset", color: SLDS.purple, kind: "perm" },
-    { x: 210.5, y: 4.6, label: "Read Access", glyph: "eye", color: SLDS.success, kind: "perm", event: "mgrRead" },
-    { x: 216.5, y: 4.6, label: "Edit Access", glyph: "code", color: SLDS.success, kind: "perm", event: "mgrEdit" }
+    { x: 52.4, y: 2, label: "Open", sign: "Open helios-dev", glyph: "cloud", color: SLDS.brand, kind: "org" },
+    { x: 79.75, y: 3.6, label: "CustomField Installation__c.Panels_Required__c", sign: "Panels_Required__c", item: "custom-field", glyph: "code", color: SLDS.navy, kind: "meta", line: "m_field", event: "field" },
+    { x: 97.25, y: 4.6, label: "Layout Installation__c-Installation Layout", sign: "Installation Layout", item: "record", glyph: "log", color: SLDS.success, kind: "meta", line: "m_layout", event: "layout" },
+    { x: 119.75, y: 4.4, label: "PermissionSet Helios_Delivery_Crew", sign: "Helios_Delivery_Crew", item: "permission-set", glyph: "permset", color: SLDS.purple, kind: "meta", line: "m_crew", event: "crewRead" },
+    { x: 143.7, y: 5.4, label: "PermissionSet Helios_Delivery_Manager", sign: "Helios_Delivery_Manager", item: "permission-set", glyph: "permset", color: SLDS.purple, kind: "meta", line: "m_manager", event: "mgrRead" }
   ];
 }
 
 // The validation rules: boxes that slide along an axis, slowly enough to time
 const HAZARDS = [
   { x: 66.2, y: 1, w: 1.1, h: 1.1, axis: "y", amp: 2.6, speed: 1.6 },
-  { x: 146.3, y: 2, w: 1.1, h: 1, axis: "x", amp: 1.8, speed: 1.2 },
-  { x: 162.3, y: 1, w: 1, h: 1, axis: "y", amp: 4, speed: 1.7 },
-  { x: 214.6, y: 3.6, w: 1.1, h: 1, axis: "x", amp: 1, speed: 1.4 }
+  { x: 102.3, y: 1, w: 1, h: 1, axis: "y", amp: 4, speed: 1.7 },
+  { x: 134, y: 4.4, w: 1.1, h: 1, axis: "x", amp: 1, speed: 1.4 },
+  { x: 146.2, y: 4.4, w: 1.1, h: 1, axis: "x", amp: 0.8, speed: 1.3 }
 ];
 // A hit counts only when the boxes really overlap: forgiving edges
 const HAZARD_MARGIN = 0.15;
@@ -376,25 +352,22 @@ const CHECKPOINTS = [
   [36, 3.4, 1],
   [50.5, 1, 1],
   [63.5, 1, 1],
-  [76, 2.6, 1],
-  [88, 2, 1],
-  [103.5, 2.8, 1],
-  [121, 2.4, 1],
-  [135, 2, 1],
-  [156.5, 3, 1],
-  [174.5, 2.2, 2],
-  [194, 4.4, 2],
-  [204, 4.4, 2],
-  [220, 2.8, 3]
+  [76.5, 2.6, 1],
+  [94.5, 3.6, 1],
+  [104.5, 3, 1],
+  [111, 2.6, 2],
+  [130.5, 4.4, 2],
+  [140, 4.4, 2],
+  [150, 2.8, 3]
 ];
 
-// 39 solar panels: INST-00001 needs 23 + 16
-const PANELS = [
+// The bonus vegetables: x, y of their middle. Their kind follows VEGETABLES in turn
+const VEGETABLE_SPOTS = [
   [1.5, 0.9], [2.5, 0.9], [3.5, 0.9], [16.6, 3.2], [17.3, 3.5], [22.5, 3], [24.5, 3.9], [31.5, 4.6],
-  [36.5, 4.2], [37.5, 4.2], [38.5, 4.2], [42, 3.4], [46, 2.6], [50, 1.8], [54.5, 2.2], [60.2, 2.6],
-  [60.9, 3], [61.6, 2.6], [64.5, 1.8], [72, 2.2], [80, 3.8], [92.8, 2.8], [99.8, 2.8], [101.8, 3.4],
-  [109.3, 3.4], [114.3, 3.4], [119.3, 3.6], [123.6, 4.6], [126, 3.2], [138.6, 4.6], [145, 2.8], [147.5, 2.8],
-  [150.5, 3.4], [162.6, 4.4], [175, 3.0], [184, 3.8], [198.5, 5.1], [226, 2.8], [228, 2.8]
+  [36.5, 4.2], [37.5, 4.2], [38.5, 4.2], [42, 3.4], [46, 2.6], [50, 1.8], [54.5, 2.2], [57.3, 1.8],
+  [60.2, 2.6], [60.9, 3], [61.6, 2.6], [64.5, 1.8], [72, 2.2], [74.8, 3.6], [77.4, 3.4], [82.4, 3.4],
+  [85, 4.4], [89, 4.8], [92.4, 5], [95, 4.4], [99.6, 4.4], [106.3, 3.8], [110, 3.4], [117.4, 4.2],
+  [131.6, 5.2], [137, 5.2], [141.4, 5.2], [146.4, 5.2], [151.2, 3.6], [157, 2.8], [159, 2.8]
 ];
 
 // The screens behind the platforms: x0, x1, look, eyebrow, title
@@ -402,15 +375,12 @@ const SCREENS = [
   [-7, 24, "vscode", "DevOps Pipeline", "New User Story"],
   [24, 40, "vscode", "New User Story", "helios-dev"],
   [40, 55, "vscode", "sfdx-hardis", "Orgs Manager"],
-  [55, 72, "setup", "Setup", "Object Manager"],
-  [72, 87, "setup", "Setup > Object Manager", "Installation"],
-  [87, 109.5, "setup", "Installation", "New Custom Field"],
-  [109.5, 134, "setup", "New Custom Field", "Panels Required"],
-  [134, 155, "setup", "New Custom Field", "Field-level security"],
-  [155, 173, "setup", "New Custom Field", "Installation Layout"],
-  [173, 202, "ghost", "Setup > Permission Sets", "Helios Delivery Crew"],
-  [202, 218, "ghost", "Setup > Permission Sets", "Helios Delivery Manager"],
-  [218, 238, "record", "Helios Delivery · Installations", "INST-00001"]
+  [55, 74.5, "setup", "Setup", "Object Manager"],
+  [74.5, 92.8, "setup", "Setup > Object Manager > Installation", "Fields & Relationships"],
+  [92.8, 110, "setup", "Installation", "Installation Layout"],
+  [110, 139, "ghost", "Setup > Permission Sets > Helios Delivery Crew", "Helios_Delivery_Crew"],
+  [139, 149, "ghost", "Setup > Permission Sets", "Helios_Delivery_Manager"],
+  [149, 169, "record", "Helios Delivery · Installations", "INST-00001"]
 ];
 
 export function createWorld(ctx) {
@@ -493,9 +463,9 @@ export function createWorld(ctx) {
     }
   }
 
-  const bumpBlock = platforms.find((p) => p.bump);
   const lift = platforms.find((p) => p.move && p.move.lift);
   const recordPlatform = platforms.find((p) => p.record);
+  const savePlatform = platforms.find((p) => p.save);
 
   /** An item of the course, centred on its middle, or the world's own shape if the pack did not load. */
   function itemOr(name, height, fallback) {
@@ -513,7 +483,7 @@ export function createWorld(ctx) {
   {
     const record = ctx.models.get("record", { height: 1.3 });
     if (record) {
-      record.position.set(229.6, recordPlatform.top, -0.9);
+      record.position.set(160.1, recordPlatform.top, -0.9);
       root.add(record);
     }
     const logo = ctx.models.get("cloudity-logo", { height: 1.8 });
@@ -523,7 +493,7 @@ export function createWorld(ctx) {
     }
   }
 
-  /* ---------- Parts, panels, hazards, checkpoints ---------- */
+  /* ---------- Parts, vegetables, hazards, checkpoints ---------- */
 
   const parts = levelParts().map((def, i) => {
     const group = new THREE.Group();
@@ -535,26 +505,25 @@ export function createWorld(ctx) {
       glyph(c, def.glyph, w / 2, h / 2, w * 0.9);
     }, { transparent: true, emissive: 0x202020, roughness: 0.35 });
     const edge = paint.plain(new THREE.Color(def.color).getHex(), { roughness: 0.35 });
-    let tile = null;
-    if (!def.bump) {
-      tile = ctx.models.get(partItem(def), { height: 0.7, shadows: false });
-      if (tile) {
-        tile.position.y = -0.35;
-        const holder = new THREE.Group();
-        holder.add(tile);
-        tile = holder;
-      } else {
-        tile = pictureBox(THREE, tileGeometry, tileMaterial, edge);
-      }
-      group.add(tile);
+    const meta = def.kind === "meta";
+    const size = meta ? 0.85 : 0.7;
+    let tile = ctx.models.get(partItem(def), { height: size, shadows: false });
+    if (tile) {
+      tile.position.y = -size / 2;
+      const holder = new THREE.Group();
+      holder.add(tile);
+      tile = holder;
+    } else {
+      tile = pictureBox(THREE, tileGeometry, tileMaterial, edge);
     }
+    group.add(tile);
     // A few words that face the camera; the whole label is in the goal line
     const label = paint.sign("w1-part-" + i, def.sign || def.label, { color: def.color, height: 0.6 });
     const labelMaterial = label.material;
-    label.position.set(0, def.bump ? 1.1 : 0.8, 0.3);
+    label.position.set(0, meta ? 0.95 : 0.8, 0.3);
     group.add(label);
     root.add(group);
-    return Object.assign({}, def, { index: i, group, tile, tileMaterial, labelMaterial, done: false, flying: 0, bumps: 0 });
+    return Object.assign({}, def, { index: i, group, tile, tileMaterial, labelMaterial, done: false, flying: 0 });
   });
   const totalParts = parts.length;
 
@@ -565,54 +534,51 @@ export function createWorld(ctx) {
   );
   root.add(halo);
 
-  // The profiles of the field-level security screen, as a column of ticks
-  const tickOn = paint.material("w1-tick-on", 64, 64, (c, w) => drawCheckbox(c, 4, 4, w - 8, true), { emissive: 0x202020 });
-  const tickOff = paint.material("w1-tick-off", 64, 64, (c, w) => drawCheckbox(c, 4, 4, w - 8, false), { emissive: 0x202020 });
-  const profileTicks = [];
-  for (let i = 0; i < 7; i++) {
-    const tick = new THREE.Mesh(plane, i === 4 ? tickOff : tickOn);
-    tick.scale.set(0.5, 0.5, 1);
-    tick.position.set(142.6 + i * 1.05, 5.5, -1.3);
-    root.add(tick);
-    profileTicks.push(tick);
-  }
-  const tickLabel = paint.sign("w1-profiles", "Profiles", { color: SLDS.brand, height: 0.5 });
-  tickLabel.position.set(145.8, 6.3, -1.3);
-  root.add(tickLabel);
-
-  function setTicks(on) {
-    profileTicks.forEach((tick, i) => {
-      tick.material = on === "all" ? tickOn : on === "none" ? tickOff : i === 4 ? tickOff : tickOn;
+  // The bonus vegetables: one InstancedMesh per mesh of each kind's model, the
+  // way the runner draws them in world 0. An eaten one shrinks to nothing
+  const vegetables = VEGETABLE_SPOTS.map(([x, y], i) => ({ x, y, kind: VEGETABLES[i % VEGETABLES.length], slot: 0, done: false, label: null }));
+  const vegetablePools = {};
+  for (const kind of VEGETABLES) {
+    const list = vegetables.filter((v) => v.kind === kind);
+    list.forEach((v, i) => {
+      v.slot = i;
     });
+    const pool = [];
+    const copy = ctx.models.get(VEGETABLE_MODELS[kind], { height: VEGETABLE_HEIGHT, shadows: false });
+    if (copy) {
+      copy.updateMatrixWorld(true);
+      copy.traverse((child) => {
+        if (child.isMesh) {
+          const material = keep(child.material.clone());
+          material.emissive = new THREE.Color(VEGETABLE_COLORS[kind]);
+          material.emissiveIntensity = 0.3;
+          const mesh = new THREE.InstancedMesh(child.geometry, material, list.length);
+          // The instances move every frame: a bounding sphere computed once would cull them wrongly
+          mesh.frustumCulled = false;
+          root.add(mesh);
+          pool.push({ mesh, local: child.matrixWorld.clone(), lift: 0 });
+        }
+      });
+    } else {
+      const mesh = new THREE.InstancedMesh(tileGeometry, paint.tile("w1-veg-" + kind, VEGETABLE_COLORS[kind], "star"), list.length);
+      mesh.frustumCulled = false;
+      root.add(mesh);
+      // The tile is centred on its middle, a model stands on its base
+      pool.push({ mesh, local: new THREE.Matrix4().makeTranslation(0, VEGETABLE_HEIGHT / 2, 0), lift: 0 });
+    }
+    vegetablePools[kind] = pool;
+    // A vegetable's name shows on the first one of its kind only
+    const first = list[0];
+    if (first) {
+      first.label = paint.sign("w1-veg-" + kind, t("veg_" + kind), { color: VEGETABLE_COLORS[kind], height: 0.42 });
+      // One kind in two a little higher: the first vegetables come close together
+      first.label.position.set(first.x, first.y + 0.62 + (VEGETABLES.indexOf(kind) % 2) * 0.5, 0.3);
+      root.add(first.label);
+    }
   }
-
-  // The solar panels: one instanced mesh, a collected one shrinks to nothing
-  const panelMaterial = paint.material("w1-solar", 128, 96, (c, w, h) => {
-    c.fillStyle = "#0B2A55";
-    c.fillRect(0, 0, w, h);
-    c.strokeStyle = "#8EC5FF";
-    c.lineWidth = 3;
-    for (let x = 0; x <= w; x += w / 4) {
-      c.beginPath();
-      c.moveTo(x, 0);
-      c.lineTo(x, h);
-      c.stroke();
-    }
-    for (let y = 0; y <= h; y += h / 3) {
-      c.beginPath();
-      c.moveTo(0, y);
-      c.lineTo(w, y);
-      c.stroke();
-    }
-    c.strokeStyle = "#C9C9C9";
-    c.lineWidth = 8;
-    c.strokeRect(0, 0, w, h);
-  }, { emissive: 0x0a2244, metalness: 0.3, roughness: 0.3 });
-  const panelMesh = new THREE.InstancedMesh(paint.geometry("w1-solar", () => new THREE.BoxGeometry(0.62, 0.46, 0.05)), panelMaterial, PANELS.length);
-  root.add(panelMesh);
-  const panels = PANELS.map(([x, y]) => ({ x, y, done: false }));
-  const totalPanels = panels.length;
-  let panelsLoaded = 0;
+  const eatenKinds = new Set();
+  let eaten = 0;
+  let vegTold = false;
 
   const hazardFront = paint.material("w1-hazard", 256, 256, (c, w, h) => {
     rounded(c, 4, 4, w - 8, h - 8, 26);
@@ -689,12 +655,16 @@ export function createWorld(ctx) {
   sign("Automatically selected target branch is integration", 4.5, 3.4, 7.4, { bg: SLDS.white, fg: SLDS.navy, size: 40 });
   sign(t("q_type"), 12.8, 4.2, 6.2, { size: 38 });
   sign(t("q_org"), 28.5, 6.2, 6.2, { size: 38 });
-  for (const x of [54.5, 60.6, 162.6]) {
+  for (const x of [54.5, 60.3, 102.3]) {
     sign(t("v_pit"), x, -1.6, 3.2, { bg: SLDS.error, size: 40 });
   }
-  sign(t("v_detailStep"), 112, 5.6, 4.6, { bg: SLDS.white, fg: SLDS.navy, size: 40 });
-  sign(t("v_layoutStep"), 158.2, 5.8, 4.6, { bg: SLDS.white, fg: SLDS.navy, size: 40 });
-  const ghostSign = sign(t("v_ghostSign"), 171, 6.4, 5.6, { bg: SLDS.purple, size: 42 });
+  // Above each metadata, what it does for the story
+  for (const p of platforms) {
+    if (p.line) {
+      sign(t(p.line), (p.x0 + p.x1) / 2, p.top + 2.75, Math.min(8.2, p.w + 0.4), { bg: SLDS.white, fg: SLDS.navy, size: 34 });
+    }
+  }
+  const ghostSign = sign(t("v_ghostSign"), 106.3, 6.6, 5.6, { bg: SLDS.purple, size: 42 });
   ghostSign.visible = false;
 
   for (const [x0, x1, look, eyebrow, title] of SCREENS) {
@@ -783,13 +753,13 @@ export function createWorld(ctx) {
   bar.className = "gr-w1-bar";
   const partsNode = document.createElement("span");
   partsNode.className = "gr-w1-count";
-  const panelsNode = document.createElement("span");
-  panelsNode.className = "gr-w1-count gr-w1-panels";
+  const vegNode = document.createElement("span");
+  vegNode.className = "gr-w1-veg";
   const ghostNode = document.createElement("span");
   ghostNode.className = "gr-w1-ghost";
   ghostNode.textContent = t("invisible");
   ghostNode.hidden = true;
-  bar.append(partsNode, panelsNode, ghostNode);
+  bar.append(partsNode, vegNode, ghostNode);
   hud.extra.appendChild(bar);
 
   /* ---------- State ---------- */
@@ -802,11 +772,13 @@ export function createWorld(ctx) {
   let pathIndex = -1;
   let ghost = false;
   let trapFalling = null;
+  // The trap the guinea pig last stood on: a fall that starts there is that wrong answer
+  let trapStood = null;
   let decoyDone = false;
   let refreshes = [];
   let ending = 0;
   let shake = 0;
-  let lastRecord = -1;
+  let saved = false;
   let note = null;
   let twistAt = 0;
   let pace = 1;
@@ -818,7 +790,7 @@ export function createWorld(ctx) {
 
   const decoy = (() => {
     const group = new THREE.Group();
-    group.position.set(201.7, 6.6, 0.2);
+    group.position.set(DECOY_X, DECOY_Y, 0.2);
     const tile = itemOr("permission-set", 0.7, () => pictureBox(THREE, tileGeometry, paint.tile("w1-decoy", SLDS.success, "code"), paint.plain(0x2e844a)));
     group.add(tile);
     const label = paint.sign("w1-decoy", "Edit Access", { color: SLDS.success, height: 0.55 });
@@ -829,8 +801,8 @@ export function createWorld(ctx) {
   })();
 
   refreshes = [
-    [123.6, 5.6],
-    [209.5, 6.6]
+    [112.8, 5.4],
+    [148.75, 6.2]
   ].map(([x, y]) => {
     const group = new THREE.Group();
     group.position.set(x, y, 0.2);
@@ -843,13 +815,13 @@ export function createWorld(ctx) {
     return { x, y, group, done: false };
   });
 
-  // Victor's note: above the Visible header, two good jumps up from the ledge
+  // Victor's note: high above the right answer on the profiles, a full jump up
   {
     const group = new THREE.Group();
-    group.position.set(141.1, 7.25, 0.2);
+    group.position.set(89, 7.4, 0.2);
     group.add(itemOr("note", 0.75, () => pictureBox(THREE, tileGeometry, paint.tile("w1-note", "#F2C94C", "note"), paint.plain(0xf2c94c))));
     root.add(group);
-    note = { x: 141.1, y: 7.25, group, done: false };
+    note = { x: 89, y: 7.4, group, done: false };
   }
 
   /* ---------- Starting further down (guinea-at, for checks) ---------- */
@@ -864,27 +836,28 @@ export function createWorld(ctx) {
     }
     const cx = checkpoints[checkpoint].x;
     for (const part of parts) {
+      if (cx > savePlatform.x1 && !saved && part.x > savePlatform.x1) {
+        saved = true;
+        setGhost(true);
+        ghostSign.visible = true;
+      }
       if (part.x < cx) {
         part.done = true;
         part.group.visible = false;
         nextPart = part.index + 1;
-        if (part.event === "save") {
-          setGhost(true);
-          ghostSign.visible = true;
-        } else if (part.event === "crewRead") {
+        if (part.event === "crewRead") {
           revealFaint();
         } else if (part.event === "mgrRead") {
           setGhost(false);
         }
       }
     }
-    if (bumpBlock && parts.find((p) => p.bump).done) {
-      setTicks("none");
-    }
-    for (const panel of panels) {
-      if (panel.x < cx) {
-        panel.done = true;
-        panelsLoaded += 1;
+    for (const v of vegetables) {
+      if (v.x < cx) {
+        v.done = true;
+        if (v.label) {
+          v.label.visible = false;
+        }
       }
     }
     player.x = cx;
@@ -993,9 +966,9 @@ export function createWorld(ctx) {
       hud.goal(goal);
     }
     partsNode.textContent = t("parts") + " " + taken + "/" + totalParts;
-    panelsNode.textContent = t("panels") + " " + panelsLoaded + "/" + totalPanels;
+    vegNode.textContent = t("vegetablesCount", { n: eaten }).replace(/\.$/, "");
     ctx.setData("parts", taken);
-    ctx.setData("panels", panelsLoaded);
+    ctx.setData("vegetables", eaten);
     ctx.setData("next", part ? part.label : "end");
   }
 
@@ -1005,12 +978,18 @@ export function createWorld(ctx) {
     const skipped = parts.find((p) => !p.done && p.index < part.index && p.x > part.x - 8);
     part.done = true;
     part.flying = 0.01;
-    const big = part.event === "save" || part.event === "mgrRead";
+    const big = part.kind === "meta";
     const color = new THREE.Color(part.color).getHex();
     ctx.fx.burst(part.x, part.y, 0.3, big ? { count: 60, speed: 5, up: 6 } : { count: 16, colors: [color, 0xffd24a, 0xffffff], speed: 3, up: 3 });
-    ctx.collect(skipped ? 25 : big ? 150 : 50, skipped ? "" : part.label);
+    ctx.collect(skipped ? 25 : big ? 150 : 50, skipped || part.line ? "" : part.label);
     if (skipped) {
       hud.toast(t("outOfOrder", { label: part.label, first: skipped.label }), "power");
+    } else if (part.line) {
+      // A metadata: its name, then what it does for the story
+      hud.toast(t(part.line), "good");
+    }
+    if (part.line) {
+      hud.tick(part.label);
     }
     if (big || part.kind === "answer") {
       ctx.sound.play("wheek");
@@ -1021,14 +1000,8 @@ export function createWorld(ctx) {
         hud.tick("sf hardis:work:new");
         hud.tick("git checkout -b features/US-014-panels-required");
         break;
-      case "label":
+      case "field":
         hud.tick(t("fieldName"));
-        break;
-      case "save":
-        hud.toast(t("saved"), "good");
-        hud.tick("Panels_Required__c");
-        // The twist, a beat after the success toast
-        twistAt = engine.time + 1.1;
         break;
       case "crewRead":
         revealFaint();
@@ -1040,32 +1013,20 @@ export function createWorld(ctx) {
         coach("c_visible", true);
         ctx.sound.play("happy");
         break;
-      case "mgrEdit":
-        hud.tick(t("mgrEdit"));
-        break;
       default:
         break;
     }
     renderBar();
   }
 
-  function bump(box) {
-    const part = parts.find((p) => p.bump);
-    box.wobble = 0.25;
+  /** Save, the button of the field wizard: the field exists, and nobody can see it. */
+  function save() {
+    saved = true;
+    hud.toast(t("saved"), "good");
+    hud.tick("Panels_Required__c");
     ctx.sound.play("click");
-    if (part.done) {
-      return;
-    }
-    part.bumps += 1;
-    ctx.fx.burst(part.x, bumpBlock.top, 0.3, { count: 12, colors: [0x1b96ff, 0xffffff], speed: 3, up: 4 });
-    if (part.bumps === 1) {
-      setTicks("all");
-      hud.toast(t("allTicked"), "power");
-    } else {
-      setTicks("none");
-      hud.tick(t("cleared"));
-      collectPart(part);
-    }
+    // The twist, a beat after the success toast
+    twistAt = engine.time + 1.1;
   }
 
   /** The pace follows the parts taken; a mistake buys a few calmer seconds. */
@@ -1122,8 +1083,9 @@ export function createWorld(ctx) {
   }
 
   function fell() {
-    const trap = trapFalling;
+    const trap = trapFalling || trapStood;
     trapFalling = null;
+    trapStood = null;
     if (trap) {
       // Never twice the same mistake: that answer holds from now on
       trap.learned = true;
@@ -1268,16 +1230,19 @@ export function createWorld(ctx) {
       } else if (player.vy > 0 && prevY + HEIGHT <= bottom + 0.06 && player.y + HEIGHT > bottom) {
         player.y = bottom - HEIGHT;
         player.vy = 0;
-        if (p.bump) {
-          bump(p);
-        }
       }
     }
     player.grounded = Boolean(landed);
     if (landed && !landed.trap) {
       trapFalling = null;
+      trapStood = null;
+    } else if (landed && landed.trap && !landed.trap.learned) {
+      trapStood = landed.trap;
     }
     player.ground = landed;
+    if (landed === savePlatform && !saved) {
+      save();
+    }
     if (landed && !wasGrounded) {
       if (impact > 6) {
         player.squash = Math.min(0.3, impact * 0.022);
@@ -1332,18 +1297,15 @@ export function createWorld(ctx) {
       if (part.done) {
         continue;
       }
-      if (!part.bump && (part.x - cx) ** 2 + (part.y - cy) ** 2 < PART_RADIUS * PART_RADIUS) {
+      if ((part.x - cx) ** 2 + (part.y - cy) ** 2 < PART_RADIUS * PART_RADIUS) {
         collectPart(part);
       }
     }
-    panels.forEach((panel) => {
-      if (!panel.done && (panel.x - cx) ** 2 + (panel.y - cy) ** 2 < PANEL_RADIUS * PANEL_RADIUS) {
-        panel.done = true;
-        panelsLoaded += 1;
-        ctx.collect(10);
-        renderBar();
+    for (const v of vegetables) {
+      if (!v.done && (v.x - cx) ** 2 + (v.y - cy) ** 2 < VEGETABLE_RADIUS * VEGETABLE_RADIUS) {
+        eatVegetable(v);
       }
-    });
+    }
     for (const r of refreshes) {
       if (!r.done && (r.x - cx) ** 2 + (r.y - cy) ** 2 < PART_RADIUS * PART_RADIUS) {
         r.done = true;
@@ -1360,7 +1322,7 @@ export function createWorld(ctx) {
       note.group.visible = false;
       ctx.foundNote();
     }
-    if (!decoyDone && (201.7 - cx) ** 2 + (6.6 - cy) ** 2 < 0.7 * 0.7) {
+    if (!decoyDone && (DECOY_X - cx) ** 2 + (DECOY_Y - cy) ** 2 < 0.7 * 0.7) {
       decoyDone = true;
       decoy.visible = false;
       ctx.points(-50);
@@ -1380,9 +1342,7 @@ export function createWorld(ctx) {
     // Each new mechanic is said once, as it comes into view
     if (player.x > 62 && player.x < 66) {
       coachOnce("c_hazard");
-    } else if (player.x > 136.5 && player.x < 141 && !parts.find((p) => p.bump).done) {
-      coachOnce("c_bump");
-    } else if (player.x > 184 && player.x < 189) {
+    } else if (player.x > 122 && player.x < 126) {
       coachOnce("c_lift");
     }
     // The checkpoints: a flag turns green as the guinea pig passes it
@@ -1408,7 +1368,10 @@ export function createWorld(ctx) {
     if (!ending && player.x >= END_X && player.grounded && player.ground === recordPlatform) {
       ending = time;
       ctx.sound.play("gate");
-      hud.toast(t("done", { n: panelsLoaded }), "good");
+      // The planner's number, typed in: 23 + 16 on the timeline, whatever was eaten on the way.
+      // Still a ghost: no permission set grants the field to you, the record shows nothing
+      recordPlatform.record.draw(ghost ? null : 39);
+      hud.toast(ghost ? t("doneGhost") : t("done", { n: 39 }), ghost ? "bad" : "good");
     }
   }
 
@@ -1425,22 +1388,17 @@ export function createWorld(ctx) {
     if (ghost) {
       explain("info_ghost", (p) => p.event === "mgrRead", true);
     }
-    explain("info_save", (p) => p.event === "save");
+    explain("info_field", (p) => p.event === "field");
     explain("info_crew", (p) => p.event === "crewRead");
-    explain("info_visible", (p) => p.bump);
-    explain("info_layout", (p) => p.label === "Installation Layout");
-    explain("info_edit", (p) => p.event === "mgrEdit");
-    explain("info_text", (p) => p.label === "Description" || p.label.startsWith("Help Text"));
+    explain("info_layout", (p) => p.event === "layout");
     const shown = reasons.slice(0, 2);
     // The rest, by name: what the sentences shown do not already cover
     const covered = new Set(shown.flatMap((r) => r.parts));
     const others = [...new Set(missed.filter((p) => !covered.has(p)).map((p) => p.label))];
-    const lines = shown.map((r) => r.text);
+    // The vegetables first, as in world 0
+    const lines = [t("vegetablesCount", { n: eaten })].concat(shown.map((r) => r.text));
     if (others.length) {
       lines.push(t("info_other", { list: others.slice(0, 4).join(", ") + (others.length > 4 ? ", ..." : "") }));
-    }
-    if (panelsLoaded < totalPanels) {
-      lines.push(t("info_panels", { n: panelsLoaded, total: totalPanels }));
     }
     return { text: lines.join(" "), count: missed.length };
   }
@@ -1455,17 +1413,44 @@ export function createWorld(ctx) {
   let camX = player.x + 2;
   let camY = player.y + 1.4;
 
-  function placePanels(time) {
-    panels.forEach((panel, i) => {
-      position.set(panel.x, panel.y + Math.sin(time * 3 + i) * 0.06, 0.2);
-      euler.set(-0.35, time * 1.8 + i, 0);
+  const work = new THREE.Matrix4();
+
+  function placeVegetables(time) {
+    for (const v of vegetables) {
+      position.set(v.x, v.y - VEGETABLE_HEIGHT / 2 + Math.sin(time * 3 + v.x) * 0.06, 0.2);
+      euler.set(0, time * 2.2 + v.x, 0);
       quaternion.setFromEuler(euler);
-      const s = panel.done ? 0 : 1;
+      const s = v.done ? 0 : 1;
       scale.set(s, s, s);
       matrix.compose(position, quaternion, scale);
-      panelMesh.setMatrixAt(i, matrix);
-    });
-    panelMesh.instanceMatrix.needsUpdate = true;
+      for (const part of vegetablePools[v.kind]) {
+        work.multiplyMatrices(matrix, part.local);
+        part.mesh.setMatrixAt(v.slot, work);
+      }
+    }
+    for (const kind of VEGETABLES) {
+      for (const part of vegetablePools[kind]) {
+        part.mesh.instanceMatrix.needsUpdate = true;
+      }
+    }
+  }
+
+  /** A vegetable: bonus points and a happy wheek, its name the first time each kind is eaten. */
+  function eatVegetable(v) {
+    v.done = true;
+    if (v.label) {
+      v.label.visible = false;
+    }
+    eaten += 1;
+    ctx.collect(VEGETABLE_POINTS, eatenKinds.has(v.kind) ? "" : t("veg_" + v.kind));
+    eatenKinds.add(v.kind);
+    ctx.sound.play("wheek");
+    // Told once, when no other instruction is on screen
+    if (!vegTold && engine.time - coachAt > 3) {
+      vegTold = true;
+      coach("coachVeg", true);
+    }
+    renderBar();
   }
 
   function placeParts(dt, time) {
@@ -1502,13 +1487,9 @@ export function createWorld(ctx) {
     const target = parts[nextPart];
     halo.visible = Boolean(target);
     if (target) {
-      halo.position.set(target.x, target.bump ? bumpBlock.top - bumpBlock.h / 2 : target.y, 0.35);
-      halo.scale.setScalar(target.bump ? 1.3 + Math.sin(time * 6) * 0.1 : 1 + Math.sin(time * 6) * 0.1);
+      halo.position.set(target.x, target.y, 0.35);
+      halo.scale.setScalar((target.kind === "meta" ? 1.2 : 1) + Math.sin(time * 6) * 0.1);
       halo.rotation.z = time;
-    }
-    if (bumpBlock.wobble > 0) {
-      bumpBlock.wobble = Math.max(0, bumpBlock.wobble - dt);
-      bumpBlock.mesh.position.y = bumpBlock.top - bumpBlock.h / 2 + Math.sin((bumpBlock.wobble / 0.25) * Math.PI) * 0.25;
     }
     for (const r of refreshes) {
       r.group.rotation.y = time * 2;
@@ -1519,7 +1500,7 @@ export function createWorld(ctx) {
         cp.star.rotation.y = time * 2;
       }
     }
-    decoy.position.y = 6.6 + Math.sin(time * 3) * 0.06;
+    decoy.position.y = DECOY_Y + Math.sin(time * 3) * 0.06;
   }
 
   function placePig(dt, time) {
@@ -1572,25 +1553,18 @@ export function createWorld(ctx) {
     engine.aimSun(player.x, 0);
   }
 
-  function updateRecord() {
-    if (panelsLoaded !== lastRecord && recordPlatform) {
-      lastRecord = panelsLoaded;
-      recordPlatform.record.draw(panelsLoaded);
-    }
-  }
-
   // The intro card shows the start, with the guinea pig facing the way to go
   pig.object.rotation.set(0, -Math.PI / 2, 0);
   pig.shadow.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
   movePlatforms(0);
   ctx.setData("pace", "1.00");
-  placePanels(0);
+  placeVegetables(0);
   placeParts(0, 0);
   placePig(0, 0);
-  setTicks(parts.find((p) => p.bump).done ? "none" : "some");
   ctx.setData("visible", ghost ? "no" : "yes");
   renderBar();
-  updateRecord();
+  // Lab 1.4, step 4: Panels Required on the record, still empty
+  recordPlatform.record.draw("");
   ctx.setData("x", Math.round(player.x));
 
   return {
@@ -1631,11 +1605,10 @@ export function createWorld(ctx) {
           return;
         }
       }
-      placePanels(time);
+      placeVegetables(time);
       placeParts(dt, time);
       placePig(dt, time);
       placeCamera(dt);
-      updateRecord();
       ctx.setData("x", Math.round(player.x));
       ctx.setData("y", player.y.toFixed(1));
       // For checks: where things are, so a scripted run can time its jumps
@@ -1651,13 +1624,11 @@ export function createWorld(ctx) {
           player.buffer = 0.1;
         }
         if (time - ending > 1.3) {
-          const all = panelsLoaded === totalPanels;
           const missed = missedInfo();
-          hud.toast(all ? t("allPanels", { n: panelsLoaded }) : t("somePanels", { n: panelsLoaded, total: totalPanels }), "good");
           hud.goal("");
           // Everything built and visible again: the full bonus. Each part missed costs a little
           const complete = missed.count === 0 && !ghost;
-          ctx.finish(Math.max(0, panelsLoaded * 5 + (all ? 200 : 0) + (complete ? 300 : 0) - missed.count * 20), missed.text);
+          ctx.finish(Math.max(0, 200 + (complete ? 300 : 0) - missed.count * 20), missed.text);
         }
       }
     },
@@ -1689,7 +1660,11 @@ export function createWorld(ctx) {
       pig.object.scale.set(1, 1, 1);
       pig.shadow.rotation.set(-Math.PI / 2, 0, 0);
       pig.shadow.visible = true;
-      panelMesh.dispose();
+      for (const kind of VEGETABLES) {
+        for (const part of vegetablePools[kind]) {
+          part.mesh.dispose();
+        }
+      }
       clouds.dispose();
       for (const thing of disposables) {
         thing.dispose();
@@ -1702,7 +1677,7 @@ export function createWorld(ctx) {
 
   /* ---------- Canvas pictures ---------- */
 
-  /** The Installation record: its column of fields, Panels Required with what was loaded. */
+  /** The Installation record: its column of fields, Panels Required with its value (null: no row, nobody grants it). */
   function recordTexture(w, h) {
     const canvas = document.createElement("canvas");
     canvas.width = Math.min(2048, Math.round(w * 110));
@@ -1732,12 +1707,14 @@ export function createWorld(ctx) {
       // The column of fields
       const fields = [
         ["Status", "Scheduled"],
-        ["Crew", "North crew"],
-        ["Panels Required", String(n)]
+        ["Crew", "North crew"]
       ];
+      if (n !== null) {
+        fields.push(["Panels Required", String(n)]);
+      }
       fields.forEach(([name, value], i) => {
         const y = 42 * u + i * 19 * u;
-        const last = i === fields.length - 1;
+        const last = i === 2;
         if (last) {
           rounded(c, 2 * u, y - 8 * u, cw * 0.44, 16 * u, 3 * u);
           c.fillStyle = "#EEF4FF";
@@ -1749,16 +1726,18 @@ export function createWorld(ctx) {
         fitText(c, value, cw * 0.26, y, cw * 0.17, (last ? 11 : 8) * u, "800");
       });
       // The small i of the help text, next to the name
-      const iy = 42 * u + 2 * 19 * u;
-      c.beginPath();
-      c.arc(cw * 0.215, iy, 3.5 * u, 0, Math.PI * 2);
-      c.strokeStyle = SLDS.grey;
-      c.lineWidth = Math.max(2, 0.8 * u);
-      c.stroke();
-      c.fillStyle = SLDS.grey;
-      font(c, 5 * u, "800");
-      c.textAlign = "center";
-      c.fillText("i", cw * 0.215, iy + 0.5 * u);
+      if (n !== null) {
+        const iy = 42 * u + 2 * 19 * u;
+        c.beginPath();
+        c.arc(cw * 0.215, iy, 3.5 * u, 0, Math.PI * 2);
+        c.strokeStyle = SLDS.grey;
+        c.lineWidth = Math.max(2, 0.8 * u);
+        c.stroke();
+        c.fillStyle = SLDS.grey;
+        font(c, 5 * u, "800");
+        c.textAlign = "center";
+        c.fillText("i", cw * 0.215, iy + 0.5 * u);
+      }
       // The Panel delivery timeline on the right
       c.textAlign = "left";
       c.fillStyle = SLDS.text;
@@ -1820,6 +1799,15 @@ function drawFront(c, w, h, def) {
   c.strokeRect(2, 2, w - 4, h - 4);
   c.textAlign = "left";
   switch (look) {
+    case "meta":
+      // A metadata the story creates or updates: its type, then its API name
+      c.fillStyle = SLDS.purple;
+      c.fillRect(0, 0, 12, h);
+      c.fillStyle = SLDS.grey;
+      fitText(c, def.sub, 30, h * 0.3, w - 50, 24, "700");
+      c.fillStyle = SLDS.text;
+      fitText(c, text, 30, h * 0.66, w - 50, 34, "800", true);
+      return;
     case "row":
       c.fillStyle = def.hot ? SLDS.brand : SLDS.border;
       c.fillRect(0, 0, 10, h);
@@ -1985,9 +1973,13 @@ export const CSS = `
   font-weight: 700;
   white-space: nowrap;
 }
-.guinea-run .gr-w1-panels {
-  background: #0b2a55;
-  color: #ffffff;
+.guinea-run .gr-w1-veg {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #fff1d6;
+  color: #8a4b00;
+  font-weight: 800;
+  white-space: nowrap;
 }
 .guinea-run .gr-w1-ghost {
   padding: 2px 7px;
