@@ -21,7 +21,7 @@
 import { SLDS, rounded, font, fitText, glyph } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump", "confirm"];
-export const MODELS = ["platform", "office"];
+export const MODELS = ["salesforce", "office"];
 
 const LANES = [-1.7, 0, 1.7];
 const BELT_Y = 0.42;
@@ -101,13 +101,15 @@ export const TEXTS = {
     how2: "Jump with Up or a tap to stage your 4 files",
     how3: "Let everything else go by, then Commit and Save / Publish",
     goalStage: "Stage the 4 files of US-014: {{n}} / 4",
-    goalFlood: "Catch the purple Reset coin",
+    goalFlood: "Catch Reset, the purple branch",
     goalEnd: "Commit, then Save / Publish",
     coachStart: "Jump when one of your 4 files reaches you!",
     coachNoise: "Let that one go by: it is not US-014",
-    coachFlood: "Catch the purple Reset coin!",
+    coachFlood: "Catch Reset, the purple branch!",
     coachBack: "Your files are back: stage them again",
     lensHint: "In your lane",
+    itemBranch: "US-014 branch",
+    itemPr: "Pull Request next",
     selectAllShort: "Select all",
     note: "Recent Changes is a list of suspects, not of culprits. Tick by name, never by position. - V.",
     stagedTitle: "Staged Changes",
@@ -171,13 +173,15 @@ export const TEXTS = {
     how2: "Sautez avec Haut ou un tap pour stager vos 4 fichiers",
     how3: "Laissez passer le reste, puis Commit et Save / Publish",
     goalStage: "Stagez les 4 fichiers de US-014 : {{n}} / 4",
-    goalFlood: "Attrapez la pièce violette Reset",
+    goalFlood: "Attrapez Reset, la branche violette",
     goalEnd: "Commit, puis Save / Publish",
     coachStart: "Sautez quand un de vos 4 fichiers arrive !",
     coachNoise: "Laissez passer celui-là : ce n'est pas US-014",
-    coachFlood: "Attrapez la pièce violette Reset !",
+    coachFlood: "Attrapez Reset, la branche violette !",
     coachBack: "Vos fichiers reviennent : stagez-les à nouveau",
     lensHint: "Dans votre couloir",
+    itemBranch: "Branche US-014",
+    itemPr: "Pull Request ensuite",
     selectAllShort: "Tout sélectionner",
     note: "Recent Changes est une liste de suspects, pas de coupables. Cochez par nom, jamais par position. - V.",
     stagedTitle: "Staged Changes",
@@ -461,6 +465,10 @@ export function createWorld(ctx) {
   basket.add(frontWall);
   const pile = new THREE.InstancedMesh(paint.geometry("w2-mini", () => new THREE.BoxGeometry(0.3, 0.22, 0.26)), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }), PILE_MAX);
   disposables.push(pile.material);
+  // Every instance gets a colour now: the renderer must see the colour attribute from the first frame
+  for (let i = 0; i < PILE_MAX; i++) {
+    pile.setColorAt(i, new THREE.Color(0x2e844a));
+  }
   pile.count = 0;
   // Its instances move: a bounding sphere computed once would hide them
   pile.frustumCulled = false;
@@ -537,26 +545,8 @@ export function createWorld(ctx) {
     typeSides[name] = paint.plain(new THREE.Color(type.color).getHex(), { roughness: 0.5 });
   }
 
-  // The crate body is the Kenney crate, one instanced mesh per part of it for
-  // the whole pool; each crate keeps its own label (front and top) on it.
-  // Without the model pack, the plain coloured box stays.
+  // A belt crate is a Lightning card in its type's colour: it reads better than any model
   const crateParts = [];
-  const crateModel = ctx.models && ctx.models.get("crate", { shadows: false });
-  if (crateModel) {
-    const size = new THREE.Box3().setFromObject(crateModel).getSize(new THREE.Vector3());
-    crateModel.scale.multiply(new THREE.Vector3(CRATE.w / size.x, CRATE.h / size.y, CRATE.d / size.z));
-    crateModel.position.y = -CRATE.h / 2;
-    crateModel.updateMatrixWorld(true);
-    crateModel.traverse((child) => {
-      if (child.isMesh) {
-        const mesh = new THREE.InstancedMesh(child.geometry, child.material, POOL);
-        mesh.frustumCulled = false;
-        mesh.castShadow = engine.settings.shadows;
-        root.add(mesh);
-        crateParts.push({ mesh, local: child.matrixWorld.clone() });
-      }
-    });
-  }
   const labelGeometry = paint.geometry("w2-crate-label", () => crateLabelGeometry(THREE));
   const hidden = new THREE.Matrix4().makeScale(0, 0, 0);
 
@@ -603,10 +593,11 @@ export function createWorld(ctx) {
   // The special ones, built once each: the note, two power-ups, the header row
   function coin(kind, color, glyphName, label, sign) {
     const group = new THREE.Group();
-    const model = ctx.models && ctx.models.get(kind === "reset" ? "coin-silver" : "coin-gold", { height: 0.86, shadows: false });
+    // Sort by Last Updated Date sorts records; the reset puts the branch back at its branch point
+    const model = ctx.models && ctx.models.get(kind === "reset" ? "branch" : "record", { height: 0.8, shadows: false });
     let disc;
     if (model) {
-      model.position.y = -0.43;
+      model.position.y = -0.4;
       disc = new THREE.Group();
       disc.add(model);
     } else {
@@ -629,8 +620,17 @@ export function createWorld(ctx) {
     reset: coin("reset", SLDS.purple, "loop", "Reset", "Reset"),
     note: (() => {
       const group = new THREE.Group();
-      const box = new THREE.Mesh(noteGeometry, noteMaterial);
-      box.castShadow = engine.settings.shadows;
+      const model = ctx.models && ctx.models.get("note", { height: 0.75, shadows: false });
+      let box;
+      if (model) {
+        model.position.y = -0.375;
+        model.rotation.y = Math.PI;
+        box = new THREE.Group();
+        box.add(model);
+      } else {
+        box = new THREE.Mesh(noteGeometry, noteMaterial);
+        box.castShadow = engine.settings.shadows;
+      }
       group.add(box);
       group.visible = false;
       root.add(group);
@@ -1104,6 +1104,7 @@ export function createWorld(ctx) {
 
   function startEnd() {
     hud.goal(t("goalEnd"));
+    showEndItem("logo");
     showLens(null);
     zone.visible = false;
     phase = "end";
@@ -1145,7 +1146,8 @@ export function createWorld(ctx) {
         hint.textContent = t("keyOne");
         break;
       }
-      case "publish": {
+      case "publish":
+        showEndItem("pr"); {
         el("strong", "", header, t("pipeTitle"));
         el("span", "gr-w2-branch", header, BRANCH);
         el("div", "gr-w2-done", body, "✓ " + t("commitDone"));
@@ -1219,6 +1221,7 @@ export function createWorld(ctx) {
     switch (id) {
       case "commit":
         ctx.collect(100, "Commit");
+        showEndItem("branch");
         showStep("publish");
         return;
       case "publish":
@@ -1420,6 +1423,7 @@ export function createWorld(ctx) {
     ctx.setData("lane", lane);
     debugData();
     updateLens(time);
+    growEndItems(dt, time);
     if (panel.isConnected) {
       const overlay = hud.layer.parentElement;
       panel.classList.toggle("gr-w2-padded", Boolean(overlay && overlay.classList.contains("gr-show-buttons")));
@@ -1441,7 +1445,7 @@ export function createWorld(ctx) {
     basket.scale.set(1 + pop * 0.4, 1 - pop * 0.3, 1 + pop * 0.4);
   }
 
-  /** The office around the belts: Kenney furniture, crates and barrels, nothing in the way. */
+  /** Around the belts: office furniture, package.xml boxes, CI runners and helios-dev. Nothing in the way. */
   function placeProps() {
     const FLOOR = -0.6;
     const props = [
@@ -1452,17 +1456,17 @@ export function createWorld(ctx) {
       ["pottedPlant", { height: 1.3 }, -4.3, -3.2, 0],
       ["pottedPlant", { height: 1.4 }, 6.2, -7.5, 0.5],
       ["plantSmall2", { height: 0.7 }, -4.4, -12, 0],
-      ["cardboardBoxClosed", { height: 0.8 }, 5.0, -11.5, 0.3],
-      ["cardboardBoxClosed", { height: 0.6 }, 5.0, -11.5, 0.9, 0.8],
-      ["cardboardBoxOpen", { height: 0.7 }, 5.8, -12.8, -0.4],
-      ["barrel", { height: 0.95 }, -4.6, -15, 0],
-      ["barrel", { height: 0.95 }, -5.5, -15.6, 0.6],
-      ["crate-strong", { height: 1.0 }, 5.2, -18.5, 0.2],
-      ["crate-strong", { height: 0.8 }, 5.25, -18.5, 0.7, 1.0],
-      ["crate", { height: 0.9 }, -4.6, -20.5, 0.4],
-      ["conveyor-belt", { width: 1.8 }, 5.4, -23, Math.PI / 2],
-      ["chest", { height: 0.7 }, -3.6, 1.2, 0.3],
-      ["trashcan", { height: 0.7 }, 6.3, -3.5, 0]
+      ["trashcan", { height: 0.7 }, 6.3, -3.5, 0],
+      // package.xml boxes stacked by the belt: what the retrieve feeds
+      ["package-xml", { height: 0.9 }, 5.0, -11.5, Math.PI + 0.3],
+      ["package-xml", { height: 0.7 }, 5.05, -11.5, Math.PI + 0.8, 0.9],
+      ["package-xml", { height: 0.8 }, 5.9, -12.8, Math.PI - 0.4],
+      ["package-xml", { height: 0.8 }, -4.7, -15.5, Math.PI + 0.2],
+      // The runner that will take the branch once it is pushed
+      ["ci-runner", { height: 1.6 }, 5.3, -19, Math.PI - 0.3],
+      ["ci-runner", { height: 1.6 }, -4.7, -20.5, Math.PI + 0.3],
+      // helios-dev, the org the Metadata Retriever reads, above the gantry
+      ["org-cloud", { height: 1.6 }, 0, -25.4, Math.PI, 4.9]
     ];
     for (const [name, size, x, z, turn, lift] of props) {
       const prop = ctx.models && ctx.models.get(name, Object.assign({ shadows: false }, size));
@@ -1472,6 +1476,51 @@ export function createWorld(ctx) {
       prop.position.set(x, FLOOR + (lift || 0), z);
       prop.rotation.y = turn;
       root.add(prop);
+    }
+  }
+
+  // The end of the world, on the deck: the Cloudity logo behind the guinea pig,
+  // then the branch once committed, then the Pull Request to come once published
+  const endItems = {};
+  function showEndItem(id) {
+    if (endItems[id] || !ctx.models) {
+      return;
+    }
+    // A phone sees a narrow slice: the items come closer to the guinea pig
+    const narrow = engine.portrait;
+    const side = narrow ? 1.05 : 1.7;
+    const spec = {
+      logo: ["cloudity-logo", narrow ? 1.0 : 1.3, 0, narrow ? -2.6 : -4.2, narrow ? -0.1 : 0.2, null, SLDS.brand],
+      branch: ["branch", narrow ? 0.6 : 0.8, -side, 0.5, 0, t("itemBranch"), SLDS.success],
+      pr: ["pull-request", narrow ? 0.6 : 0.8, side, 0.5, 0, t("itemPr"), SLDS.purple]
+    }[id];
+    const model = ctx.models.get(spec[0], { height: spec[1], shadows: false });
+    if (!model) {
+      return;
+    }
+    const holder = new THREE.Group();
+    model.rotation.y = Math.PI;
+    holder.add(model);
+    if (spec[5]) {
+      const sign = paint.sign("w2-end-" + id, spec[5], { color: spec[6], glyph: id === "pr" ? "fork" : "branch", height: narrow ? 0.2 : 0.32 });
+      sign.position.y = spec[1] + 0.3;
+      holder.add(sign);
+    }
+    holder.position.set(spec[2], BELT_Y + spec[4], spec[3]);
+    holder.scale.setScalar(0.01);
+    root.add(holder);
+    endItems[id] = { holder, grow: 0 };
+    ctx.sound.play("power");
+    ctx.fx.burst(spec[2], BELT_Y + spec[4] + 0.5, spec[3], { count: 24, speed: 3, up: 3, life: 0.9 });
+  }
+
+  function growEndItems(dt, time) {
+    for (const item of Object.values(endItems)) {
+      item.grow = Math.min(1, item.grow + dt * 3);
+      const k = item.grow;
+      // A pop: overshoot, then settle
+      item.holder.scale.setScalar(Math.max(0.01, k < 1 ? k * 1.15 : 1));
+      item.holder.rotation.y = Math.sin(time * 1.5) * 0.25;
     }
   }
 
