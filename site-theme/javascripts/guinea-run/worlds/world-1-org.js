@@ -1,26 +1,26 @@
 /*
- * World 1, Build it in the org (Labs 1.3 and 1.4): a side-on platformer
- * through what a contributor does, in the order of the labs.
+ * World 1, Build it in the org: a side-on platformer through what a
+ * contributor does, in the order a real story goes.
  *
- * Lab 1.3 first: New User Story, the type, the name, the org, and the branch
- * it creates. Two answers of the command are traps that give way under the
- * guinea pig, the way the lab warns: Fix is for something already delivered,
- * and Create new scratch org fails after a long wait.
+ * First New User Story: the type, the name, the org, and the branch it
+ * creates. Two answers of the command are traps that give way under the
+ * guinea pig: Fix is for something already delivered, and Create new scratch
+ * org fails after a long wait.
  *
- * Then Lab 1.4, one stop per metadata the story creates or updates: the
- * custom field Installation__c.Panels_Required__c, the page layout
- * Installation Layout, then the permission sets Helios_Delivery_Crew and
- * Helios_Delivery_Manager. Between the field and the layout, a trap: keeping
- * Visible ticked for the profiles, when access goes through a permission set.
+ * Then one stop per metadata the story creates or updates: the custom field
+ * Account.Customer_Tier__c, the page layout Account-Account Layout, then the
+ * permission sets Sales_Rep and Sales_Manager. Between the field and the
+ * layout, a trap: keeping Visible ticked for the profiles, when access goes
+ * through a permission set.
  *
- * The twist is the lab's warning: after Save the guinea pig is a ghost, because
- * a field no permission grants is invisible to everybody, the admin who
- * created it included. Only Helios_Delivery_Manager, the permission set you
- * hold, makes it visible again. The crew gets Read Access only, as in the lab:
- * Edit Access floats above the crew's row as a temptation.
+ * The twist: after Save the guinea pig is a ghost, because a field no
+ * permission grants is invisible to everybody, the admin who created it
+ * included. Only Sales_Manager, the permission set you hold, makes it visible
+ * again. The sales reps get Read Access only: Edit Access floats above their
+ * row as a temptation.
  *
- * Vegetables are bonus points all along, as in world 0. At the end the record
- * INST-00001 shows Panels Required: 39, the 23 + 16 of its timeline.
+ * Vegetables are bonus points all along, as in world 0. At the end the
+ * account Acme Corp shows Customer Tier: Gold.
  */
 import { SLDS, rounded, fitText, glyph, font, pictureBox } from "../core/painter.js";
 
@@ -35,14 +35,14 @@ const VEGETABLE_MODELS = { fennel: "fennel", carrot: "carrot", bellPepper: "bell
 const VEGETABLE_COLORS = { fennel: "#7BC96F", carrot: "#FF8A3D", bellPepper: "#E8473B", cucumber: "#3E9B4F", romaine: "#8CD17D", parsley: "#2E844A" };
 const VEGETABLE_POINTS = 15;
 
-// Which item each part shows: what it means in the lab
+// Which item each part shows: what it means in the story
 function partItem(def) {
   const BY_LABEL = {
     "New User Story": "ticket",
     Feature: "ticket",
-    "US-014-panels-required": "ticket",
-    "Reuse scratch org helios-dev": "scratch-cloud",
-    "features/US-014-panels-required": "branch",
+    "US-014-customer-tier": "ticket",
+    "Sandbox org with source tracking": "scratch-cloud",
+    "features/US-014-customer-tier": "branch",
     Open: "scratch-cloud"
   };
   return def.item || BY_LABEL[def.label] || "custom-field";
@@ -50,19 +50,19 @@ function partItem(def) {
 
 export const TEXTS = {
   en: {
-    intro: "US-014, Show the crew how many panels a job needs. Start it on its own branch, then build it in Setup: one field, one layout, two permission sets.",
+    intro: "US-014, Show the customer tier on accounts. Start it on its own branch, then build it in Setup: one field, one layout, two permission sets.",
     how1: "Run with Left and Right, jump with Up or Space",
-    how2: "Grab the glowing item: the next step of the lab",
-    how3: "Eat vegetables for bonus points, reach INST-00001",
+    how2: "Grab the glowing item: the next step of the story",
+    how3: "Eat vegetables for bonus points, reach Acme Corp",
     goalNext: "Next: {{label}}",
-    goalEnd: "Run to INST-00001",
+    goalEnd: "Run to Acme Corp",
     c_start: "Run right and jump the gaps!",
     faster: "Faster!",
     c_trap: "Wrong answer: jump back up!",
     c_hazard: "Wait for the red cross to move, then go",
     c_fall: "Back at the last flag: try again",
-    c_ghost: "Invisible! Grab Helios_Delivery_Manager to be seen again",
-    c_visible: "Visible again! Run to INST-00001",
+    c_ghost: "Invisible! Grab Sales_Manager to be seen again",
+    c_visible: "Visible again! Run to Acme Corp",
     c_lift: "Ride the Edit button up",
     coachVeg: "Yum! Vegetables are bonus points",
     note: "Created a field and cannot see it? Nobody can. Grant it in a permission set, never a profile, then look at a real record before you call it done. - V.",
@@ -80,40 +80,42 @@ export const TEXTS = {
     o_fix: "Fix is for something already delivered",
     o_fix_tip: "US-014 adds something that was not there: answer Feature: a new capability or an improvement.",
     o_create: "The command fails after a long wait",
-    o_create_tip: "Never take Create new scratch org here: a Developer Edition Dev Hub keeps only three alive. Take Reuse scratch org helios-dev.",
+    o_create_tip: "Never take Create new scratch org here: your work goes in your dev sandbox, and a Dev Hub that reached its scratch org limit fails after a long wait. Take Sandbox org with source tracking.",
     o_profile: "The profiles would get the field",
     o_profile_tip: "Clear Visible for every profile on the field-level security screen: in this project access goes through a permission set, never a profile.",
     o_valid: "Save fails with a validation rule error",
-    o_valid_tip: "The Helios org refuses an installation date in the past. If you changed the date by accident, put it back to a future date.",
-    o_crewEdit: "Leave Edit Access unticked on the crew",
-    o_crewEdit_tip: "A crew member reads how many panels to load, they do not decide the number.",
+    o_valid_tip: "A validation rule of the org refused the record. If you changed a value by accident, put it back to a valid one before you save again.",
+    o_repEdit: "Leave Edit Access unticked on the sales reps",
+    o_repEdit_tip: "A sales rep reads the tier of a customer, the sales managers decide it.",
     v_hazard: "Validation rule",
     v_pit: "Session expired or invalid",
-    v_ghostSign: "Panels Required: visible to nobody",
+    v_ghostSign: "Customer Tier: visible to nobody",
     v_orgAlias: "Org · ALIAS",
+    v_devSandbox: "Your dev sandbox",
+    v_openDev: "Open dev sandbox",
     v_profileKeep: "Keep Visible ticked for the profiles",
     v_profileClear: "Clear Visible for every profile",
-    m_field: "Created: the Number field that tells the crew how many panels to load",
-    m_layout: "Updated: puts Panels Required on the Installation record page",
-    m_crew: "Updated: Read Access for the crew, who load the panels",
-    m_manager: "Updated: Read and Edit Access for the planners, you included",
-    branch: "git checkout -b features/US-014-panels-required",
+    m_field: "Created: the Picklist that shows the tier of each customer",
+    m_layout: "Updated: puts Customer Tier on the Account record page",
+    m_rep: "Updated: Read Access for the sales reps, who read the tier",
+    m_manager: "Updated: Read and Edit Access for the sales managers, you included",
+    branch: "git checkout -b features/US-014-customer-tier",
     target: "Target branch: integration",
-    fieldName: "Field Name: Panels_Required (Salesforce adds __c when it saves)",
-    saved: "Panels_Required__c saved",
-    ghost: "Panels Required is invisible to everybody, you included",
+    fieldName: "Field Name: Customer_Tier (Salesforce adds __c when it saves)",
+    saved: "Customer_Tier__c saved",
+    ghost: "Customer Tier is invisible to everybody, you included",
     ghostTick: "No profile, no permission set grants it yet",
-    crewRead: "The crew can read it. You still cannot: you hold Helios Delivery Manager",
-    mgrRead: "Visible again: Helios Delivery Manager grants it to you",
+    repRead: "The sales reps can read it. You still cannot: you hold Sales Manager",
+    mgrRead: "Visible again: Sales Manager grants it to you",
     refresh: "Refresh: one more attempt",
-    info_ghost: "You reached INST-00001 still invisible: in the lab, without Read Access on Helios Delivery Manager the record shows you nothing.",
-    info_field: "You skipped the custom field: in the lab, Panels_Required__c is what the whole story builds.",
-    info_crew: "You skipped Helios_Delivery_Crew: in the lab, the crew could not see the field.",
-    info_layout: "You skipped Installation Layout: in the lab, that is what puts the field on the record page.",
+    info_ghost: "You reached Acme Corp still invisible: without Read Access on Sales Manager, the record shows you nothing.",
+    info_field: "You skipped the custom field: Customer_Tier__c is what the whole story builds.",
+    info_rep: "You skipped Sales_Rep: the sales reps could not see the field.",
+    info_layout: "You skipped Account-Account Layout: that is what puts the field on the record page.",
     info_other: "Also missed: {{list}}.",
-    outOfOrder: "{{label}}, out of order: in the lab, {{first}} comes first",
-    done: "Panels Required on INST-00001: {{n}}, the 23 + 16 of its timeline",
-    doneGhost: "INST-00001 shows no Panels Required: nothing grants it to you",
+    outOfOrder: "{{label}}, out of order: {{first}} comes first",
+    done: "Customer Tier on Acme Corp: {{n}}",
+    doneGhost: "Acme Corp shows no Customer Tier: nothing grants it to you",
     veg_fennel: "Fennel",
     veg_carrot: "Carrot",
     veg_bellPepper: "Bell pepper",
@@ -122,19 +124,19 @@ export const TEXTS = {
     veg_parsley: "Parsley"
   },
   fr: {
-    intro: "US-014, Show the crew how many panels a job needs. Démarrez-la sur sa propre branch, puis construisez-la dans Setup : un champ, une présentation de page, deux permission sets.",
+    intro: "US-014, afficher le niveau client sur les comptes. Démarrez-la sur sa propre branch, puis construisez-la dans Setup : un champ, une présentation de page, deux permission sets.",
     how1: "Courez avec Gauche et Droite, sautez avec Haut ou Espace",
-    how2: "Prenez l'élément qui brille : la prochaine étape du lab",
-    how3: "Mangez des légumes pour des points bonus, atteignez INST-00001",
+    how2: "Prenez l'élément qui brille : la prochaine étape de la story",
+    how3: "Mangez des légumes pour des points bonus, atteignez Acme Corp",
     goalNext: "Suivant : {{label}}",
-    goalEnd: "Courez vers INST-00001",
+    goalEnd: "Courez vers Acme Corp",
     c_start: "Courez à droite et sautez les trous !",
     faster: "Plus vite !",
     c_trap: "Mauvaise réponse : remontez d'un saut !",
     c_hazard: "Attendez que la croix rouge bouge, puis passez",
     c_fall: "Retour au dernier drapeau : réessayez",
-    c_ghost: "Invisible ! Prenez Helios_Delivery_Manager pour réapparaître",
-    c_visible: "De nouveau visible ! Courez vers INST-00001",
+    c_ghost: "Invisible ! Prenez Sales_Manager pour réapparaître",
+    c_visible: "De nouveau visible ! Courez vers Acme Corp",
     c_lift: "Montez sur le bouton Edit",
     coachVeg: "Miam ! Les légumes, ce sont des points bonus",
     note: "Vous avez créé un champ et vous ne le voyez pas ? Personne ne le voit. Accordez-le dans un permission set, jamais un profil, puis regardez un vrai enregistrement avant de dire que c'est fini. - V.",
@@ -152,40 +154,42 @@ export const TEXTS = {
     o_fix: "Fix, c'est pour quelque chose de déjà livré",
     o_fix_tip: "US-014 ajoute quelque chose qui n'existait pas : répondez Feature: a new capability or an improvement.",
     o_create: "La commande échoue après une longue attente",
-    o_create_tip: "Ne prenez jamais Create new scratch org ici : un Dev Hub Developer Edition n'en garde que trois en vie. Prenez Reuse scratch org helios-dev.",
+    o_create_tip: "Ne prenez jamais Create new scratch org ici : votre travail va dans votre sandbox de dev, et un Dev Hub qui a atteint sa limite de scratch orgs échoue après une longue attente. Prenez Sandbox org with source tracking.",
     o_profile: "Les profils auraient le champ",
     o_profile_tip: "Décochez Visible pour tous les profils sur l'écran de sécurité au niveau du champ : dans ce projet l'accès passe par un permission set, jamais par un profil.",
     o_valid: "L'enregistrement échoue avec une erreur de règle de validation",
-    o_valid_tip: "L'org Helios refuse une date d'installation dans le passé. Si vous avez changé la date par erreur, remettez une date future.",
-    o_crewEdit: "Laissez Edit Access décoché pour l'équipe",
-    o_crewEdit_tip: "Un membre de l'équipe lit combien de panneaux charger, il ne décide pas du nombre.",
+    o_valid_tip: "Une règle de validation de l'org a refusé l'enregistrement. Si vous avez changé une valeur par erreur, remettez une valeur valide avant d'enregistrer à nouveau.",
+    o_repEdit: "Laissez Edit Access décoché pour les commerciaux",
+    o_repEdit_tip: "Un commercial lit le niveau d'un client, ce sont les responsables commerciaux qui le décident.",
     v_hazard: "Validation rule",
     v_pit: "Session expired or invalid",
-    v_ghostSign: "Panels Required : visible par personne",
+    v_ghostSign: "Customer Tier : visible par personne",
     v_orgAlias: "Org · ALIAS",
+    v_devSandbox: "Votre sandbox de dev",
+    v_openDev: "Ouvrir la sandbox de dev",
     v_profileKeep: "Garder Visible coché pour les profils",
     v_profileClear: "Décocher Visible pour tous les profils",
-    m_field: "Créé : le champ Number qui dit à l'équipe combien de panneaux charger",
-    m_layout: "Mis à jour : met Panels Required sur la page d'enregistrement Installation",
-    m_crew: "Mis à jour : Read Access pour l'équipe, qui charge les panneaux",
-    m_manager: "Mis à jour : Read Access et Edit Access pour les planificateurs, vous compris",
-    branch: "git checkout -b features/US-014-panels-required",
+    m_field: "Créé : le champ Picklist qui montre le niveau de chaque client",
+    m_layout: "Mis à jour : met Customer Tier sur la page d'enregistrement Compte",
+    m_rep: "Mis à jour : Read Access pour les commerciaux, qui lisent le niveau",
+    m_manager: "Mis à jour : Read Access et Edit Access pour les responsables commerciaux, vous compris",
+    branch: "git checkout -b features/US-014-customer-tier",
     target: "Branch cible : integration",
-    fieldName: "Field Name : Panels_Required (Salesforce ajoute __c à l'enregistrement)",
-    saved: "Panels_Required__c enregistré",
-    ghost: "Panels Required est invisible pour tout le monde, vous compris",
+    fieldName: "Field Name : Customer_Tier (Salesforce ajoute __c à l'enregistrement)",
+    saved: "Customer_Tier__c enregistré",
+    ghost: "Customer Tier est invisible pour tout le monde, vous compris",
     ghostTick: "Aucun profil, aucun permission set ne l'accorde encore",
-    crewRead: "L'équipe peut le lire. Vous, toujours pas : vous avez Helios Delivery Manager",
-    mgrRead: "De nouveau visible : Helios Delivery Manager vous l'accorde",
+    repRead: "Les commerciaux peuvent le lire. Vous, toujours pas : vous avez Sales Manager",
+    mgrRead: "De nouveau visible : Sales Manager vous l'accorde",
     refresh: "Refresh : un essai de plus",
-    info_ghost: "Vous avez atteint INST-00001 encore invisible : dans le lab, sans Read Access sur Helios Delivery Manager, l'enregistrement ne vous montre rien.",
-    info_field: "Vous avez sauté le champ personnalisé : dans le lab, Panels_Required__c est ce que toute la story construit.",
-    info_crew: "Vous avez sauté Helios_Delivery_Crew : dans le lab, l'équipe ne voyait pas le champ.",
-    info_layout: "Vous avez sauté Installation Layout : dans le lab, c'est ce qui met le champ sur la page d'enregistrement.",
+    info_ghost: "Vous avez atteint Acme Corp encore invisible : sans Read Access sur Sales Manager, l'enregistrement ne vous montre rien.",
+    info_field: "Vous avez sauté le champ personnalisé : Customer_Tier__c est ce que toute la story construit.",
+    info_rep: "Vous avez sauté Sales_Rep : les commerciaux ne voyaient pas le champ.",
+    info_layout: "Vous avez sauté Account-Account Layout : c'est ce qui met le champ sur la page d'enregistrement.",
     info_other: "Également manqué : {{list}}.",
-    outOfOrder: "{{label}}, dans le désordre : dans le lab, {{first}} vient d'abord",
-    done: "Panels Required sur INST-00001 : {{n}}, les 23 + 16 de sa timeline",
-    doneGhost: "INST-00001 ne montre pas Panels Required : rien ne vous l'accorde",
+    outOfOrder: "{{label}}, dans le désordre : {{first}} vient d'abord",
+    done: "Customer Tier sur Acme Corp : {{n}}",
+    doneGhost: "Acme Corp ne montre pas Customer Tier : rien ne vous l'accorde",
     veg_fennel: "Fenouil",
     veg_carrot: "Carotte",
     veg_bellPepper: "Poivron",
@@ -204,31 +208,14 @@ export const QUOTES = [
   { lab: "1.3", text: "Feature: a new capability or an improvement" },
   { lab: "1.3", text: "Fix: correct something that is broken" },
   { lab: "1.3", text: "What is the name of your new User Story?" },
-  { lab: "1.3", text: "US-014-panels-required" },
   { lab: "1.3", text: "Which Salesforce org do you want to work in?" },
-  { lab: "1.3", text: "Reuse scratch org helios-dev" },
   { lab: "1.3", text: "Create new scratch org" },
-  { lab: "1.3", text: "features/US-014-panels-required" },
   { lab: "1.4", text: "Orgs Manager" },
-  { lab: "1.4", text: "helios-dev" },
   { lab: "1.4", text: "ALIAS" },
-  { lab: "1.4", text: "Setup > Object Manager > Installation" },
   { lab: "1.4", text: "Fields & Relationships" },
-  { lab: "1.4", text: "Panels Required" },
-  { lab: "1.4", text: "Panels_Required" },
-  { lab: "1.4", text: "Panels_Required__c" },
-  { lab: "1.5", text: "Installation__c.Panels_Required__c" },
-  { lab: "1.4", text: "Installation Layout" },
-  { lab: "1.5", text: "Installation__c-Installation Layout" },
-  { lab: "1.4", text: "Setup > Permission Sets > Helios Delivery Crew" },
-  { lab: "1.4", text: "Helios_Delivery_Crew" },
-  { lab: "1.4", text: "Helios Delivery Manager" },
-  { lab: "1.5", text: "Helios_Delivery_Manager" },
   { lab: "1.4", text: "Field Permissions" },
   { lab: "1.4", text: "Read Access" },
-  { lab: "1.4", text: "Edit Access" },
-  { lab: "1.4", text: "App Launcher > Helios Delivery > Installations" },
-  { lab: "1.4", text: "INST-00001" }
+  { lab: "1.4", text: "Edit Access" }
 ];
 
 /* ---------- How it feels ---------- */
@@ -260,7 +247,7 @@ const VEGETABLE_RADIUS = 0.75;
 const VEGETABLE_HEIGHT = 0.6;
 const DEPTH = 2.4;
 const TRAP_S = 1.2;
-// Edit Access, the temptation above the crew's row
+// Edit Access, the temptation above the sales reps' row
 const DECOY_X = 138.7;
 const DECOY_Y = 7;
 const END_X = 161.5;
@@ -282,56 +269,56 @@ const PACE_RATE = 0.08;
 // Each platform: x0, x1, top, look, text, extra. Every one is a solid box.
 function levelPlatforms(t) {
   return [
-    // Lab 1.3, in the DevOps Pipeline panel
+    // New User Story, in the DevOps Pipeline of VS Code
     { x0: -6, x1: 8, top: 0, h: 1.2, look: "vscode", text: "DevOps Pipeline", sub: "Project Contribution Workflow" },
     { x0: 9, x1: 16.5, top: -1, look: "answer", text: "Fix: correct something that is broken", trap: { title: "o_fix", tip: "o_fix_tip", delay: TRAP_S } },
     { x0: 10, x1: 15.5, top: 1.6, h: 0.6, look: "answer", text: "Feature: a new capability or an improvement" },
-    { x0: 17.5, x1: 23.5, top: 2.2, look: "input", text: "US-014-panels-required", sub: "What is the name of your new User Story?" },
+    { x0: 17.5, x1: 23.5, top: 2.2, look: "input", text: "US-014-customer-tier", sub: "What is the name of your new User Story?" },
     { x0: 24.5, x1: 34, top: 1.2, look: "answer", text: "Create new scratch org", trap: { title: "o_create", tip: "o_create_tip", delay: 1.8 } },
-    { x0: 25.5, x1: 30.5, top: 3.8, h: 0.6, look: "answer", text: "Reuse scratch org helios-dev" },
-    { x0: 32.5, x1: 40, top: 3.4, look: "branch", text: "features/US-014-panels-required" },
+    { x0: 25.5, x1: 30.5, top: 3.8, h: 0.6, look: "answer", text: "Sandbox org with source tracking" },
+    { x0: 32.5, x1: 40, top: 3.4, look: "branch", text: "features/US-014-customer-tier" },
     // Orgs Manager: read the ALIAS column, every row is an org
-    { x0: 40, x1: 44, top: 2.6, look: "row", text: "helios-integration", sub: t("v_orgAlias") },
-    { x0: 44, x1: 47.7, top: 1.8, look: "row", text: "helios-uat", sub: t("v_orgAlias") },
-    { x0: 47.7, x1: 53.5, top: 1, look: "row", text: "helios-dev", sub: t("v_orgAlias"), hot: true },
-    // Setup > Object Manager > Installation
+    { x0: 40, x1: 44, top: 2.6, look: "row", text: "integration", sub: t("v_orgAlias") },
+    { x0: 44, x1: 47.7, top: 1.8, look: "row", text: "uat", sub: t("v_orgAlias") },
+    { x0: 47.7, x1: 53.5, top: 1, look: "row", text: "dev-sandbox", sub: t("v_orgAlias"), hot: true },
+    // Setup > Object Manager > Account
     { x0: 55.5, x1: 59, top: 1, look: "card", text: "Setup" },
     { x0: 61.6, x1: 70, top: 1, look: "card", text: "Object Manager" },
-    { x0: 70, x1: 74, top: 1.4, look: "card", text: "Installation" },
+    { x0: 70, x1: 74, top: 1.4, look: "card", text: "Account" },
     // The custom field, created
-    { x0: 75.5, x1: 84, top: 2.6, look: "meta", text: "Installation__c.Panels_Required__c", sub: "CustomField", line: "m_field" },
-    // Field-level security: the profiles, a trap, or cleared, the way of the lab
+    { x0: 75.5, x1: 84, top: 2.6, look: "meta", text: "Account.Customer_Tier__c", sub: "CustomField", line: "m_field" },
+    // Field-level security: the profiles, a trap, or cleared, the right way
     { x0: 85.5, x1: 92.5, top: 1.8, look: "answer", text: t("v_profileKeep"), trap: { title: "o_profile", tip: "o_profile_tip", delay: TRAP_S } },
     { x0: 86.5, x1: 91.5, top: 4, h: 0.6, look: "answer", text: t("v_profileClear") },
     // The page layout, updated, and Save
-    { x0: 93.5, x1: 101, top: 3.6, h: 2, look: "meta", text: "Installation__c-Installation Layout", sub: "Layout", line: "m_layout" },
+    { x0: 93.5, x1: 101, top: 3.6, h: 2, look: "meta", text: "Account-Account Layout", sub: "Layout", line: "m_layout" },
     { x0: 103.6, x1: 109, top: 3, look: "button", text: "Save", big: true, save: true },
     // After the twist: the permission sets
     { x0: 110.3, x1: 115.5, top: 2.6, look: "card", text: "Setup > Permission Sets", ghost: true },
-    { x0: 115.5, x1: 124, top: 3.4, look: "meta", text: "Helios_Delivery_Crew", sub: "PermissionSet", line: "m_crew", ghost: true },
+    { x0: 115.5, x1: 124, top: 3.4, look: "meta", text: "Sales_Rep", sub: "PermissionSet", line: "m_rep", ghost: true },
     { x0: 125.5, x1: 128.7, top: 2, look: "button", text: "Edit", ghost: true, move: { axis: "y", amp: 2.4, speed: 0.95, lift: true } },
-    { x0: 129.8, x1: 138, top: 4.4, look: "fls", text: "Panels Required", sub: "Field Permissions", faint: true },
-    { x0: 139.4, x1: 148, top: 4.4, look: "meta", text: "Helios_Delivery_Manager", sub: "PermissionSet", line: "m_manager", ghost: true },
+    { x0: 129.8, x1: 138, top: 4.4, look: "fls", text: "Customer Tier", sub: "Field Permissions", faint: true },
+    { x0: 139.4, x1: 148, top: 4.4, look: "meta", text: "Sales_Manager", sub: "PermissionSet", line: "m_manager", ghost: true },
     // The record
     { x0: 149.5, x1: 153, top: 2.8, look: "card", text: "App Launcher" },
-    { x0: 154.5, x1: 167.5, top: 2, h: 2.6, look: "record", text: "INST-00001" }
+    { x0: 154.5, x1: 167.5, top: 2, h: 2.6, look: "record", text: "Acme Corp" }
   ];
 }
 
-// The parts, in the order they must be got. kind: answer (Lab 1.3), org, meta
-// (one per metadata the story creates or updates, Lab 1.4)
-function levelParts() {
+// The parts, in the order they must be got. kind: answer (New User Story), org,
+// meta (one per metadata the story creates or updates)
+function levelParts(t) {
   return [
     { x: 5.5, y: 1.1, label: "New User Story", glyph: "star", color: SLDS.brand, kind: "answer" },
     { x: 13.4, y: 2.6, label: "Feature", glyph: "bolt", color: SLDS.success, kind: "answer" },
-    { x: 21, y: 3.2, label: "US-014-panels-required", sign: "US-014", glyph: "code", color: SLDS.navy, kind: "answer" },
-    { x: 28.5, y: 4.8, label: "Reuse scratch org helios-dev", sign: "Reuse helios-dev", glyph: "org", color: SLDS.teal, kind: "answer" },
-    { x: 35, y: 4.4, label: "features/US-014-panels-required", sign: "Branch", glyph: "branch", color: SLDS.success, kind: "answer", event: "branch" },
-    { x: 52.4, y: 2, label: "Open", sign: "Open helios-dev", glyph: "cloud", color: SLDS.brand, kind: "org" },
-    { x: 79.75, y: 3.6, label: "CustomField Installation__c.Panels_Required__c", sign: "Panels_Required__c", item: "custom-field", glyph: "code", color: SLDS.navy, kind: "meta", line: "m_field", event: "field" },
-    { x: 97.25, y: 4.6, label: "Layout Installation__c-Installation Layout", sign: "Installation Layout", item: "record", glyph: "log", color: SLDS.success, kind: "meta", line: "m_layout", event: "layout" },
-    { x: 119.75, y: 4.4, label: "PermissionSet Helios_Delivery_Crew", sign: "Helios_Delivery_Crew", item: "permission-set", glyph: "permset", color: SLDS.purple, kind: "meta", line: "m_crew", event: "crewRead" },
-    { x: 143.7, y: 5.4, label: "PermissionSet Helios_Delivery_Manager", sign: "Helios_Delivery_Manager", item: "permission-set", glyph: "permset", color: SLDS.purple, kind: "meta", line: "m_manager", event: "mgrRead" }
+    { x: 21, y: 3.2, label: "US-014-customer-tier", sign: "US-014", glyph: "code", color: SLDS.navy, kind: "answer" },
+    { x: 28.5, y: 4.8, label: "Sandbox org with source tracking", sign: t("v_devSandbox"), glyph: "org", color: SLDS.teal, kind: "answer" },
+    { x: 35, y: 4.4, label: "features/US-014-customer-tier", sign: "Branch", glyph: "branch", color: SLDS.success, kind: "answer", event: "branch" },
+    { x: 52.4, y: 2, label: "Open", sign: t("v_openDev"), glyph: "cloud", color: SLDS.brand, kind: "org" },
+    { x: 79.75, y: 3.6, label: "CustomField Account.Customer_Tier__c", sign: "Customer_Tier__c", item: "custom-field", glyph: "code", color: SLDS.navy, kind: "meta", line: "m_field", event: "field" },
+    { x: 97.25, y: 4.6, label: "Layout Account-Account Layout", sign: "Account Layout", item: "record", glyph: "log", color: SLDS.success, kind: "meta", line: "m_layout", event: "layout" },
+    { x: 119.75, y: 4.4, label: "PermissionSet Sales_Rep", sign: "Sales_Rep", item: "permission-set", glyph: "permset", color: SLDS.purple, kind: "meta", line: "m_rep", event: "repRead" },
+    { x: 143.7, y: 5.4, label: "PermissionSet Sales_Manager", sign: "Sales_Manager", item: "permission-set", glyph: "permset", color: SLDS.purple, kind: "meta", line: "m_manager", event: "mgrRead" }
   ];
 }
 
@@ -373,14 +360,14 @@ const VEGETABLE_SPOTS = [
 // The screens behind the platforms: x0, x1, look, eyebrow, title
 const SCREENS = [
   [-7, 24, "vscode", "DevOps Pipeline", "New User Story"],
-  [24, 40, "vscode", "New User Story", "helios-dev"],
+  [24, 40, "vscode", "New User Story", "Sandbox org with source tracking"],
   [40, 55, "vscode", "sfdx-hardis", "Orgs Manager"],
   [55, 74.5, "setup", "Setup", "Object Manager"],
-  [74.5, 92.8, "setup", "Setup > Object Manager > Installation", "Fields & Relationships"],
-  [92.8, 110, "setup", "Installation", "Installation Layout"],
-  [110, 139, "ghost", "Setup > Permission Sets > Helios Delivery Crew", "Helios_Delivery_Crew"],
-  [139, 149, "ghost", "Setup > Permission Sets", "Helios_Delivery_Manager"],
-  [149, 169, "record", "Helios Delivery · Installations", "INST-00001"]
+  [74.5, 92.8, "setup", "Setup > Object Manager > Account", "Fields & Relationships"],
+  [92.8, 110, "setup", "Account", "Account Layout"],
+  [110, 139, "ghost", "Setup > Permission Sets > Sales Rep", "Sales_Rep"],
+  [139, 149, "ghost", "Setup > Permission Sets", "Sales_Manager"],
+  [149, 169, "record", "Sales · Accounts", "Acme Corp"]
 ];
 
 export function createWorld(ctx) {
@@ -479,7 +466,7 @@ export function createWorld(ctx) {
     return holder;
   }
 
-  // The finish: the Installation record, and the Cloudity mark over the end of the world
+  // The finish: the account Acme Corp, and the Cloudity mark over the end of the world
   {
     const record = ctx.models.get("record", { height: 1.3 });
     if (record) {
@@ -495,7 +482,7 @@ export function createWorld(ctx) {
 
   /* ---------- Parts, vegetables, hazards, checkpoints ---------- */
 
-  const parts = levelParts().map((def, i) => {
+  const parts = levelParts(t).map((def, i) => {
     const group = new THREE.Group();
     group.position.set(def.x, def.y, 0.2);
     const tileMaterial = paint.material("w1-part-tile-" + i, 128, 128, (c, w, h) => {
@@ -845,7 +832,7 @@ export function createWorld(ctx) {
         part.done = true;
         part.group.visible = false;
         nextPart = part.index + 1;
-        if (part.event === "crewRead") {
+        if (part.event === "repRead") {
           revealFaint();
         } else if (part.event === "mgrRead") {
           setGhost(false);
@@ -973,7 +960,7 @@ export function createWorld(ctx) {
   }
 
   function collectPart(part) {
-    // Out of order still counts, for fewer points and a word on the order of the lab
+    // Out of order still counts, for fewer points and a word on the right order
     // (one left far behind is simply missed: the end of the world says so)
     const skipped = parts.find((p) => !p.done && p.index < part.index && p.x > part.x - 8);
     part.done = true;
@@ -998,14 +985,14 @@ export function createWorld(ctx) {
       case "branch":
         hud.toast(t("branch"), "good");
         hud.tick("sf hardis:work:new");
-        hud.tick("git checkout -b features/US-014-panels-required");
+        hud.tick("git checkout -b features/US-014-customer-tier");
         break;
       case "field":
         hud.tick(t("fieldName"));
         break;
-      case "crewRead":
+      case "repRead":
         revealFaint();
-        hud.toast(t("crewRead"), "power");
+        hud.toast(t("repRead"), "power");
         break;
       case "mgrRead":
         setGhost(false);
@@ -1023,7 +1010,7 @@ export function createWorld(ctx) {
   function save() {
     saved = true;
     hud.toast(t("saved"), "good");
-    hud.tick("Panels_Required__c");
+    hud.tick("Customer_Tier__c");
     ctx.sound.play("click");
     // The twist, a beat after the success toast
     twistAt = engine.time + 1.1;
@@ -1327,8 +1314,8 @@ export function createWorld(ctx) {
       decoy.visible = false;
       ctx.points(-50);
       ctx.sound.play("wrong");
-      hud.toast(t("o_crewEdit"), "bad");
-      hud.tip(t("o_crewEdit_tip"));
+      hud.toast(t("o_repEdit"), "bad");
+      hud.tip(t("o_repEdit_tip"));
     }
     for (const h of hazards) {
       const m = HAZARD_MARGIN;
@@ -1354,7 +1341,7 @@ export function createWorld(ctx) {
           checkpoints[i].star.visible = true;
         }
         if (i === checkpoints.length - 1) {
-          hud.tick("App Launcher > Helios Delivery > Installations");
+          hud.tick("App Launcher > Sales > Accounts");
         }
         ctx.fx.burst(checkpoints[i].x, checkpoints[i].y + 1.4, -0.9, { count: 10, colors: [0x2e844a, 0x91db8b, 0xffffff], speed: 2, up: 2.5, life: 0.7 });
         ctx.sound.play("click");
@@ -1368,14 +1355,14 @@ export function createWorld(ctx) {
     if (!ending && player.x >= END_X && player.grounded && player.ground === recordPlatform) {
       ending = time;
       ctx.sound.play("gate");
-      // The planner's number, typed in: 23 + 16 on the timeline, whatever was eaten on the way.
+      // The sales manager's choice, typed in: Gold, whatever was eaten on the way.
       // Still a ghost: no permission set grants the field to you, the record shows nothing
-      recordPlatform.record.draw(ghost ? null : 39);
-      hud.toast(ghost ? t("doneGhost") : t("done", { n: 39 }), ghost ? "bad" : "good");
+      recordPlatform.record.draw(ghost ? null : "Gold");
+      hud.toast(ghost ? t("doneGhost") : t("done", { n: "Gold" }), ghost ? "bad" : "good");
     }
   }
 
-  /** What was missed, the way the lab would put it: the two that matter most, then the rest by name. */
+  /** What was missed, said plainly: the two that matter most, then the rest by name. */
   function missedInfo() {
     const missed = parts.filter((p) => !p.done);
     const reasons = [];
@@ -1389,7 +1376,7 @@ export function createWorld(ctx) {
       explain("info_ghost", (p) => p.event === "mgrRead", true);
     }
     explain("info_field", (p) => p.event === "field");
-    explain("info_crew", (p) => p.event === "crewRead");
+    explain("info_rep", (p) => p.event === "repRead");
     explain("info_layout", (p) => p.event === "layout");
     const shown = reasons.slice(0, 2);
     // The rest, by name: what the sentences shown do not already cover
@@ -1563,7 +1550,7 @@ export function createWorld(ctx) {
   placePig(0, 0);
   ctx.setData("visible", ghost ? "no" : "yes");
   renderBar();
-  // Lab 1.4, step 4: Panels Required on the record, still empty
+  // Customer Tier on the record, still empty
   recordPlatform.record.draw("");
   ctx.setData("x", Math.round(player.x));
 
@@ -1677,7 +1664,7 @@ export function createWorld(ctx) {
 
   /* ---------- Canvas pictures ---------- */
 
-  /** The Installation record: its column of fields, Panels Required with its value (null: no row, nobody grants it). */
+  /** The account Acme Corp: its column of fields, Customer Tier with its value (null: no row, nobody grants it). */
   function recordTexture(w, h) {
     const canvas = document.createElement("canvas");
     canvas.width = Math.min(2048, Math.round(w * 110));
@@ -1701,16 +1688,16 @@ export function createWorld(ctx) {
       c.fillStyle = SLDS.weak;
       c.textAlign = "left";
       c.textBaseline = "middle";
-      fitText(c, "Installation", 25 * u, 11 * u, cw * 0.3, 7 * u, "400");
+      fitText(c, "Account", 25 * u, 11 * u, cw * 0.3, 7 * u, "400");
       c.fillStyle = SLDS.text;
-      fitText(c, "INST-00001", 25 * u, 21 * u, cw * 0.3, 11 * u, "800");
+      fitText(c, "Acme Corp", 25 * u, 21 * u, cw * 0.3, 11 * u, "800");
       // The column of fields
       const fields = [
-        ["Status", "Scheduled"],
-        ["Crew", "North crew"]
+        ["Type", "Customer"],
+        ["Industry", "Manufacturing"]
       ];
       if (n !== null) {
-        fields.push(["Panels Required", String(n)]);
+        fields.push(["Customer Tier", String(n)]);
       }
       fields.forEach(([name, value], i) => {
         const y = 42 * u + i * 19 * u;
@@ -1738,17 +1725,18 @@ export function createWorld(ctx) {
         c.textAlign = "center";
         c.fillText("i", cw * 0.215, iy + 0.5 * u);
       }
-      // The Panel delivery timeline on the right
+      // The values of the picklist on the right, the chosen one filled
       c.textAlign = "left";
       c.fillStyle = SLDS.text;
-      fitText(c, "Panel delivery timeline", cw * 0.52, 14 * u, cw * 0.4, 9 * u, "700");
-      [23, 16].forEach((q, i) => {
-        const x = cw * 0.52 + i * cw * 0.22;
-        rounded(c, x, 30 * u, cw * 0.19, 26 * u, 4 * u);
-        c.fillStyle = "#EEF4FF";
+      fitText(c, "Customer Tier values", cw * 0.52, 14 * u, cw * 0.4, 9 * u, "700");
+      ["Bronze", "Silver", "Gold"].forEach((value, i) => {
+        const x = cw * 0.52 + i * cw * 0.15;
+        const chosen = value === n;
+        rounded(c, x, 30 * u, cw * 0.13, 26 * u, 4 * u);
+        c.fillStyle = chosen ? SLDS.brand : "#EEF4FF";
         c.fill();
-        c.fillStyle = SLDS.navy;
-        fitText(c, q + " panels", x + 3 * u, 43 * u, cw * 0.16, 10 * u, "800");
+        c.fillStyle = chosen ? SLDS.white : SLDS.navy;
+        fitText(c, value, x + 3 * u, 43 * u, cw * 0.11, 10 * u, "800");
       });
       texture.needsUpdate = true;
     }

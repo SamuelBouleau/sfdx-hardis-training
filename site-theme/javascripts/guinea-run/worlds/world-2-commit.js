@@ -1,15 +1,15 @@
 /*
- * World 2, Retrieve and commit (Labs 1.5 and 2.8): a sorting belt. The
+ * World 2, Retrieve and commit: a sorting belt. The
  * Metadata Retriever's Recent Changes come down three lanes as crates, every
  * one of them carrying your name, and the guinea pig at the end of the belt
  * jumps to stage the crate of its lane into Staged Changes. A crate let by is
  * a crate left unstaged, which is right for nearly all of them.
  *
  * US-014 is four components: the field, the layout and the two permission
- * sets. Staging anything else costs an attempt, with the lab's reason. A story
+ * sets. Staging anything else costs an attempt, with the reason. A story
  * crate let by comes round again later, for a few points less.
  *
- * The twist is Lab 2.8: the tick box in the table header, every row at once.
+ * The twist: the tick box in the table header, every row at once.
  * The belt floods with eighty crates that stage themselves, and the way out is
  * the real command, Reset selected list of items to merge, riding the belt as a
  * power-up. Like the real one it also undoes what you had staged: your story
@@ -53,40 +53,28 @@ const PACE_STEPS = 7;
 const MERCY_S = 5;
 const MERCY_DROP = 0.15;
 
-// The four components of US-014, in Lab 1.5's words
+// The four components of US-014
 const STORY = [
-  { id: "field", type: "CustomField", name: "Installation__c.Panels_Required__c", sign: "Panels_Required__c", min: 7 },
-  { id: "layout", type: "Layout", name: "Installation__c-Installation Layout", sign: "Installation Layout", min: 6 },
-  { id: "crew", type: "PermissionSet", name: "Helios_Delivery_Crew", sign: "Crew", min: 5 },
-  { id: "manager", type: "PermissionSet", name: "Helios_Delivery_Manager", sign: "Manager", min: 5 }
+  { id: "field", type: "CustomField", name: "Account.Customer_Tier__c", sign: "Customer_Tier__c", min: 7 },
+  { id: "layout", type: "Layout", name: "Account-Account Layout", sign: "Account Layout", min: 6 },
+  { id: "rep", type: "PermissionSet", name: "Sales_Rep", sign: "Sales Rep", min: 5 },
+  { id: "manager", type: "PermissionSet", name: "Sales_Manager", sign: "Sales Manager", min: 5 }
 ];
 
-// Everything else in Recent Changes: the Helios app Lab 1.2 deployed under
-// your user, and what changed around your field without you meaning it to.
-// `min` is a recent change (minutes ago), the others are dated Lab 1.2.
+// Everything else in Recent Changes under your name: what changed around your
+// field without you meaning it to, and what an older deployment or older work
+// touched. `min` is a recent change (minutes ago), the others are older.
 const NOISE = [
   { id: "admin", type: "Profile", name: "Admin", min: 7, why: "admin" },
-  { id: "object", type: "CustomObject", name: "Installation__c", min: 7, why: "object" },
-  { id: "agent", type: "GenOpAgentConfig", name: "Installation_Assign_Crew", min: 6, why: "agent" },
-  { id: "listview", type: "ListView", name: "Installation__c.All_Installations", min: 9, why: "listview" },
-  { id: "crewsize", type: "CustomField", name: "Installation__c.Crew_Size__c", why: "apos" },
-  { id: "installdate", type: "CustomField", name: "Installation__c.Install_Date__c" },
-  { id: "roof", type: "CustomField", name: "Installation__c.Roof_Type__c" },
-  { id: "status", type: "CustomField", name: "Installation__c.Status__c" },
-  { id: "kw", type: "CustomField", name: "Installation__c.Total_Capacity_kW__c" },
-  { id: "qty", type: "CustomField", name: "Panel_Batch__c.Quantity__c" },
-  { id: "arrival", type: "CustomField", name: "Panel_Batch__c.Arrival_Date__c" },
-  { id: "pblayout", type: "Layout", name: "Panel_Batch__c-Panel Batch Layout" },
-  { id: "crewprofile", type: "Profile", name: "Helios Crew", why: "admin" },
-  { id: "assign", type: "Flow", name: "Installation_Assign_Crew" },
-  { id: "close", type: "Flow", name: "Installation_Close_Check" },
-  { id: "warn", type: "Flow", name: "Installation_Crew_Warning" },
-  { id: "apex", type: "ApexClass", name: "InstallationScheduler", why: "eol" },
-  { id: "apextest", type: "ApexClass", name: "InstallationSchedulerTest", why: "eol" },
-  { id: "lwc", type: "LightningComponentBundle", name: "installationTimeline", why: "eol" },
-  { id: "app", type: "CustomApplication", name: "Helios_Delivery" },
-  { id: "page", type: "FlexiPage", name: "Installation_Record_Page" },
-  { id: "tab", type: "CustomTab", name: "Panel_Batch__c" }
+  { id: "object", type: "CustomObject", name: "Account", min: 7, why: "object" },
+  { id: "listview", type: "ListView", name: "Account.All_Accounts", min: 9, why: "listview" },
+  { id: "rating", type: "CustomField", name: "Account.Rating_Score__c", why: "apos" },
+  { id: "legacy", type: "CustomField", name: "Account.Legacy_Id__c" },
+  { id: "channel", type: "CustomField", name: "Contact.Preferred_Channel__c" },
+  { id: "discount", type: "CustomField", name: "Opportunity.Discount__c" },
+  { id: "escalation", type: "CustomField", name: "Case.Escalation_Level__c" },
+  { id: "contactlayout", type: "Layout", name: "Contact-Contact Layout", why: "eol" },
+  { id: "salesuser", type: "Profile", name: "Sales User", why: "admin" }
 ];
 
 const TYPES = {
@@ -95,19 +83,12 @@ const TYPES = {
   PermissionSet: { glyph: "permset", color: "#DD7A01", abbr: "PS" },
   Profile: { glyph: "profile", color: "#0176D3", abbr: "P" },
   CustomObject: { glyph: "box", color: "#C23934", abbr: "O" },
-  GenOpAgentConfig: { glyph: "bolt", color: "#9050E9", abbr: "A" },
-  ListView: { glyph: "log", color: "#2E844A", abbr: "LV" },
-  Flow: { glyph: "flow", color: "#032D60", abbr: "FL" },
-  ApexClass: { glyph: "apex", color: "#1B5297", abbr: "AX" },
-  LightningComponentBundle: { glyph: "code", color: "#9050E9", abbr: "LW" },
-  CustomApplication: { glyph: "cloud", color: "#0B5CAB", abbr: "AP" },
-  FlexiPage: { glyph: "puzzle", color: "#BA0517", abbr: "FP" },
-  CustomTab: { glyph: "puzzle", color: "#706E6B", abbr: "T" }
+  ListView: { glyph: "log", color: "#2E844A", abbr: "LV" }
 };
 
 export const TEXTS = {
   en: {
-    intro: "Recent Changes lists everything in the helios-dev org that carries your name. US-014 is only four of them: the field, the layout and the two permission sets.",
+    intro: "Recent Changes lists everything in your dev sandbox that carries your name. US-014 is only four of them: the field, the layout and the two permission sets.",
     how1: "Change lane with the left and right arrows, or swipe",
     how2: "Jump with Up or a tap to stage your 4 files",
     how3: "Let everything else go by, then Commit and Save / Publish",
@@ -129,17 +110,18 @@ export const TEXTS = {
     howto: "Jump: stage the crate in your lane",
     byYou: "you",
     ago: "{{n}} min ago",
-    lab12: "Lab 1.2",
+    older: "last month",
     pRecent: "Recent Changes",
     pCommit: "Commit",
     pPublish: "Save / Publish",
-    go: "Metadata Retriever, helios-dev org: Recent Changes",
+    bannerOrg: "Recent Changes · your dev sandbox",
+    go: "Metadata Retriever, your dev sandbox: Recent Changes",
     staged: "Staged: {{name}}",
     missed: "{{name}} went by unstaged: it comes round once more",
     leftOut: "{{name}} went by twice: it stays out of this commit",
     retrieved: "{{n}} of 4 retrieved",
     reportShort: "Your story as the pipeline sees it: {{n}} of its 4 components.",
-    infoSkipped: "You did not commit {{names}}: in the lab, a component missing from the Git Delta package.xml report is missing in the helios-integration org too, and the deployment fails or does half of what you meant.",
+    infoSkipped: "You did not commit {{names}}: a component missing from the Git Delta package.xml report is missing in the integration org too, and the deployment fails or does half of what you meant.",
     sortOn: "Sorted by Last Updated Date: the newest are lit. Now read the names.",
     selectAll: "Tick the header box: every row at once",
     floodWarn: "It is late. The tick box in the header selects every row in one click.",
@@ -151,9 +133,7 @@ export const TEXTS = {
     m_admin: "{{name}} Profile: not your story",
     m_admin_tip: "The Metadata Retriever retrieves a Profile whole, every permission, tab and page layout. If you did not mean to change it, it does not belong in your story.",
     m_object: "A whole object, for one field",
-    m_object_tip: "Your story is the field Installation__c.Panels_Required__c, not the object around it. Tick by name, not by date.",
-    m_agent: "GenOpAgentConfig: untick it",
-    m_agent_tip: "Untick it before you retrieve: the Salesforce CLI does not know that type yet.",
+    m_object_tip: "Your story is the field Account.Customer_Tier__c, not the object around it. Tick by name, not by date.",
     m_listview: "An old list view",
     m_listview_tip: "None of it is your story. If you are not sure, leave it out: nothing is lost, it is still in your org.",
     m_apos: "Only &apos; changed",
@@ -161,10 +141,10 @@ export const TEXTS = {
     m_eol: "{{name}}: only a line break",
     m_eol_tip: "Salesforce drops the last line break, the repository keeps it. Not your story: leave it unstaged.",
     m_generic: "{{name}}: not US-014",
-    m_generic_tip: "It came with the Helios app in Lab 1.2. Count the files in the Source Control panel: a one-field story is two to four files. If you did not mean to change it, it does not belong in your story.",
+    m_generic_tip: "It came with an older deployment. Count the files in the Source Control view: a one-field story is two to four files. If you did not mean to change it, it does not belong in your story.",
     scTitle: "Source Control",
     scMessage: "Message",
-    commitDone: "Committed: US-014 Panels Required on Installation",
+    commitDone: "Committed: US-014 Customer Tier on Account",
     pipeTitle: "DevOps Pipeline",
     saveHint: "Prepares your commits for the team, then pushes the branch",
     qText: "Is your metadata already committed?",
@@ -181,21 +161,21 @@ export const TEXTS = {
     keyChoose: "Left / right to choose, Enter or OK to answer"
   },
   fr: {
-    intro: "Recent Changes liste tout ce qui, dans l'org helios-dev, porte votre nom. US-014 n'en compte que quatre : le champ, le layout et les deux permission sets.",
+    intro: "Recent Changes liste tout ce qui, dans votre sandbox de dev, porte votre nom. US-014 n'en compte que quatre : le champ, le layout et les deux permission sets.",
     how1: "Changez de couloir avec les flèches gauche et droite, ou un swipe",
     how2: "Sautez avec Haut ou un tap pour stager vos 4 fichiers",
     how3: "Laissez passer le reste, puis Commit et Save / Publish",
     goalStage: "Stagez les 4 fichiers de US-014 : {{n}} / 4",
-    goalFlood: "Attrapez Reset, la branche violette",
+    goalFlood: "Attrapez Reset, la branch violette",
     goalEnd: "Commit, puis Save / Publish",
     coachStart: "Sautez quand un de vos 4 fichiers arrive !",
     coachNoise: "Laissez passer celui-là : ce n'est pas US-014",
-    coachFlood: "Attrapez Reset, la branche violette !",
+    coachFlood: "Attrapez Reset, la branch violette !",
     coachBack: "Vos fichiers reviennent : stagez-les à nouveau",
     lensHint: "Dans votre couloir",
     faster: "Plus vite !",
     notUs: "pas US-014",
-    itemBranch: "Branche US-014",
+    itemBranch: "Branch US-014",
     itemPr: "Pull Request ensuite",
     selectAllShort: "Tout sélectionner",
     note: "Recent Changes est une liste de suspects, pas de coupables. Cochez par nom, jamais par position. - V.",
@@ -203,17 +183,18 @@ export const TEXTS = {
     howto: "Sauter : stager la caisse de votre couloir",
     byYou: "vous",
     ago: "il y a {{n}} min",
-    lab12: "Lab 1.2",
+    older: "le mois dernier",
     pRecent: "Recent Changes",
     pCommit: "Commit",
     pPublish: "Save / Publish",
-    go: "Metadata Retriever, org helios-dev : Recent Changes",
+    bannerOrg: "Recent Changes · votre sandbox de dev",
+    go: "Metadata Retriever, votre sandbox de dev : Recent Changes",
     staged: "Stagé : {{name}}",
     missed: "{{name}} est passé sans être stagé : il repasse une fois",
     leftOut: "{{name}} est passé deux fois : il reste hors de ce commit",
     retrieved: "{{n}} sur 4 récupérés",
     reportShort: "Votre story telle que le pipeline la voit : {{n}} de ses 4 composants.",
-    infoSkipped: "Vous n'avez pas commité {{names}} : dans le lab, un composant absent du rapport Git Delta package.xml manque aussi dans l'org helios-integration, et le déploiement échoue ou ne fait que la moitié de ce que vous vouliez.",
+    infoSkipped: "Vous n'avez pas commité {{names}} : un composant absent du rapport Git Delta package.xml manque aussi dans l'org d'integration, et le déploiement échoue ou ne fait que la moitié de ce que vous vouliez.",
     sortOn: "Trié par Last Updated Date : les plus récents s'allument. Maintenant, lisez les noms.",
     selectAll: "Cocher la case de l'en-tête : toutes les lignes d'un coup",
     floodWarn: "Il est tard. La case de l'en-tête sélectionne toutes les lignes d'un clic.",
@@ -225,9 +206,7 @@ export const TEXTS = {
     m_admin: "Profile {{name}} : pas votre story",
     m_admin_tip: "Le Metadata Retriever récupère un Profile entier, chaque permission, onglet et page layout. Si vous ne vouliez pas le modifier, il n'a rien à faire dans votre story.",
     m_object: "Tout un objet, pour un champ",
-    m_object_tip: "Votre story, c'est le champ Installation__c.Panels_Required__c, pas l'objet autour. Cochez par nom, pas par date.",
-    m_agent: "GenOpAgentConfig : décochez-le",
-    m_agent_tip: "Décochez-le avant de récupérer : la Salesforce CLI ne connaît pas encore ce type.",
+    m_object_tip: "Votre story, c'est le champ Account.Customer_Tier__c, pas l'objet autour. Cochez par nom, pas par date.",
     m_listview: "Une vieille list view",
     m_listview_tip: "Rien de cela n'est votre story. Dans le doute, laissez-la de côté : rien n'est perdu, elle est toujours dans votre org.",
     m_apos: "Seul &apos; a changé",
@@ -235,18 +214,18 @@ export const TEXTS = {
     m_eol: "{{name}} : un saut de ligne",
     m_eol_tip: "Salesforce supprime le dernier saut de ligne, le repository le garde. Pas votre story : laissez-le hors du staging.",
     m_generic: "{{name}} : pas US-014",
-    m_generic_tip: "Il est arrivé avec l'app Helios au Lab 1.2. Comptez les fichiers dans le panneau Source Control : une story d'un champ, c'est deux à quatre fichiers. Si vous ne vouliez pas le modifier, il n'a rien à faire dans votre story.",
+    m_generic_tip: "Il est arrivé avec un ancien déploiement. Comptez les fichiers dans la vue Source Control : une story d'un champ, c'est deux à quatre fichiers. Si vous ne vouliez pas le modifier, il n'a rien à faire dans votre story.",
     scTitle: "Source Control",
     scMessage: "Message",
-    commitDone: "Commité : US-014 Panels Required on Installation",
+    commitDone: "Commité : US-014 Customer Tier on Account",
     pipeTitle: "DevOps Pipeline",
-    saveHint: "Prépare vos commits pour l'équipe, puis pousse la branche",
+    saveHint: "Prépare vos commits pour l'équipe, puis pousse la branch",
     qText: "Vos métadonnées sont-elles déjà commitées ?",
     qPull: "Non, récupérez les modifications de l'org pour moi",
     qWhat: "Qu'est-ce qu'un commit ?",
     qPullTitle: "Commitez d'abord, à chaque fois",
     qPullTip: "Commitez d'abord, à chaque fois : vous avez récupéré, stagé et commité, donc la réponse est Yes, my commit(s) are ready!",
-    qWhatAnswer: "Un commit, c'est ce que vous venez de faire : vos fichiers stagés, enregistrés sur votre branche avec un message pour le relecteur.",
+    qWhatAnswer: "Un commit, c'est ce que vous venez de faire : vos fichiers stagés, enregistrés sur votre branch avec un message pour le relecteur.",
     reportHint: "Votre story telle que le pipeline la voit : quatre composants, rien que vous n'ayez pas touché.",
     pushQ: "Pousser la branch sur votre repository ?",
     pushYes: "Yes",
@@ -268,23 +247,14 @@ export const QUOTES = [
   { lab: "1.5", text: "Save / Publish" },
   { lab: "1.5", text: "Yes, my commit(s) are ready!" },
   { lab: "1.5", text: "Git Delta package.xml" },
-  { lab: "1.5", text: "Installation__c.Panels_Required__c" },
-  { lab: "1.5", text: "Installation__c-Installation Layout" },
-  { lab: "1.5", text: "Helios_Delivery_Crew" },
-  { lab: "1.5", text: "Helios_Delivery_Manager" },
-  { lab: "1.5", text: "US-014 Panels Required on Installation" },
-  { lab: "1.5", text: "Adds Panels_Required__c on Installation__c so the crew knows how many panels to load." },
-  { lab: "1.5", text: "features/US-014-panels-required" },
-  { lab: "1.5", text: "helios-dev" },
   { lab: "1.5", text: "hardis:work:save" },
   { lab: "2.8", text: "Reset selected list of items to merge" },
   { lab: "2.8", text: "sf hardis:work:resetselection" },
-  { lab: "2.8", text: "GenOpAgentConfig" },
   { lab: "2.8", text: "&apos;" },
   { lab: "2.8", text: "Admin" }
 ];
 
-const BRANCH = "features/US-014-panels-required";
+const BRANCH = "features/US-014-customer-tier";
 
 export function createWorld(ctx) {
   const { THREE, root, pig, paint, t, hud, random } = ctx;
@@ -439,7 +409,7 @@ export function createWorld(ctx) {
         c.fillStyle = SLDS.navy;
         fitText(c, "Metadata Retriever", 196, 72, w - 230, 64, "800");
         c.fillStyle = SLDS.weak;
-        fitText(c, "Recent Changes · helios-dev", 196, 146, w - 230, 46, "700");
+        fitText(c, t("bannerOrg"), 196, 146, w - 230, 46, "700");
       },
       { side: THREE.DoubleSide, emissive: 0x222222 }
     )
@@ -546,7 +516,7 @@ export function createWorld(ctx) {
   const cardMaterials = new Map();
   function cardMaterial(def) {
     if (!cardMaterials.has(def.id)) {
-      const when = def.min ? t("ago", { n: def.min }) : t("lab12");
+      const when = def.min ? t("ago", { n: def.min }) : t("older");
       const material = paint.material("w2-card:" + def.id, 512, 288, (c, w, h) => drawCrateCard(c, w, h, def, owner + " · " + when, Boolean(def.min), STORY.includes(def), t("notUs")), { emissive: 0x1a1a1a });
       cardMaterials.set(def.id, material);
     }
@@ -743,10 +713,10 @@ export function createWorld(ctx) {
     ctx.setData("pace", pace.toFixed(2));
   }
 
-  /* ---------- HTML: the Staged Changes panel and the end cards ---------- */
+  /* ---------- HTML: the Staged Changes list and the end cards ---------- */
 
-  const panel = document.createElement("div");
-  panel.className = "gr-w2-staged";
+  const stagedBox = document.createElement("div");
+  stagedBox.className = "gr-w2-staged";
   const head = document.createElement("div");
   head.className = "gr-w2-head";
   const headTitle = document.createElement("strong");
@@ -770,8 +740,8 @@ export function createWorld(ctx) {
     list.appendChild(li);
     rows[def.id] = li;
   }
-  panel.append(head, list);
-  hud.layer.appendChild(panel);
+  stagedBox.append(head, list);
+  hud.layer.appendChild(stagedBox);
 
   const card = document.createElement("div");
   card.className = "gr-w2-card";
@@ -817,12 +787,12 @@ export function createWorld(ctx) {
     lensIcon.style.background = type.color;
     lensType.textContent = entry.def.type;
     lensName.textContent = entry.def.name;
-    lensWhen.textContent = owner + " · " + (entry.def.min ? t("ago", { n: entry.def.min }) : t("lab12"));
+    lensWhen.textContent = owner + " · " + (entry.def.min ? t("ago", { n: entry.def.min }) : t("older"));
     lensWhen.classList.toggle("is-recent", Boolean(entry.def.min));
     // On a phone it is one line, between the guinea pig and the Staged Changes
-    // panel: the far end of the belt, where the crates come from, stays clear
-    const narrow = window.innerWidth <= 600 && !panel.hidden && !panel.classList.contains("is-done");
-    lens.style.bottom = narrow ? panel.offsetHeight + parseFloat(window.getComputedStyle(panel).bottom || "0") + 14 + "px" : "";
+    // list: the far end of the belt, where the crates come from, stays clear
+    const narrow = window.innerWidth <= 600 && !stagedBox.hidden && !stagedBox.classList.contains("is-done");
+    lens.style.bottom = narrow ? stagedBox.offsetHeight + parseFloat(window.getComputedStyle(stagedBox).bottom || "0") + 14 + "px" : "";
     lens.hidden = false;
   }
   let cardStep = null;
@@ -834,7 +804,7 @@ export function createWorld(ctx) {
     mercy = MERCY_S;
     if (ctx.loseAttempt(title, tip) <= 0) {
       card.hidden = true;
-      panel.hidden = true;
+      stagedBox.hidden = true;
     }
   }
 
@@ -860,7 +830,7 @@ export function createWorld(ctx) {
     ctx.setData("pace", pace.toFixed(2));
   }
 
-  function renderPanel() {
+  function renderStaged() {
     headCount.textContent = String(staged.length);
     headCount.classList.toggle("is-over", staged.length > 4);
     for (const def of STORY) {
@@ -1024,7 +994,7 @@ export function createWorld(ctx) {
       staged.push("flood");
       setPile(staged.map((id) => (id === "flood" ? "flood" : "story")));
     } else {
-      // Noise: it pops back out, and costs an attempt with the lab's reason
+      // Noise: it pops back out, and costs an attempt with its reason
       noise += 1;
       shake = 0.35;
       hit = 0.6;
@@ -1039,7 +1009,7 @@ export function createWorld(ctx) {
         hud.coach(t("coachNoise"), 2600);
       }
     }
-    renderPanel();
+    renderStaged();
     setData();
   }
 
@@ -1162,7 +1132,7 @@ export function createWorld(ctx) {
       noteAt = elapsed + 10;
     }
     setPile([]);
-    renderPanel();
+    renderStaged();
     if (!auto) {
       ctx.collect(150, null);
     }
@@ -1186,7 +1156,7 @@ export function createWorld(ctx) {
     endTimer = 1.0;
     lane = 1;
     scurry = 0.4;
-    panel.classList.add("is-done");
+    stagedBox.classList.add("is-done");
     hud.setPath([t("pRecent"), t("pCommit"), t("pPublish")], 1);
     setData();
   }
@@ -1215,8 +1185,8 @@ export function createWorld(ctx) {
         }
         el("div", "gr-w2-label", body, t("scMessage"));
         const message = el("div", "gr-w2-message", body);
-        el("strong", "", message, "US-014 Panels Required on Installation");
-        el("span", "", message, "Adds Panels_Required__c on Installation__c so the crew knows how many panels to load.");
+        el("strong", "", message, "US-014 Customer Tier on Account");
+        el("span", "", message, "Adds Customer_Tier__c on Account so sales reps see each customer's tier.");
         addChoice(body, "Commit", "commit", true);
         hint.textContent = t("keyOne");
         break;
@@ -1246,9 +1216,9 @@ export function createWorld(ctx) {
         el("p", "gr-w2-question", body, committed === 4 ? t("reportHint") : t("reportShort", { n: committed }));
         const xml = el("div", "gr-w2-xml", body);
         for (const [type, all] of [
-          ["CustomField", ["Installation__c.Panels_Required__c"]],
-          ["Layout", ["Installation__c-Installation Layout"]],
-          ["PermissionSet", ["Helios_Delivery_Crew", "Helios_Delivery_Manager"]]
+          ["CustomField", ["Account.Customer_Tier__c"]],
+          ["Layout", ["Account-Account Layout"]],
+          ["PermissionSet", ["Sales_Manager", "Sales_Rep"]]
         ]) {
           const names = all.filter((name) => STORY.some((d) => d.name === name && staged.includes(d.id)));
           if (!names.length) {
@@ -1450,7 +1420,7 @@ export function createWorld(ctx) {
     crates = crates.filter((e) => e.state === "belt" || e.state === "fall");
     syncCrates();
 
-    // Sorted by Last Updated Date: the recent ones glow, the Lab 1.2 ones fade
+    // Sorted by Last Updated Date: the recent ones glow, the older ones fade
     const pulse = 0.5 + 0.5 * Math.sin(time * 6);
     for (const [id, material] of cardMaterials) {
       const def = STORY.find((s) => s.id === id) || NOISE.find((n) => n.id === id);
@@ -1502,9 +1472,9 @@ export function createWorld(ctx) {
     debugData();
     updateLens(time);
     growEndItems(dt, time);
-    if (panel.isConnected) {
+    if (stagedBox.isConnected) {
       const overlay = hud.layer.parentElement;
-      panel.classList.toggle("gr-w2-padded", Boolean(overlay && overlay.classList.contains("gr-show-buttons")));
+      stagedBox.classList.toggle("gr-w2-padded", Boolean(overlay && overlay.classList.contains("gr-show-buttons")));
       card.classList.toggle("gr-w2-padded", Boolean(overlay && overlay.classList.contains("gr-show-buttons")));
     }
   }
@@ -1535,7 +1505,7 @@ export function createWorld(ctx) {
     basket.scale.set(1 + pop * 0.4, 1 - pop * 0.3, 1 + pop * 0.4);
   }
 
-  /** Around the belts: office furniture, package.xml boxes, CI runners and helios-dev. Nothing in the way. */
+  /** Around the belts: office furniture, package.xml boxes, CI runners and your dev sandbox. Nothing in the way. */
   function placeProps() {
     const FLOOR = -0.6;
     const props = [
@@ -1555,7 +1525,7 @@ export function createWorld(ctx) {
       // The runner that will take the branch once it is pushed
       ["ci-runner", { height: 1.6 }, 5.3, -19, Math.PI - 0.3],
       ["ci-runner", { height: 1.6 }, -4.7, -20.5, Math.PI + 0.3],
-      // helios-dev, the org the Metadata Retriever reads, above the gantry
+      // Your dev sandbox, the org the Metadata Retriever reads, above the gantry
       ["org-cloud", { height: 1.6 }, 0, -25.4, Math.PI, 4.9]
     ];
     for (const [name, size, x, z, turn, lift] of props) {
@@ -1657,14 +1627,14 @@ export function createWorld(ctx) {
 
   // Ready for the intro card: a few crates already on the belt
   for (let i = 0; i < 5; i++) {
-    const entry = spawnCrate(NOISE[(i * 5) % NOISE.length], "noise", i % 3);
+    const entry = spawnCrate(NOISE[(i * 3) % NOISE.length], "noise", i % 3);
     if (entry) {
       entry.z = -6 - i * 3.6;
       placeEntry(entry);
     }
   }
   setPile([]);
-  renderPanel();
+  renderStaged();
   setData();
   placeProps();
   syncCrates();
@@ -1717,7 +1687,7 @@ export function createWorld(ctx) {
       engine.aimSun(0, -3);
     },
     dispose() {
-      panel.remove();
+      stagedBox.remove();
       card.remove();
       lens.remove();
       hud.goal("");
@@ -1849,15 +1819,15 @@ function crateLabelGeometry(THREE) {
   return geometry;
 }
 
-/** "Installation__c.Panels_Required__c" reads best as its object, then its name. */
+/** "Account.Customer_Tier__c" and "Account-Account Layout" read best as their object, then their name. */
 function splitName(name) {
   const dot = name.indexOf(".");
   if (dot > 0) {
     return [name.slice(0, dot + 1), name.slice(dot + 1)];
   }
-  const dash = name.indexOf("__c-");
+  const dash = name.indexOf("-");
   if (dash > 0) {
-    return [name.slice(0, dash + 4), name.slice(dash + 4)];
+    return [name.slice(0, dash + 1), name.slice(dash + 1)];
   }
   return [null, name];
 }
