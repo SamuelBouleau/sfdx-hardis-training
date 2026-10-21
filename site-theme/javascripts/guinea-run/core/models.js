@@ -2,6 +2,7 @@
  * The 3D models of Guinea Run: the Salesforce and sfdx-hardis items built by
  * scripts/blender/salesforce-items.py (salesforce: org-cloud, custom-field,
  * permission-set, flow, apex, package-xml, check-pass, cloudity-logo...), and
+ * the vegetables of scripts/blender/vegetables.py (bonus pickups), and
  * the Kenney scenery packs built by scripts/blender/kenney-packs.py (office,
  * platform, nature), loaded
  * once per page and shared by every world that names them.
@@ -17,7 +18,7 @@
  * disposed by a world, only when the game closes.
  */
 
-const PACKS = ["salesforce", "office", "platform", "nature"];
+const PACKS = ["salesforce", "vegetables", "office", "platform", "nature"];
 
 export function createModels(THREE, base) {
   const loaded = new Map();

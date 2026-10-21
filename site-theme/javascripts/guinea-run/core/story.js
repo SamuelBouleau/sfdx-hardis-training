@@ -10,7 +10,7 @@
  */
 
 export const WORLDS = [
-  { id: 0, module: "world-0-setup.js", style: "runner", glyph: "gear", labs: ["1.1", "1.2"] },
+  { id: 0, module: "world-0-setup.js", style: "runner", glyph: "gear", labs: ["1.1"] },
   { id: 1, module: "world-1-org.js", style: "platformer", glyph: "org", labs: ["1.3", "1.4"] },
   { id: 2, module: "world-2-commit.js", style: "sorting", glyph: "box", labs: ["1.5", "2.8"] },
   { id: 3, module: "world-3-pull-request.js", style: "puzzle", glyph: "branch", labs: ["1.6", "2.2", "2.3", "2.4"], badge: 1 },

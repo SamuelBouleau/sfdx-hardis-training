@@ -3,6 +3,11 @@ Guinea Run models
 guinea-pig.glb
   Built from code in Blender by scripts/blender/guinea-pig.py. Part of this repository.
 
+vegetables.glb
+  Fennel, carrot, bell pepper, cucumber, romaine and parsley, the bonus
+  pickups, built from code in Blender by scripts/blender/vegetables.py. Part
+  of this repository.
+
 salesforce.glb
   The Salesforce and sfdx-hardis items of the game (org cloud, custom field,
   permission set, Flow, Apex, package.xml, checks...), built from code in
