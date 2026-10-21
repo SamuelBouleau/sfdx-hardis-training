@@ -6,7 +6,7 @@
  * - sections: the parts of the track, each with a name (shown as a Path),
  *   a colour, a length, and the obstacles, metadata and power-ups it brings
  * - obstacles: what each kind is called, what beats it (change lane, jump,
- *   duck, jump a gap), a short name for its face and the lab's fix for it
+ *   duck, jump a gap), a short name for its face and the fix for it
  * - items and powers: what can be picked up
  * - gates(index): what stands at the end of a section, if anything: three
  *   doors (some open, some closed, or a quiz), or a manual stop

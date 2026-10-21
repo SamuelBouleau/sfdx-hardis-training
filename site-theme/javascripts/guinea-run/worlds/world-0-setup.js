@@ -1,9 +1,9 @@
 /*
- * World 0, Get set up (Lab 1.1): a runner where the guinea pig collects what
- * every sfdx-hardis project needs on a machine, until every card of the Setup
- * panel is green. Nothing of Lab 1.2 here: no org, no repository, no scratch org.
+ * World 0, Get set up: a runner where the guinea pig collects what every
+ * sfdx-hardis project needs on a machine, until every card of the Setup panel
+ * of the VS Code extension is green. No org, no repository, no scratch org yet.
  *
- * The running gag of Lab 1.1: a tool you just installed stays "installed, not
+ * The running gag of a first install: a tool you just installed stays "installed, not
  * found" in the Setup panel until VS Code is closed completely and opened
  * again, because VS Code only reads the PATH at startup. The gates at the end
  * of the first two sections are that restart, as a quiz; the last gate is
@@ -110,7 +110,7 @@ export const TEXTS = {
     o_redline: "A red line you cannot clear",
     o_redline_tip: "Click the line: the panel says what it tried and what it got back, and that message is nearly always the answer.",
     o_redline_s: "Red line",
-    o_outdated: "A panel does not look like its screenshot",
+    o_outdated: "A screen does not look like the documentation",
     o_outdated_tip: "Tick Auto Update on the extension pack: an outdated extension is the most common cause.",
     o_outdated_s: "Outdated",
     p_pending: "Run pending installs: every missing tool comes to you",
@@ -149,7 +149,7 @@ export const TEXTS = {
     restarted: "VS Code restarted: {{tools}} found",
     pendingAgain: "Pending installs: {{tools}}",
     stillNotFound: "Still not found: VS Code needs a restart",
-    missedTools: "Still pending at the end: {{tools}}. On a real machine, each missing tool is a command that fails later in the labs, so each one cost you points.",
+    missedTools: "Still pending at the end: {{tools}}. On a real machine, each missing tool is a command that fails later in the project, so each one cost you points.",
     vegetablesCount: "Vegetables: {{n}}.",
     allGreen: "Dependencies up to date: every card is green",
     veg_fennel: "Fennel",
@@ -216,7 +216,7 @@ export const TEXTS = {
     o_redline: "Une ligne rouge que vous n'arrivez pas à faire passer",
     o_redline_tip: "Cliquez sur la ligne : le panneau dit ce qu'il a tenté et ce qu'on lui a répondu, et ce message est presque toujours la réponse.",
     o_redline_s: "Ligne rouge",
-    o_outdated: "Un panneau ne ressemble pas à sa capture",
+    o_outdated: "Un écran ne ressemble pas à la documentation",
     o_outdated_tip: "Cochez Auto Update sur le pack d'extensions : une extension en retard est la cause la plus fréquente.",
     o_outdated_s: "Pas à jour",
     p_pending: "Run pending installs : chaque outil manquant vient à vous",
@@ -255,7 +255,7 @@ export const TEXTS = {
     restarted: "VS Code redémarré : {{tools}} trouvés",
     pendingAgain: "Installations en attente : {{tools}}",
     stillNotFound: "Toujours introuvable : VS Code doit redémarrer",
-    missedTools: "Encore en attente à la fin : {{tools}}. Sur une vraie machine, chaque outil manquant est une commande qui échoue plus tard dans les labs : chacun vous a coûté des points.",
+    missedTools: "Encore en attente à la fin : {{tools}}. Sur une vraie machine, chaque outil manquant est une commande qui échoue plus tard dans le projet : chacun vous a coûté des points.",
     vegetablesCount: "Légumes : {{n}}.",
     allGreen: "Dependencies up to date : chaque carte est verte",
     veg_fennel: "Fenouil",
@@ -281,9 +281,7 @@ export const QUOTES = [
   { lab: "1.1", text: "SFDMU" },
   { lab: "1.1", text: "sfdx-git-delta" },
   { lab: "1.1", text: "Agentforce Vibes" },
-  { lab: "1.1", text: "LTS" },
-  { lab: "1.1", text: "Close VS Code completely, windows and all, and open it again", locales: ["en"] },
-  { lab: "1.1", text: "Fermez VS Code complètement, toutes fenêtres comprises", locales: ["fr"] }
+  { lab: "1.1", text: "LTS" }
 ];
 
 const TOOLS = {
