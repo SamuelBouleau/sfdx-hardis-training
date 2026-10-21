@@ -14,6 +14,9 @@ import { SLDS, fitText, glyph } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump", "duck", "confirm"];
 
+/** The Kenney office pack: desk, chair, plant, rug, bookcase. */
+export const MODELS = ["office"];
+
 export const TEXTS = {
   en: {
     intro: "US-014 is committed and published. Open its Pull Request and get it ready to merge.",
@@ -249,37 +252,74 @@ export function createWorld(ctx) {
 
   /* ---------- The desk, in 3D ---------- */
 
+  /**
+   * A model of the office pack at a spot, or null if the pack did not load:
+   * each caller keeps its own shape for that case.
+   */
+  function model(name, options, x, y, z, turn) {
+    const thing = ctx.models && ctx.models.get(name, options);
+    if (!thing) {
+      return null;
+    }
+    thing.position.set(x, y, z);
+    thing.rotation.y = turn || 0;
+    root.add(thing);
+    return thing;
+  }
+
+  /** Stretches a model to a footprint, for furniture the scene was laid out around. */
+  function fit(thing, width, depth) {
+    const size = new THREE.Box3().setFromObject(thing).getSize(new THREE.Vector3());
+    thing.scale.x *= width / Math.max(size.x, 1e-3);
+    thing.scale.z *= depth / Math.max(size.z, 1e-3);
+  }
+
   const floor = new THREE.Mesh(paint.geometry("floor", () => new THREE.CylinderGeometry(3.4, 3.5, 0.2, 48)), paint.plain(0xbfe9f5, { roughness: 0.8 }));
   // A round rug under the chair, a wall with the Cloudity plaque, a plant
-  const rug = new THREE.Mesh(paint.geometry("rug", () => new THREE.CylinderGeometry(1.15, 1.15, 0.03, 40)), paint.plain(0xff9e2c, { roughness: 0.9 }));
-  rug.position.set(0, 0.015, 0.15);
-  root.add(rug);
+  if (!model("rugRound", { width: 2.3, shadows: false }, 0, 0.005, 0.15)) {
+    const rug = new THREE.Mesh(paint.geometry("rug", () => new THREE.CylinderGeometry(1.15, 1.15, 0.03, 40)), paint.plain(0xff9e2c, { roughness: 0.9 }));
+    rug.position.set(0, 0.015, 0.15);
+    root.add(rug);
+  }
   const wall = new THREE.Mesh(paint.geometry("wall", () => new THREE.BoxGeometry(5.2, 2.8, 0.12)), paint.plain(0xfde7f0, { roughness: 0.9 }));
   wall.position.set(0, 1.4, -2.1);
   root.add(wall);
   const plaque = new THREE.Mesh(paint.geometry("plaque", () => new THREE.PlaneGeometry(1.3, 0.63)), paint.plaque());
   plaque.position.set(-1.45, 2.1, -2.03);
   root.add(plaque);
-  const pot = new THREE.Mesh(paint.geometry("pot", () => new THREE.CylinderGeometry(0.2, 0.15, 0.36, 18)), paint.plain(0x0176d3));
-  pot.position.set(1.7, 0.18, -1.3);
-  root.add(pot);
-  const leaves = paint.plain(0x2e844a, { roughness: 0.7 });
-  [[1.7, 0.6, -1.3, 0.3], [1.55, 0.82, -1.25, 0.22], [1.86, 0.78, -1.36, 0.2]].forEach(([x, y, z, r]) => {
-    const leaf = new THREE.Mesh(paint.geometry("leaf", () => new THREE.SphereGeometry(1, 14, 10)), leaves);
-    leaf.scale.setScalar(r);
-    leaf.position.set(x, y, z);
-    root.add(leaf);
-  });
+  if (!model("pottedPlant", { height: 1.1 }, 1.75, 0, -1.3)) {
+    const pot = new THREE.Mesh(paint.geometry("pot", () => new THREE.CylinderGeometry(0.2, 0.15, 0.36, 18)), paint.plain(0x0176d3));
+    pot.position.set(1.7, 0.18, -1.3);
+    root.add(pot);
+    const leaves = paint.plain(0x2e844a, { roughness: 0.7 });
+    [[1.7, 0.6, -1.3, 0.3], [1.55, 0.82, -1.25, 0.22], [1.86, 0.78, -1.36, 0.2]].forEach(([x, y, z, r]) => {
+      const leaf = new THREE.Mesh(paint.geometry("leaf", () => new THREE.SphereGeometry(1, 14, 10)), leaves);
+      leaf.scale.setScalar(r);
+      leaf.position.set(x, y, z);
+      root.add(leaf);
+    });
+  }
+  // A bookcase, a bin and a small plant: an office someone works in
+  model("bookcaseOpen", { height: 1.7 }, -2.15, 0, -1.65);
+  model("books", { height: 0.25, shadows: false }, -0.95, 0.8, -1.2, 0.3);
+  model("trashcan", { height: 0.42 }, 1.25, 0, 0.45);
+  model("plantSmall2", { height: 0.32, shadows: false }, 0.95, 0.8, -1.2);
   floor.position.y = -0.1;
   floor.receiveShadow = true;
   root.add(floor);
-  const desk = new THREE.Mesh(paint.geometry("desk", () => new THREE.BoxGeometry(2.4, 0.1, 1.1)), paint.plain(0xc8a27a, { roughness: 0.7 }));
-  desk.position.set(0, 0.75, -0.9);
-  root.add(desk);
-  for (const x of [-1.1, 1.1]) {
-    const leg = new THREE.Mesh(paint.geometry("leg", () => new THREE.BoxGeometry(0.08, 0.75, 0.9)), paint.plain(0x8a6a4a));
-    leg.position.set(x, 0.37, -0.9);
-    root.add(leg);
+  // The desk top stays at 0.8, where the monitor, the mug and the paws are
+  const deskModel = model("desk", { height: 0.8 }, 0, 0, -0.9);
+  if (deskModel) {
+    fit(deskModel, 2.4, 1.1);
+  } else {
+    const desk = new THREE.Mesh(paint.geometry("desk", () => new THREE.BoxGeometry(2.4, 0.1, 1.1)), paint.plain(0xc8a27a, { roughness: 0.7 }));
+    desk.position.set(0, 0.75, -0.9);
+    root.add(desk);
+    for (const x of [-1.1, 1.1]) {
+      const leg = new THREE.Mesh(paint.geometry("leg", () => new THREE.BoxGeometry(0.08, 0.75, 0.9)), paint.plain(0x8a6a4a));
+      leg.position.set(x, 0.37, -0.9);
+      root.add(leg);
+    }
   }
   // The monitor shows one big status, readable from the camera
   const MONITOR = {
@@ -329,11 +369,16 @@ export function createWorld(ctx) {
   mug.position.set(0.85, 0.88, -0.75);
   root.add(mug);
   // The guinea pig on a chair, at the desk
-  const chair = new THREE.Mesh(paint.geometry("chair", () => new THREE.CylinderGeometry(0.45, 0.45, 0.12, 24)), paint.plain(0x032d60));
-  chair.position.set(0, 0.45, 0.1);
-  root.add(chair);
+  // Its back behind the guinea pig, which faces the desk (-Z)
+  if (!model("chairDesk", { height: 1.15 }, 0, 0, 0.2, Math.PI)) {
+    const chair = new THREE.Mesh(paint.geometry("chair", () => new THREE.CylinderGeometry(0.45, 0.45, 0.12, 24)), paint.plain(0x032d60));
+    chair.position.set(0, 0.45, 0.1);
+    root.add(chair);
+  }
   pig.setSitting(true);
-  pig.object.position.set(0, 0.5, 0.1);
+  // On the seat of the chair: lower for the Blender model, whose sit pose already lifts it
+  const SEAT = ctx.models && ctx.models.has("chairDesk") ? 0.3 : 0.5;
+  pig.object.position.set(0, SEAT, 0.1);
   pig.object.rotation.y = 0;
   pig.shadow.visible = false;
 
@@ -679,7 +724,7 @@ export function createWorld(ctx) {
       placeCamera(time);
       bounce = Math.max(0, bounce - dt);
       wobble = Math.max(0, wobble - dt);
-      pig.object.position.y = 0.5 + Math.sin(bounce * Math.PI * 2) * 0.12 * (bounce > 0 ? 1 : 0);
+      pig.object.position.y = SEAT + Math.sin(bounce * Math.PI * 2) * 0.12 * (bounce > 0 ? 1 : 0);
       pig.hitWobble(wobble);
       pig.state = { running: false };
     },
