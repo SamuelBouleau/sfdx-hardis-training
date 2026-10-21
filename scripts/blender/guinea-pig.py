@@ -131,29 +131,158 @@ def blob(distance, soft=0.25):
     return 1 - smooth(1 - soft, 1 + soft * 0.5, distance)
 
 
-def paint_coat(mesh):
-    """Ginger all over, a white band and blaze, black on the rump. Every edge is
-    a soft blend, so the coat has no steps."""
-    attribute = mesh.data.color_attributes.new("Coat", "FLOAT_COLOR", "POINT")
-    for v in mesh.data.vertices:
-        x, y, z = v.co
-        s = -y
-        h = z - AXIS
-        color = GINGER
-        # Lighter under the belly, darker along the back
-        color = mix(color, WHITE, 0.22 * (1 - smooth(-0.2, -0.05, h)))
-        color = mix(color, GINGER_DARK, 0.3 * smooth(0.25, 0.42, h))
-        # The white band round the middle, with a wavy edge
-        color = mix(color, WHITE, band(s + 0.02 * math.sin(x * 9 + h * 6), -0.1, 0.12, 0.03))
-        # The white blaze down the face, then the whole muzzle
-        blaze = band(x, -(0.05 + (s - 0.45) * 0.35), 0.05 + (s - 0.45) * 0.35, 0.025) * smooth(0.42, 0.5, s) * smooth(-0.12, -0.02, h)
-        color = mix(color, WHITE, max(blaze, smooth(0.66, 0.72, s)))
-        # Black on the left of the rump
-        rump = math.sqrt((x + 0.2) ** 2 / 0.07 + (s + 0.38) ** 2 / 0.05 + (h - 0.12) ** 2 / 0.1)
-        color = mix(color, BLACK, blob(rump) * (1 if x < 0.1 else 0))
-        grain = 1 + 0.06 * (math.sin(x * 91 + s * 57) * math.sin(h * 73 - x * 31))
-        color = tuple(min(1.0, c * grain) for c in color)
-        attribute.data[v.index].color = (*srgb_to_linear(color), 1)
+def coat_material(body):
+    """
+    The short-haired agouti coat of the guinea pig of the course: every hair
+    ticked dark brown, grey and tan, a darker back, a creamy belly and chin, a
+    warm tan ring round the eyes. Drawn by a procedural shader, then baked into
+    a colour map and a hair normal map, so the game pays two textures for it.
+    """
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = 8
+    work = bpy.data.materials.new("CoatBake")
+    work.use_nodes = True
+    nodes = work.node_tree.nodes
+    links = work.node_tree.links
+    bsdf = nodes["Principled BSDF"]
+    coords = nodes.new("ShaderNodeTexCoord")
+
+    def node(kind, **inputs):
+        n = nodes.new(kind)
+        for key, value in inputs.items():
+            n.inputs[key].default_value = value
+        return n
+
+    def ramp(fac, stops):
+        r = nodes.new("ShaderNodeValToRGB")
+        r.color_ramp.elements[0].position, r.color_ramp.elements[0].color = stops[0][0], (*srgb_to_linear(stops[0][1]), 1)
+        r.color_ramp.elements[1].position, r.color_ramp.elements[1].color = stops[-1][0], (*srgb_to_linear(stops[-1][1]), 1)
+        for position, color in stops[1:-1]:
+            e = r.color_ramp.elements.new(position)
+            e.color = (*srgb_to_linear(color), 1)
+        links.new(fac, r.inputs["Fac"])
+        return r.outputs["Color"]
+
+    def mix(a, b, factor):
+        m = nodes.new("ShaderNodeMix")
+        m.data_type = "RGBA"
+        links.new(factor, m.inputs["Factor"])
+        if isinstance(a, tuple):
+            m.inputs["A"].default_value = (*srgb_to_linear(a), 1)
+        else:
+            links.new(a, m.inputs["A"])
+        if isinstance(b, tuple):
+            m.inputs["B"].default_value = (*srgb_to_linear(b), 1)
+        else:
+            links.new(b, m.inputs["B"])
+        return m.outputs["Result"]
+
+    def remap(value, low, high):
+        r = node("ShaderNodeMapRange", **{"From Min": low, "From Max": high})
+        r.clamp = True
+        links.new(value, r.inputs["Value"])
+        return r.outputs["Result"]
+
+    xyz = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(coords.outputs["Object"], xyz.inputs["Vector"])
+    # Ticking: fine noise, stretched along the body as hair lies
+    stretch = node("ShaderNodeVectorMath")
+    stretch.operation = "MULTIPLY"
+    stretch.inputs[1].default_value = (1.0, 0.45, 1.0)
+    links.new(coords.outputs["Object"], stretch.inputs[0])
+    fine = node("ShaderNodeTexNoise", Scale=140.0, Detail=6.0, Roughness=0.65)
+    links.new(stretch.outputs["Vector"], fine.inputs["Vector"])
+    ticked = ramp(fine.outputs["Fac"], [
+        (0.32, (0.12, 0.085, 0.06)),
+        (0.46, (0.27, 0.2, 0.15)),
+        (0.58, (0.4, 0.31, 0.23)),
+        (0.7, (0.55, 0.44, 0.32)),
+    ])
+    # Broad patches: a little lighter and warmer in places, as in the photo
+    broad = node("ShaderNodeTexNoise", Scale=4.0, Detail=2.0)
+    links.new(coords.outputs["Object"], broad.inputs["Vector"])
+    coat = mix(ticked, (0.46, 0.35, 0.25), remap(broad.outputs["Fac"], 0.55, 0.8))
+    # Darker along the back, creamy under the belly and the chin
+    coat = mix(coat, (0.24, 0.19, 0.15), remap(xyz.outputs["Z"], AXIS + 0.22, AXIS + 0.46))
+    coat = mix(coat, (0.78, 0.68, 0.53), remap(xyz.outputs["Z"], AXIS - 0.08, AXIS - 0.24))
+    chin = node("ShaderNodeMath")
+    chin.operation = "MULTIPLY"
+    links.new(remap(xyz.outputs["Y"], -0.6, -0.74), chin.inputs[0])
+    links.new(remap(xyz.outputs["Z"], AXIS + 0.02, AXIS - 0.1), chin.inputs[1])
+    coat = mix(coat, (0.74, 0.63, 0.5), chin.outputs["Value"])
+    # The warm tan ring round each eye
+    absolute = node("ShaderNodeVectorMath")
+    absolute.operation = "ABSOLUTE"
+    links.new(coords.outputs["Object"], absolute.inputs[0])
+    eye = node("ShaderNodeVectorMath")
+    eye.operation = "DISTANCE"
+    eye.inputs[1].default_value = (EYE.x, abs(EYE.y), EYE.z)
+    flip = node("ShaderNodeVectorMath")
+    flip.operation = "MULTIPLY"
+    flip.inputs[1].default_value = (1.0, -1.0, 1.0)
+    links.new(absolute.outputs["Vector"], flip.inputs[0])
+    links.new(flip.outputs["Vector"], eye.inputs[0])
+    eye.inputs[1].default_value = (EYE.x, EYE.y, EYE.z)
+    coat = mix(coat, (0.5, 0.33, 0.2), remap(eye.outputs["Value"], 0.105, 0.065))
+    links.new(coat, bsdf.inputs["Base Color"])
+    # Hair grain, for the normal map
+    hair = node("ShaderNodeTexNoise", Scale=320.0, Detail=3.0)
+    grain = node("ShaderNodeVectorMath")
+    grain.operation = "MULTIPLY"
+    grain.inputs[1].default_value = (1.0, 0.2, 1.0)
+    links.new(coords.outputs["Object"], grain.inputs[0])
+    links.new(grain.outputs["Vector"], hair.inputs["Vector"])
+    bump = node("ShaderNodeBump", Strength=0.35, Distance=0.004)
+    links.new(hair.outputs["Fac"], bump.inputs["Height"])
+    links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+    body.data.materials.clear()
+    body.data.materials.append(work)
+    bpy.ops.object.select_all(action="DESELECT")
+    body.select_set(True)
+    bpy.context.view_layer.objects.active = body
+
+    def bake(name, kind, color_space, **options):
+        image = bpy.data.images.new(name, 1024, 1024)
+        image.colorspace_settings.name = color_space
+        target = nodes.new("ShaderNodeTexImage")
+        target.image = image
+        for n in nodes:
+            n.select = False
+        target.select = True
+        nodes.active = target
+        bpy.ops.object.bake(type=kind, margin=8, **options)
+        image.pack()
+        nodes.remove(target)
+        return image
+
+    color = bake("CoatColor", "DIFFUSE", "sRGB", pass_filter={"COLOR"})
+    normal = bake("CoatNormal", "NORMAL", "Non-Color", normal_space="TANGENT")
+
+    # What the game gets: the two baked maps, a fur roughness and a sheen
+    final = bpy.data.materials.new("Coat")
+    final.use_nodes = True
+    fn = final.node_tree.nodes
+    fl = final.node_tree.links
+    fb = fn["Principled BSDF"]
+    image_color = fn.new("ShaderNodeTexImage")
+    image_color.image = color
+    image_normal = fn.new("ShaderNodeTexImage")
+    image_normal.image = normal
+    normal_map = fn.new("ShaderNodeNormalMap")
+    normal_map.inputs["Strength"].default_value = 0.8
+    fl.new(image_color.outputs["Color"], fb.inputs["Base Color"])
+    fl.new(image_normal.outputs["Color"], normal_map.inputs["Color"])
+    fl.new(normal_map.outputs["Normal"], fb.inputs["Normal"])
+    fb.inputs["Roughness"].default_value = 0.82
+    if "Sheen Weight" in fb.inputs:
+        fb.inputs["Sheen Weight"].default_value = 0.2
+        fb.inputs["Sheen Tint"].default_value = (1, 0.95, 0.9, 1)
+    body.data.materials.clear()
+    body.data.materials.append(final)
+    bpy.data.materials.remove(work)
 
 
 def add(primitive, name, location, scale=(1, 1, 1), rotation=(0, 0, 0), mat=None, **kwargs):
@@ -174,38 +303,52 @@ def surface(s, side, lift):
     return Vector((side * math.sqrt(max(r * r - lift * lift, 0)) * 1.03, -s, AXIS + lift - 0.09 * smooth(0.45, 0.8, s)))
 
 
+EYE = Vector((0.0, 0.0, 0.0))
+
+
 def details(mats):
     parts = []
-    # Eyes: glossy black, a little bulging, on the sides of the head
+    # Eyes: big, round, glossy dark brown, with a large and a small highlight
     for side in (1, -1):
         p = surface(0.52, side, 0.1)
-        eye = add("uv_sphere", "Eye" + ("R" if side > 0 else "L"), (p.x * 0.96, p.y, p.z), (0.06, 0.07, 0.07), mat=mats["eye"], segments=20, ring_count=12)
-        parts.append(eye)
-        shine = add("uv_sphere", "Shine" + ("R" if side > 0 else "L"), (p.x * 1.04, p.y - 0.035, p.z + 0.035), (0.016, 0.016, 0.016), mat=mats["shine"], segments=10, ring_count=6)
-        parts.append(shine)
-    # Ears: drooping petals on top of the head, ginger outside, pink inside
+        tag = "R" if side > 0 else "L"
+        parts.append(add("uv_sphere", "Eye" + tag, (p.x * 0.95, p.y, p.z), (0.075, 0.085, 0.085), mat=mats["eye"], segments=24, ring_count=14))
+        parts.append(add("uv_sphere", "Eye" + tag + "Shine", (p.x * 1.05, p.y - 0.035, p.z + 0.04), (0.022, 0.022, 0.022), mat=mats["shine"], segments=12, ring_count=8))
+        parts.append(add("uv_sphere", "Eye" + tag + "Glint", (p.x * 1.06, p.y + 0.03, p.z - 0.03), (0.01, 0.01, 0.01), mat=mats["shine"], segments=8, ring_count=6))
+    # Ears: soft grey-pink petals drooping on each side of the head
     for side in (1, -1):
         p = surface(0.38, side, 0.22)
-        tilt = (math.radians(-10), math.radians(-25 * side), math.radians(28 * side))
-        outer = add("uv_sphere", "Ear" + ("R" if side > 0 else "L"), (p.x * 1.0, p.y + 0.03, p.z + 0.08), (0.022, 0.1, 0.09), tilt, mat=mats["earOuter"], segments=18, ring_count=12)
-        parts.append(outer)
-        inner = add("uv_sphere", "Ear" + ("R" if side > 0 else "L") + "In", (p.x * 1.0 + side * 0.013, p.y + 0.03, p.z + 0.08), (0.01, 0.08, 0.07), tilt, mat=mats["ear"], segments=16, ring_count=10)
-        parts.append(inner)
-    # Nose, at the tip of the muzzle
+        tilt = (math.radians(-12), math.radians(-30 * side), math.radians(38 * side))
+        tag = "R" if side > 0 else "L"
+        parts.append(add("uv_sphere", "Ear" + tag, (p.x * 1.02, p.y + 0.03, p.z + 0.06), (0.018, 0.11, 0.095), tilt, mat=mats["earOuter"], segments=20, ring_count=12))
+        parts.append(add("uv_sphere", "Ear" + tag + "In", (p.x * 1.02 + side * 0.012, p.y + 0.03, p.z + 0.06), (0.008, 0.088, 0.075), tilt, mat=mats["ear"], segments=16, ring_count=10))
+    # Nose: a soft dark pad with two nostrils, and the split lip under it
     tip = surface(0.77, 1, 0.0)
-    parts.append(add("uv_sphere", "Nose", (0, tip.y + 0.005, tip.z + 0.02), (0.04, 0.03, 0.03), mat=mats["nose"], segments=12, ring_count=8))
-    # Feet: four pink ovals poking out under the body
-    for name, (x, s) in {"FootFL": (0.17, 0.36), "FootFR": (-0.17, 0.36), "FootBL": (0.21, -0.36), "FootBR": (-0.21, -0.36)}.items():
-        parts.append(add("uv_sphere", name, (x, -s, 0.035), (0.065, 0.095, 0.04), mat=mats["foot"], segments=14, ring_count=8))
-    # Whiskers: thin, light, three a side, from the muzzle outwards
+    nose_at = (0, tip.y + 0.004, tip.z + 0.03)
+    parts.append(add("uv_sphere", "Nose", nose_at, (0.045, 0.028, 0.03), mat=mats["nose"], segments=14, ring_count=8))
     for side in (1, -1):
-        root = surface(0.7, side, -0.02)
-        for i in range(3):
-            angle = math.radians(-14 + i * 14)
-            length = 0.2
-            direction = Vector((side * math.cos(angle), -0.25, math.sin(angle) * 0.6)).normalized()
+        parts.append(add("uv_sphere", "Nostril", (side * 0.018, nose_at[1] - 0.022, nose_at[2] + 0.004), (0.009, 0.006, 0.006), mat=mats["mouth"], segments=8, ring_count=6))
+    parts.append(add("cylinder", "Mouth", (0, nose_at[1] + 0.004, nose_at[2] - 0.04), (0.0035, 0.0035, 0.022), mat=mats["mouth"], vertices=6))
+    for side in (1, -1):
+        lip = add("cylinder", "Mouth", (side * 0.014, nose_at[1] + 0.008, nose_at[2] - 0.062), (0.003, 0.003, 0.016), (0, math.radians(55 * side), 0), mat=mats["mouth"], vertices=6)
+        parts.append(lip)
+    # Feet: grey-pink pads with small toes and dark claws
+    for name, (x, s) in {"FootFL": (0.17, 0.36), "FootFR": (-0.17, 0.36), "FootBL": (0.21, -0.36), "FootBR": (-0.21, -0.36)}.items():
+        parts.append(add("uv_sphere", name, (x, -s, 0.032), (0.06, 0.085, 0.034), mat=mats["foot"], segments=14, ring_count=8))
+        toes = 4 if s > 0 else 3
+        for i in range(toes):
+            dx = (i - (toes - 1) / 2) * 0.03
+            parts.append(add("uv_sphere", name + "Toe", (x + dx, -s - 0.075, 0.022), (0.016, 0.02, 0.016), mat=mats["foot"], segments=8, ring_count=6))
+            parts.append(add("uv_sphere", name + "Claw", (x + dx, -s - 0.094, 0.016), (0.007, 0.012, 0.006), mat=mats["claw"], segments=6, ring_count=4))
+    # Whiskers: long, fine, four a side, from the muzzle outwards
+    for side in (1, -1):
+        root = surface(0.71, side, -0.03)
+        for i in range(4):
+            angle = math.radians(-18 + i * 12)
+            length = 0.3
+            direction = Vector((side * math.cos(angle), -0.3, math.sin(angle) * 0.7)).normalized()
             centre = root + direction * (length / 2)
-            whisker = add("cylinder", "Whisker", centre, (0.004, 0.004, length / 2), mat=mats["whisker"], vertices=5)
+            whisker = add("cylinder", "Whisker", centre, (0.0025, 0.0025, length / 2), mat=mats["whisker"], vertices=5)
             whisker.rotation_mode = "QUATERNION"
             whisker.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(direction)
             bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
@@ -244,7 +387,7 @@ def armature():
 def bind(rig, body, parts):
     """The body gets automatic weights; each small part follows one bone."""
     follow = {
-        "Eye": "head", "Shine": "head", "Nose": "head", "Whisker": "head",
+        "Eye": "head", "Shine": "head", "Nose": "head", "Nostril": "head", "Mouth": "head", "Whisker": "head",
         "EarR": "ear.R", "EarL": "ear.L",
         "FootFL": "leg.FL", "FootFR": "leg.FR", "FootBL": "leg.BL", "FootBR": "leg.BR",
     }
@@ -385,19 +528,20 @@ def preview(path):
 def main():
     reset()
     mats = {
-        "coat": material("Coat", GINGER, 0.8, vertex_colors=True, sheen=0.6),
-        "eye": material("Eye", (0.02, 0.02, 0.03), 0.05, clearcoat=1.0),
-        "shine": material("Shine", (1, 1, 1), 0.2),
-        "ear": material("Ear", PINK, 0.7),
-        "earOuter": material("EarOuter", (0.72, 0.42, 0.24), 0.8),
-        "nose": material("Nose", PINK_DEEP, 0.5),
-        "foot": material("Foot", PINK, 0.7),
-        "whisker": material("Whisker", (0.95, 0.93, 0.9), 0.5),
+        "eye": material("Eye", (0.07, 0.04, 0.03), 0.04, clearcoat=1.0),
+        "shine": material("Shine", (1, 1, 1), 0.15),
+        "ear": material("Ear", (0.84, 0.66, 0.66), 0.7),
+        "earOuter": material("EarOuter", (0.56, 0.47, 0.46), 0.8),
+        "nose": material("Nose", (0.5, 0.36, 0.34), 0.45),
+        "mouth": material("Mouth", (0.2, 0.13, 0.12), 0.6),
+        "foot": material("Foot", (0.64, 0.53, 0.5), 0.7),
+        "claw": material("Claw", (0.25, 0.2, 0.18), 0.4),
+        "whisker": material("Whisker", (0.85, 0.83, 0.8), 0.5),
     }
     body = body_mesh()
-    paint_coat(body)
-    body.data.materials.append(mats["coat"])
+    EYE.xyz = surface(0.52, 1, 0.1)
     parts = details(mats)
+    coat_material(body)
     rig = armature()
     bind(rig, body, parts)
     animations(rig)
@@ -411,7 +555,8 @@ def main():
         export_skins=True,
         export_apply=False,
         export_yup=True,
-        export_vertex_color="ACTIVE",
+        export_image_format="WEBP",
+        export_image_quality=85,
     )
     print("exported", OUT)
     if PREVIEW:
