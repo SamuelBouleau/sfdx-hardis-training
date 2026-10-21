@@ -35,7 +35,9 @@ import { serveSite, SITE } from "../lib/site-server.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
 const GAME = path.join(ROOT, "site-theme", "javascripts", "guinea-run");
-const OPEN_TIMEOUT = 40000;
+// The software renderer of CI builds every shader on the CPU: a world with
+// its 3D models takes half a minute to open there, a second on a real GPU
+const OPEN_TIMEOUT = 90000;
 const KONAMI_ARROWS = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
 const KONAMI_WASD = ["w", "w", "s", "s", "a", "d", "a", "d", "b", "a"];
 const PROGRESS_KEY = "guinea-run-progress-v1";
