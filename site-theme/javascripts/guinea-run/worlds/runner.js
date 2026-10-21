@@ -17,10 +17,12 @@
  * "Why?" box, and the doors of a gate are repeated as big chips in the HUD
  * while the gate comes closer, with the question above them.
  *
- * The Kenney models of the platform and nature packs give the world its
- * shapes (crates, fences, spikes, coins, hearts, islands with trees), drawn
- * with instancing where they repeat. When a pack did not load, the runner
- * falls back on the shapes it builds itself.
+ * Everything the player meets is a Salesforce or sfdx-hardis thing from the
+ * salesforce pack: CI runners and record bars as obstacles, scratch orgs,
+ * permission sets and failed checks as power-ups, the Cloudity logo on the
+ * gates. The Kenney islands and trees stay far away, as scenery, with org
+ * clouds floating over them. Repeats are instanced. When a pack did not
+ * load, the runner falls back on the shapes it builds itself.
  *
  * The guinea pig stays at z = 0 and the world comes to it: an object placed at
  * distance `at` is drawn at z = -(at - distance).
@@ -173,8 +175,15 @@ export function createRunner(ctx, config) {
     const fz = box.d ? box.d / Math.max(size.z, 1e-3) : 0;
     const given = [fx, fy, fz].filter(Boolean);
     const mean = given.reduce((a, b) => a + b, 0) / Math.max(given.length, 1) || 1;
-    copy.scale.multiply(new THREE.Vector3(fx || mean, fy || mean, fz || mean));
-    return copy;
+    // Scaled and turned through a holder: some models carry a turn of their
+    // own (standing up), and their local axes are not the world's
+    const holder = new THREE.Group();
+    holder.add(copy);
+    holder.scale.set(fx || mean, fy || mean, fz || mean);
+    if (box.turn) {
+      holder.rotation.y = box.turn;
+    }
+    return holder;
   }
 
   /**
@@ -214,6 +223,10 @@ export function createRunner(ctx, config) {
   }
 
   /** The materials of a model, glowing: cloned once per look, freed by the runner. */
+  function glowModel(model, color, intensity) {
+    return glow(model, color, intensity);
+  }
+
   function glow(model, color, intensity) {
     model.traverse((child) => {
       if (child.isMesh) {
@@ -372,10 +385,12 @@ export function createRunner(ctx, config) {
       block: instancedModel("block-grass-large", islands.length, 1),
       tree: instancedModel("tree", Math.ceil(islands.length / 2), 1.7),
       pine: instancedModel("tree-pine", Math.floor(islands.length / 2), 1.9),
-      bush: instancedModel("plant_bush", islands.length, 0.55),
+      bush: instancedModel("plant", islands.length, 0.55),
       flowers: instancedModel("flowers", islands.length, 0.26)
     };
     const withModels = Boolean(kenney.block && kenney.tree && kenney.pine && kenney.bush && kenney.flowers);
+    // An org cloud floats over every island (nothing to pick up: the sky of Salesforce)
+    const orgClouds = withModels ? instancedModel("org-cloud", islands.length, 1.1) : null;
     let rocks = null;
     let lawns = null;
     let trees = null;
@@ -415,6 +430,8 @@ export function createRunner(ctx, config) {
       balloonList.push({ x: side * (8 + sceneRandom() * 5), y: 2.5 + sceneRandom() * 5, offset: (i / 14) * 160, phase: sceneRandom() * 6 });
     }
     const balloonMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25, metalness: 0.05 });
+    // Small scratch org clouds drift beside the track; balloons without the pack
+    const scratchClouds = instancedModel("scratch-cloud", balloonList.length, 0.8);
     const balloons = new THREE.InstancedMesh(
       paint.geometry("balloon", () => new THREE.SphereGeometry(0.45, 14, 10).scale(1, 1.18, 1)),
       balloonMaterial,
@@ -423,13 +440,22 @@ export function createRunner(ctx, config) {
     for (let i = 0; i < balloonList.length; i++) {
       balloons.setColorAt(i, color.setHex(HAPPY[(i * 3) % HAPPY.length]));
     }
-    root.add(balloons);
+    if (scratchClouds) {
+      balloons.visible = false;
+    } else {
+      root.add(balloons);
+    }
     const instanced = [nodes, poles, flags, clouds, balloons].concat(withModels ? [] : [rocks, lawns, trees]);
     if (withModels) {
       for (const parts of Object.values(kenney)) {
         for (const part of parts) {
           instanced.push(part.mesh);
         }
+      }
+    }
+    for (const parts of [orgClouds, scratchClouds]) {
+      for (const part of parts || []) {
+        instanced.push(part.mesh);
       }
     }
     return {
@@ -444,6 +470,8 @@ export function createRunner(ctx, config) {
       islands,
       withModels,
       kenney,
+      orgClouds,
+      scratchClouds,
       rocks,
       lawns,
       trees,
@@ -457,6 +485,8 @@ export function createRunner(ctx, config) {
   const matrix = new THREE.Matrix4();
   const quaternion = new THREE.Quaternion();
   const identity = new THREE.Quaternion();
+  // The salesforce models face -Z: half a turn shows their face to the camera
+  const turnBack = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
   const euler = new THREE.Euler();
   const scale = new THREE.Vector3();
   const position = new THREE.Vector3();
@@ -505,10 +535,18 @@ export function createRunner(ctx, config) {
       const z = 10 - ((b.offset + 160 - (distance % 160)) % 160);
       position.set(b.x + Math.sin(time * 0.7 + b.phase) * 0.3, b.y + Math.sin(time * 1.3 + b.phase) * 0.35, z);
       scale.set(1, 1, 1);
-      matrix.compose(position, identity, scale);
-      scenery.balloons.setMatrixAt(i, matrix);
+      matrix.compose(position, scenery.scratchClouds ? turnBack : identity, scale);
+      if (scenery.scratchClouds) {
+        setInstance(scenery.scratchClouds, i, matrix);
+      } else {
+        scenery.balloons.setMatrixAt(i, matrix);
+      }
     });
-    scenery.balloons.instanceMatrix.needsUpdate = true;
+    if (scenery.scratchClouds) {
+      instancesDone(scenery.scratchClouds);
+    } else {
+      scenery.balloons.instanceMatrix.needsUpdate = true;
+    }
     const target = sectionColors[sectionIndex];
     scenery.edge.color.lerp(target, 0.05);
     scenery.rail.color.lerp(target, 0.05);
@@ -535,7 +573,16 @@ export function createRunner(ctx, config) {
       setInstance(k.bush, i, matrix);
       placeOn(island, bob, 0.3, -0.5, s);
       setInstance(k.flowers, i, matrix);
+      if (scenery.orgClouds) {
+        position.set(island.x, island.y + bob + s * 1.6 + Math.sin(time * 1.1 + i) * 0.2, z);
+        scale.set(s * 0.8, s * 0.8, s * 0.8);
+        matrix.compose(position, turnBack, scale);
+        setInstance(scenery.orgClouds, i, matrix);
+      }
     });
+    if (scenery.orgClouds) {
+      instancesDone(scenery.orgClouds);
+    }
     for (const parts of Object.values(k)) {
       instancesDone(parts);
     }
@@ -780,8 +827,8 @@ export function createRunner(ctx, config) {
     const group = new THREE.Group();
     switch (def.move) {
       case "jump": {
-        // A low wooden fence, the same height as the hurdle it stands for
-        const fence = fitModel("fence-low-straight", { w: 1.95, h: 0.55, d: 0.3 });
+        // A low record bar, the same height as the hurdle it stands for
+        const fence = fitModel("record", { w: 1.95, h: 0.55, d: 0.3, turn: Math.PI });
         const block = fence || new THREE.Mesh(shapes.low, body);
         block.position.y = fence ? 0 : 0.28;
         const face = new THREE.Mesh(fence ? shapes.lowPlaque : shapes.lowFace, obstacleFace(kind, theme, text, "low"));
@@ -811,11 +858,6 @@ export function createRunner(ctx, config) {
         const hole = new THREE.Mesh(shapes.hole, holeMaterial);
         hole.position.y = 0.01;
         group.add(hole);
-        // Spikes at the bottom of the hole: nobody wants to land there
-        const spikes = fitModel("trap-spikes", { w: 1.5, h: 0.28, d: 1.8 });
-        if (spikes) {
-          group.add(spikes);
-        }
         for (const z of [-1.1, 1.1]) {
           const edge = new THREE.Mesh(shapes.stripe, stripes);
           edge.position.set(0, 0.04, z);
@@ -829,8 +871,8 @@ export function createRunner(ctx, config) {
         break;
       }
       default: {
-        // A big iron-bound crate blocks the lane
-        const crate = fitModel("crate-strong", { w: 1.9, h: 1.64, d: 0.8 });
+        // A CI runner rack blocks the lane
+        const crate = fitModel("ci-runner", { w: 1.9, h: 1.64, d: 0.8, turn: Math.PI });
         const block = crate || new THREE.Mesh(shapes.wall, body);
         block.position.y = crate ? 0 : 0.82;
         const face = new THREE.Mesh(crate ? shapes.wallPlaque : shapes.wallFace, obstacleFace(kind, theme, text, "wall"));
@@ -846,7 +888,17 @@ export function createRunner(ctx, config) {
   function itemMesh(kind, withLabel) {
     const def = config.items[kind];
     const group = new THREE.Group();
-    const tile = new THREE.Mesh(def.big ? shapes.bigTile : shapes.tile, paint.tile(kind, def.color, def.glyph));
+    // A salesforce model when the world names one (def.model), the glyph tile otherwise
+    let tile = def.model ? fitModel(def.model, { h: def.big ? 0.95 : 0.75 }) : null;
+    if (tile) {
+      glow(tile, def.glow || def.color, def.glowIntensity || 0.35);
+      const spin = new THREE.Group();
+      tile.position.y = -(def.big ? 0.47 : 0.37);
+      spin.add(tile);
+      tile = spin;
+    } else {
+      tile = new THREE.Mesh(def.big ? shapes.bigTile : shapes.tile, paint.tile(kind, def.color, def.glyph));
+    }
     group.add(tile);
     if (def.big) {
       const halo = new THREE.Mesh(shapes.halo, paint.plain(0xffd84d, { emissive: 0xffb400, emissiveIntensity: 1.5 }));
@@ -860,20 +912,22 @@ export function createRunner(ctx, config) {
     return group;
   }
 
-  // What each power-up looks like: a heart gives an attempt back, a star
-  // protects, a bomb is the trap; the rest are gold coins or a jewel
+  // What each power-up looks like: a fresh scratch org gives an attempt back,
+  // a permission set protects, a failed check is the trap, a package.xml
+  // pulls the components in, a Lightning bolt for the rest. A world can name
+  // its own model (def.model) when another fits its story better
   const POWER_MODELS = {
-    attempt: ["heart", 0xff3355, 1.4],
-    shield: ["star", 0xffb400, 1.4],
-    trap: ["bomb", 0x000000, 0],
-    magnet: ["jewel", 0x4f7dff, 1.3],
-    custom: ["jewel", 0x4f7dff, 1.3]
+    attempt: ["scratch-cloud", 0x06a59a, 1.3],
+    shield: ["permission-set", 0x06a59a, 1.3],
+    trap: ["check-fail", 0xea001e, 0.6],
+    magnet: ["package-xml", 0x1b96ff, 1.2],
+    custom: ["record", 0x1b96ff, 1.2]
   };
 
   function powerMesh(kind) {
     const def = config.powers[kind];
     const group = new THREE.Group();
-    const look = POWER_MODELS[def.effect] || ["coin-gold", 0xffb400, 1.3];
+    const look = def.model ? [def.model, def.glow || 0xffb400, 1.2] : POWER_MODELS[def.effect] || ["lwc", 0xffb400, 1.3];
     let body = fitModel(look[0], { h: 0.8 });
     if (body) {
       body.position.y = -0.4;
@@ -963,6 +1017,13 @@ export function createRunner(ctx, config) {
         glow.position.set(x, 1.3, -0.02);
         group.add(ring, glow);
         spinners.push(ring);
+        // The right way through: a glowing passed check in the middle of the ring
+        const pass = fitModel("check-pass", { h: 0.8, turn: Math.PI });
+        if (pass) {
+          glowModel(pass, 0x45c65a, 1.2);
+          pass.position.set(x, 0.9, 0);
+          group.add(pass);
+        }
         panels.push(null);
       } else {
         const icon = look === "quiz" ? "branch" : look === "trap" ? "loop" : "error";
@@ -999,9 +1060,19 @@ export function createRunner(ctx, config) {
       banner.position.set(0, 4.05, 0);
       group.add(banner);
     }
-    const logo = new THREE.Mesh(shapes.plaque, paint.plaque());
-    logo.position.set(0, bannerText || Array.isArray(spec.banner) ? 5.05 : 4.2, 0);
-    group.add(logo);
+    const top = bannerText || Array.isArray(spec.banner) ? 4.55 : 3.7;
+    const logo3d = fitModel("cloudity-logo", { h: 1.1, turn: Math.PI });
+    if (logo3d) {
+      glow(logo3d, 0x1b96ff, 0.5);
+      logo3d.position.set(0, top, 0);
+      group.add(logo3d);
+      spinners.push(null);
+      group.userData.logo = logo3d;
+    } else {
+      const logo = new THREE.Mesh(shapes.plaque, paint.plaque());
+      logo.position.set(0, top + 0.5, 0);
+      group.add(logo);
+    }
     group.userData.panels = panels;
     group.userData.spinners = spinners;
     return group;
@@ -1722,8 +1793,14 @@ export function createRunner(ctx, config) {
       }
       if (object.type === "gate") {
         for (const ring of object.mesh.userData.spinners) {
-          ring.rotation.z = time * 1.5;
-          ring.scale.setScalar(1 + Math.sin(time * 5) * 0.05);
+          if (ring) {
+            ring.rotation.z = time * 1.5;
+            ring.scale.setScalar(1 + Math.sin(time * 5) * 0.05);
+          }
+        }
+        const logo = object.mesh.userData.logo;
+        if (logo) {
+          logo.rotation.y = Math.PI + Math.sin(time * 1.2) * 0.35;
         }
         if (dz < GATE_PANEL_AT && !object.shown && dz > 0) {
           object.shown = true;

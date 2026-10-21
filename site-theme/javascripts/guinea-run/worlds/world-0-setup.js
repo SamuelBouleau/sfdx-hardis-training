@@ -18,8 +18,8 @@
 import { createRunner, RUNNER_TEXTS, RUNNER_CSS } from "./runner.js";
 
 export const PADS = ["left", "right", "jump", "duck"];
-// The Kenney packs the runner draws the track with
-export const MODELS = ["platform", "nature"];
+// The Salesforce items of the track, and the Kenney islands far away
+export const MODELS = ["salesforce", "platform"];
 
 // What VS Code only sees after a restart
 const NEEDS_RESTART = ["git", "node", "cli"];
@@ -315,7 +315,7 @@ export function createWorld(ctx) {
   items.sfdmu = { glyph: "box", color: "#0D9DDA", label: "SFDMU", points: 10 };
   items.sgd = { glyph: "delta", color: "#DD7A01", label: "sfdx-git-delta", points: 10 };
   items.gh = { glyph: "branch", color: "#24292F", label: "GitHub CLI", points: 10 };
-  items.note = { glyph: "note", color: "#F2C94C", label: "?", points: 0 };
+  items.note = { glyph: "note", color: "#F2C94C", label: "?", points: 0, model: "note", glow: 0xffd84d, glowIntensity: 0.8 };
 
   const ob = (move, key, theme, detail) => ({ move, title: "o_" + key, tip: "o_" + key + "_tip", short: "o_" + key + "_s", theme: theme || "error", detail });
   const config = {
@@ -342,9 +342,9 @@ export function createWorld(ctx) {
     powers: {
       pending: { glyph: "loop", color: "#0176D3", label: "Run pending installs", short: "p_pending_s", effect: "magnet", metres: 200, kinds: REQUIRED, toast: "p_pending" },
       reload: { glyph: "loop", color: "#2E844A", label: "Reload Window", short: "p_reload_s", effect: "attempt", toast: "p_reload" },
-      vibes: { glyph: "bolt", color: "#9050E9", label: "Agentforce Vibes", short: "p_vibes_s", effect: "shield", seconds: 5, toast: "p_vibes" },
+      vibes: { glyph: "bolt", color: "#9050E9", label: "Agentforce Vibes", short: "p_vibes_s", model: "lwc", glow: 0xffb400, effect: "shield", seconds: 5, toast: "p_vibes" },
       delete: { glyph: "error", color: "#BA0517", label: "Delete scratch org", short: "p_delete_s", effect: "trap", toast: "p_delete", tip: "p_delete_tip" },
-      restart: { glyph: "loop", color: "#0176D3", label: "Restart VS Code", short: "p_restart_s", effect: "custom" }
+      restart: { glyph: "loop", color: "#0176D3", label: "Restart VS Code", short: "p_restart_s", model: "check-pass", glow: 0x45c65a, effect: "custom" }
     },
     gates(index) {
       if (index === 0) {

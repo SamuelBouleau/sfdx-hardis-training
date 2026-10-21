@@ -16,8 +16,8 @@
 import { createRunner, RUNNER_TEXTS, RUNNER_CSS } from "./runner.js";
 
 export const PADS = ["left", "right", "jump", "duck", "confirm"];
-// The Kenney packs the runner draws the track with
-export const MODELS = ["platform", "nature"];
+// The Salesforce items of the track, and the Kenney islands far away
+export const MODELS = ["salesforce", "platform"];
 
 const UAT_LENGTH = 400;
 const PREPROD_LENGTH = 420;
@@ -254,19 +254,19 @@ export function createWorld(ctx) {
       lateuat: ob("lane", "lateuat", "warning", "manual")
     },
     items: {
-      pr: { glyph: "branch", color: "#0176D3", label: t("item_pr"), points: 10 },
-      ticket: { glyph: "note", color: "#06A59A", label: t("item_ticket"), points: 10 },
+      pr: { glyph: "branch", color: "#0176D3", label: t("item_pr"), points: 10, model: "pull-request" },
+      ticket: { glyph: "note", color: "#06A59A", label: t("item_ticket"), points: 10, model: "ticket" },
       us057: storyItem("us057"),
       us058: storyItem("us058"),
       us059: storyItem("us059"),
       us060: storyItem("us060"),
       us061: storyItem("us061"),
-      note: { glyph: "note", color: "#F2C94C", label: "?", points: 0 }
+      note: { glyph: "note", color: "#F2C94C", label: "?", points: 0, model: "note", glow: 0xffd84d, glowIntensity: 0.8 }
     },
     powers: {
       shield: { glyph: "shield", color: "#032D60", label: "no-overwrite", short: "p_shield_s", effect: "shield", seconds: 6, toast: "p_shield" },
       preview: { glyph: "eye", color: "#9050E9", label: "Preview", short: "p_preview_s", effect: "custom" },
-      retry: { glyph: "loop", color: "#2E844A", label: "Re-run all jobs", short: "p_retry_s", effect: "attempt", toast: "p_retry" }
+      retry: { glyph: "loop", color: "#2E844A", label: "Re-run all jobs", short: "p_retry_s", model: "ci-runner", glow: 0x2e844a, effect: "attempt", toast: "p_retry" }
     },
     gates(index) {
       if (index === 0) {
@@ -361,13 +361,13 @@ export function createWorld(ctx) {
 
   function addWagon(id) {
     const group = new THREE.Group();
-    // A small crate when the platform pack is there, a green box otherwise
-    const crate = runner.model("crate", { w: 0.5, h: 0.45, d: 0.5 });
+    // A ticket stub on the promotion branch when the salesforce pack is there, a green box otherwise
+    const crate = runner.model("ticket", { h: 0.5, turn: Math.PI });
     const body = crate || new THREE.Mesh(wagonBody, wagonMaterial);
     body.position.y = crate ? 0 : 0.2;
     group.add(body);
     const sign = ctx.paint.sign("wagon", STORY_LABELS[id], { color: "#2E844A", glyph: "check", height: 0.24 });
-    sign.position.y = 0.52;
+    sign.position.y = 0.7;
     group.add(sign);
     const pig = ctx.pig.object.position;
     group.position.set(pig.x, 0, 1.25 + 0.85 * wagons.length);
