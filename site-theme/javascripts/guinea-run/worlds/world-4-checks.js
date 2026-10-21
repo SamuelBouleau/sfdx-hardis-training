@@ -46,6 +46,10 @@ const BOSS_HP = 10;
 const SOQL_LIMIT = 101;
 const BOSS_COUNT_RATE = 2.6;
 const BOSS_SCALE = 1.45;
+// The pace: 1 at the start, about +36% by the end of the coverage wave
+const PACE_GAIN = 0.36;
+const MERCY = 0.2;
+const MERCY_FADE = 0.04;
 
 // The Information section of the Installation layout, before US-052
 const LAYOUT = [
@@ -176,6 +180,7 @@ export const TEXTS = {
     mariia_merged: "You merged it? Planners will look for the capacity on Monday morning.",
     fixMerged: "Squash and merge: US-052 merged into integration",
     rerun: "Her new commit: the checks run again",
+    faster: "Faster!",
     coverageShort: "Coverage still under 80%: in a real project the check would refuse it",
     missedCoverage: "The coverage stayed at {{coverage}}%: in Lab 2.5 the deployment check refuses anything under 80%, and the two tests of schedulableOn are what lets it through.",
     missedMerge: "You merged US-052 before the fix: in Lab 3.2 that takes Total_Capacity_kW__c off the layout in integration, and Restore branch is the way back."
@@ -291,6 +296,7 @@ export const TEXTS = {
     mariia_merged: "Tu l'as mergée ? Les planificateurs chercheront la capacité lundi matin.",
     fixMerged: "Squash and merge : US-052 mergée dans integration",
     rerun: "Son nouveau commit : les contrôles repartent",
+    faster: "Plus vite !",
     coverageShort: "Couverture toujours sous 80 % : sur un vrai projet, le contrôle la refuserait",
     missedCoverage: "La couverture est restée à {{coverage}} % : au Lab 2.5, le contrôle de déploiement refuse tout ce qui est sous 80 %, et ce sont les deux tests de schedulableOn qui la font passer.",
     missedMerge: "Vous avez mergé US-052 avant la correction : au Lab 3.2, cela retire Total_Capacity_kW__c de la présentation de page dans integration, et Restore branch est le chemin du retour."
@@ -838,10 +844,15 @@ export function createWorld(ctx) {
   const missed = [];
   const seenDetail = {};
   let cloudRise = 0;
+  // The findings march faster as the world goes on, never with time spent stuck
+  let pace = 1;
+  let mercy = 0;
+  let paceStep = 0;
 
   ctx.setData("lane", player.lane);
   ctx.setData("review", "pending");
   ctx.setData("wave", 0);
+  ctx.setData("pace", "1.00");
 
   let lastCoach = -10;
   /** A big instruction in the middle, never more than one every 3 seconds. */
@@ -938,8 +949,43 @@ export function createWorld(ctx) {
     return objects.filter((o) => !o.dead && !o.dying);
   }
 
+  /** How far the battle is, 0 to 1: by wave, and inside a wave by what is done. */
+  function progress() {
+    const clamp = (v) => Math.max(0, Math.min(1, v));
+    if (wave <= 1) {
+      return 0.15 * clamp(waveTime / 15.5);
+    }
+    if (wave === 2) {
+      return 0.15 + 0.35 * clamp(waveTime / 28);
+    }
+    if (wave === 3) {
+      return 0.5 + 0.25 * clamp(1 - boss.hp / BOSS_HP);
+    }
+    if (wave === 4) {
+      const covered = clamp((coverage - COVERAGE_FIXED) / (COVERAGE_TARGET - COVERAGE_FIXED));
+      return 0.75 + 0.25 * Math.max(covered, clamp(waveTime / 30));
+    }
+    return 1;
+  }
+
+  function updatePace(dt) {
+    const p = progress();
+    // Ease in: gentle for a long time, then the climb
+    const target = Math.max(0.85, 1 + PACE_GAIN * Math.pow(p, 1.6) - mercy);
+    mercy = Math.max(0, mercy - MERCY_FADE * dt);
+    pace += (target - pace) * Math.min(1, dt * 0.8);
+    ctx.setData("pace", pace.toFixed(2));
+    const step = Math.floor((pace - 1) / 0.1 + 1e-6);
+    if (step > paceStep) {
+      paceStep = step;
+      coach("faster", true);
+      ctx.sound.play("power");
+    }
+  }
+
   function updateWave(dt) {
-    waveTime += dt;
+    // A little denser too: the queue runs a bit faster than the clock
+    waveTime += dt * (1 + (pace - 1) * 0.35);
     while (queue.length && queue[0].at <= waveTime) {
       const entry = queue.shift();
       if (entry.kind === "golden") {
@@ -983,12 +1029,13 @@ export function createWorld(ctx) {
       }
       return;
     }
-    boss.count += dt * BOSS_COUNT_RATE;
+    boss.count += dt * BOSS_COUNT_RATE * (1 + (pace - 1) * 0.5);
     if (boss.count >= SOQL_LIMIT) {
       boss.count = 0;
       shake = 0.5;
       hud.tick("System.LimitException: Too many SOQL queries: 101");
       ctx.loseAttempt(t("limitHit"), t("tip_limit"));
+      mercy = MERCY;
       if (!ctx.playing) {
         return;
       }
@@ -999,7 +1046,7 @@ export function createWorld(ctx) {
       boss.lane = (boss.lane + 1 + Math.floor(random() * 2)) % 3;
       boss.nextMove = 2.6 + random() * 1.4;
     }
-    boss.nextShot -= dt;
+    boss.nextShot -= dt * (1 + (pace - 1) * 0.35);
     if (boss.nextShot <= 0) {
       spawn("select", random() < 0.65 ? boss.lane : Math.floor(random() * 3), { z: boss.group.position.z + 1 });
       boss.nextShot = 2 + random() * 0.9;
@@ -1177,7 +1224,7 @@ export function createWorld(ctx) {
         continue;
       }
       o.age += dt;
-      o.z += o.def.speed * dt;
+      o.z += o.def.speed * pace * dt;
       o.flash = Math.max(0, o.flash - dt);
       o.mesh.position.z = o.z;
       o.chip.visible = o.z > -15;
@@ -1255,6 +1302,8 @@ export function createWorld(ctx) {
       burst(LANES[o.lane], 0.8, PR_LINE + 0.6, "error", 8);
       ctx.loseAttempt(t("errorReached", { finding: t("chip_" + o.kind) }), t(o.def.tip));
       coach("coachError");
+      // Mercy: the pace drops a notch for a few seconds, then climbs again
+      mercy = MERCY;
     }
   }
 
@@ -1521,11 +1570,11 @@ export function createWorld(ctx) {
     shake = Math.max(0, shake - (dt || 0));
     const sway = Math.sin(time * 0.4) * 0.3;
     if (portrait) {
-      camera.fov = 70;
+      camera.fov = 70 + (pace - 1) * 10;
       camera.position.set(sway * 0.5 + jitter, 10.5, 11.2);
       camera.lookAt(0, -0.4, -7.5);
     } else {
-      camera.fov = 52;
+      camera.fov = 52 + (pace - 1) * 10;
       camera.position.set(sway + player.x * 0.15 + jitter, 7.8, 11.6);
       camera.lookAt(player.x * 0.1, 0, -3);
     }
@@ -1570,6 +1619,7 @@ export function createWorld(ctx) {
       player.cooldown = Math.max(0, player.cooldown - dt);
       player.stun = Math.max(0, player.stun - dt);
       if (phase === "battle") {
+        updatePace(dt);
         updateWave(dt);
         updateBoss(dt);
         if (!ctx.playing) {
