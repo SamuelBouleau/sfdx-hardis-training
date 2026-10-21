@@ -969,8 +969,11 @@ export function createWorld(ctx) {
 }
 
 export const CSS = `
-.guinea-run .gr-w3-card {
-  touch-action: none;
+/* A finger on a card drags it: the site's buttons ask for "manipulation", which lets the panel scroll instead */
+.guinea-run .gr-w3 .gr-w3-card {
+  touch-action: none !important;
+  -webkit-user-select: none;
+  user-select: none;
   cursor: grab;
 }
 
