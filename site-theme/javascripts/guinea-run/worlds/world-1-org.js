@@ -57,6 +57,7 @@ export const TEXTS = {
     goalNext: "Next: {{label}}",
     goalEnd: "Run to INST-00001",
     c_start: "Run right and jump the gaps!",
+    faster: "Faster!",
     c_trap: "Wrong answer: jump back up!",
     c_bump: "Jump into the Visible box from below, twice!",
     c_hazard: "Wait for the red cross to move, then go",
@@ -127,6 +128,7 @@ export const TEXTS = {
     goalNext: "Suivant : {{label}}",
     goalEnd: "Courez vers INST-00001",
     c_start: "Courez à droite et sautez les trous !",
+    faster: "Plus vite !",
     c_trap: "Mauvaise réponse : remontez d'un saut !",
     c_bump: "Sautez sous la case Visible, deux fois !",
     c_hazard: "Attendez que la croix rouge bouge, puis passez",
@@ -255,6 +257,16 @@ const PANEL_RADIUS = 0.75;
 const DEPTH = 2.4;
 const TRAP_S = 1.2;
 const END_X = 231;
+// The pace: what moves on its own (validation rules, lifts, traps) speeds up
+// with the parts taken, up to +35 % at the end, on an ease-in curve. The
+// guinea pig's own top speed follows a little (a third of it). A lost attempt
+// slows everything down by 15 % for a few seconds
+const PACE_GAIN = 0.35;
+const PACE_RUN_SHARE = 0.3;
+const MERCY_S = 5;
+const MERCY_FACTOR = 0.85;
+// How fast the pace may change, per second: never a jump
+const PACE_RATE = 0.08;
 
 /* ---------- The level, left to right ---------- */
 
@@ -795,6 +807,9 @@ export function createWorld(ctx) {
   let lastRecord = -1;
   let note = null;
   let twistAt = 0;
+  let pace = 1;
+  let mercy = 0;
+  let pacedStage = 0;
   let lastGoal = "";
   let coachAt = -10;
   const coached = new Set();
@@ -1051,6 +1066,24 @@ export function createWorld(ctx) {
     }
   }
 
+  /** The pace follows the parts taken; a mistake buys a few calmer seconds. */
+  function updatePace(dt) {
+    const progress = parts.filter((p) => p.done).length / totalParts;
+    const wanted = (1 + PACE_GAIN * progress * progress) * (mercy > 0 ? MERCY_FACTOR : 1);
+    mercy = Math.max(0, mercy - dt);
+    pace += Math.sign(wanted - pace) * Math.min(Math.abs(wanted - pace), PACE_RATE * dt);
+    ctx.setData("pace", pace.toFixed(2));
+    // Each new step of the Path is said out loud
+    const stage = checkpoints[checkpoint].path;
+    if (stage > pacedStage) {
+      pacedStage = stage;
+      if (stage > 0 && pace > 1.02) {
+        hud.toast(t("faster"), "power");
+        ctx.sound.play("power");
+      }
+    }
+  }
+
   /** The big yellow instruction: once per moment, never in a rush. */
   function coach(key, force) {
     if (force || engine.time - coachAt > 3) {
@@ -1071,6 +1104,7 @@ export function createWorld(ctx) {
       return;
     }
     const left = ctx.loseAttempt(t(title), t(tip));
+    mercy = MERCY_S;
     coach("c_hazard", true);
     player.inv = INVULNERABLE_S;
     player.hit = 0.6;
@@ -1091,6 +1125,7 @@ export function createWorld(ctx) {
       trap.learned = true;
     }
     ctx.loseAttempt(t(trap ? trap.title : "o_fall"), t(trap ? trap.tip : "o_fall_tip"));
+    mercy = MERCY_S;
     if (ctx.playing) {
       coach("c_fall", true);
       respawn();
@@ -1121,11 +1156,12 @@ export function createWorld(ctx) {
 
   /* ---------- Physics ---------- */
 
-  function movePlatforms(time) {
+  function movePlatforms(dt) {
     for (const p of platforms) {
       if (p.move) {
         // A moving element waits a moment at each end, so it can be timed
-        const wave = Math.max(-1, Math.min(1, 1.5 * Math.sin(time * p.move.speed)));
+        p.phase = (p.phase || 0) + dt * p.move.speed * pace;
+        const wave = Math.max(-1, Math.min(1, 1.5 * Math.sin(p.phase)));
         const nx0 = p.move.axis === "x" ? p.bx0 + wave * p.move.amp : p.x0;
         const ntop = p.move.axis === "y" ? p.btop + ((wave + 1) / 2) * p.move.amp : p.top;
         p.dx = nx0 - p.x0;
@@ -1137,7 +1173,8 @@ export function createWorld(ctx) {
       }
     }
     for (const h of hazards) {
-      const wave = Math.sin(time * h.speed + h.x);
+      h.phase = (h.phase === undefined ? h.x : h.phase) + dt * h.speed * pace;
+      const wave = Math.sin(h.phase);
       h.cx = h.axis === "x" ? h.x + wave * h.amp : h.x;
       h.bottom = h.axis === "y" ? h.y + ((wave + 1) / 2) * h.amp : h.y;
       h.mesh.position.set(h.cx, h.bottom + h.h / 2, 0);
@@ -1162,7 +1199,7 @@ export function createWorld(ctx) {
       player.facing = want;
     }
     const accel = (wasGrounded ? GROUND_ACCEL : AIR_ACCEL) * dt;
-    const target = want * RUN_SPEED;
+    const target = want * RUN_SPEED * (1 + (pace - 1) * PACE_RUN_SHARE);
     if (player.lock <= 0) {
       player.vx += Math.sign(target - player.vx) * Math.min(Math.abs(target - player.vx), accel);
     }
@@ -1255,7 +1292,7 @@ export function createWorld(ctx) {
         coach("c_trap", true);
       }
       landed.timer += dt;
-      if (landed.timer > landed.trap.delay) {
+      if (landed.timer > landed.trap.delay / pace) {
         landed.gone = true;
         trapFalling = landed.trap;
         hud.toast(t(landed.trap.title), "bad");
@@ -1523,7 +1560,7 @@ export function createWorld(ctx) {
     camY += (Math.max(groundY, -2) + 1.4 - camY) * Math.min(1, dt * 2.5);
     shake = Math.max(0, shake - dt);
     const jitter = shake > 0 ? (Math.random() - 0.5) * shake : 0;
-    camera.fov = portrait ? 64 : 46;
+    camera.fov = (portrait ? 64 : 46) + (pace - 1) * 10;
     camera.updateProjectionMatrix();
     const distance = portrait ? 13 : 12.5;
     camera.position.set(camX + jitter, camY + (portrait ? 2.4 : 1.6), distance);
@@ -1542,6 +1579,7 @@ export function createWorld(ctx) {
   pig.object.rotation.set(0, -Math.PI / 2, 0);
   pig.shadow.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
   movePlatforms(0);
+  ctx.setData("pace", "1.00");
   placePanels(0);
   placeParts(0, 0);
   placePig(0, 0);
@@ -1565,7 +1603,8 @@ export function createWorld(ctx) {
       if (!ctx.playing) {
         return;
       }
-      movePlatforms(time);
+      updatePace(dt);
+      movePlatforms(dt);
       stepPlayer(dt);
       dropTraps(dt);
       touch(time);
