@@ -3,9 +3,9 @@
  * three rounds, while the guinea pig sits at its desk in front of the monitor.
  *
  * Round 1 is the permission set of Lab 2.7: mechanical, take both, then read
- * the Result, because git merges lines, not permissions. Round 2 is the flow:
- * the logic collides, and the right move is not a button of the merge editor
- * but the walk to Mariia's desk. Round 3 is Lab 3.4: three Pull Requests on
+ * the Result, because git merges lines, not permissions. Round 2 is the
+ * Installation record page: each side added one field at the same place, and
+ * keeping both is plainly right. Round 3 is Lab 3.4: three Pull Requests on
  * a Friday afternoon, put in the order a release manager picks.
  *
  * Everything is HTML in ctx.hud.layer, one list of rows for the keyboard
@@ -20,17 +20,17 @@ export const PADS = ["left", "right", "jump", "duck", "confirm"];
 export const MODELS = ["office", "salesforce"];
 
 const PERMSET_FILE = "Helios_Delivery_Manager.permissionset-meta.xml";
-const FLOW_FILE = "Installation_Assign_Crew.flow-meta.xml";
+const PAGE_FILE = "Installation_Record_Page.flexipage-meta.xml";
 const FIELD_CAP = "    <field>Installation__c.Crew_Capacity_Cap__c</field>";
 const FIELD_NOTES = "    <field>Installation__c.Crew_Notes__c</field>";
 const HEAD = "<<<<<<< HEAD";
 const SPLIT = "=======";
 const THEIRS = ">>>>>>> origin/integration";
 // What a round is worth, and the seconds that still give a time bonus
-const ROUND_SECONDS = [65, 95, 50];
+const ROUND_SECONDS = [65, 40, 50];
 const TIME_BONUS = 150;
 // Mistakes shown with their tip and a few points less, never an attempt
-const FREE_MISTAKES = ["marker", "oneSide", "failing", "smaller"];
+const FREE_MISTAKES = ["marker", "oneSide", "page", "failing", "smaller"];
 const SLIP_POINTS = 30;
 const DESK_SCALE = 1.45;
 // Where the camera sits from what it looks at, on a wide and on a tall screen
@@ -42,30 +42,21 @@ export const TEXTS = {
     intro:
       "Mariia merged first, on the files you touched. Merge your work with hers, then put three Pull Requests in order as release manager.",
     how1: "Take both sides: tap Accept Incoming, then Accept Current",
-    how2: "On the flow, tap Go and ask Mariia before you pick",
+    how2: "On the record page, keep both fields: Accept Incoming and Accept Current",
     how3: "Arrows move, Enter presses, drag the cards to order them",
     g_r1_take: "Accept Incoming and Accept Current",
     g_r1_split: "Add the four lines: two blocks",
     g_r1_sort: "Sort the blocks, then merge",
     g_complete: "Click Complete Merge",
-    g_r2_ask: "Ask Mariia before you pick",
-    g_r2_wait: "Listen to Mariia",
-    g_r2_incoming: "Accept Incoming, on both conflicts",
-    g_r2_order: "Pick the order, then Activate",
     g_r3: "Order the 3 Pull Requests, then merge",
     g_r3_merge: "Watch the merges go in",
     co_r1: "Round 1: take both sides!",
-    co_r2: "Round 2: the logic collides. Ask first!",
+    co_r2: "Round 2: two fields, one page. Keep both!",
     co_r3: "Round 3: you are the release manager!",
     co_read: "Now read the Result!",
-    co_asked: "Mariia's version wins, for now",
-    co_builder: "Rebuild it in Flow Builder",
     fix_marker: "Accept a side first",
     fix_oneSide: "Take both sides!",
     fix_dup: "Add the four lines: two blocks",
-    fix_blind: "Go and ask Mariia first!",
-    fix_current: "Accept Incoming instead",
-    fix_order: "Her cap must run last",
     fix_failing: "Send US-020 back to Mariia",
     fix_smaller: "The smaller one goes first",
     screenConflict: "Conflict",
@@ -77,21 +68,12 @@ export const TEXTS = {
     round: "Round {{n}} / 3",
     r1_task:
       "Mariia merged this morning. You did not. Build the Result from both sides, read it, then Complete Merge.",
-    r2_task:
-      "Her cap and your flat-roof minimum, in the same decision path. Read on their own, both are correct.",
-    r2b_task:
-      "Mariia's version is in. Add your flat-roof rule again in Flow Builder: in which order?",
+    r2_task: "You added Panels_Required__c to the Installation record page. Mariia added Crew_Capacity_Cap__c at the same place. The page has room for both.",
     r3_task:
       "Friday afternoon. Three stories were planned for this week's release. Put them in the order you would merge them.",
     accepted: "Accepted",
     split: "Add the four lines: two blocks",
     sort: "Sort: Crew_Capacity_Cap__c first",
-    ask: "Go and ask Mariia",
-    asked: "Mariia answered",
-    orderA: "Flat Roof Minimum, then Crew Over Cap",
-    orderB: "Crew Over Cap, then Flat Roof Minimum",
-    activate: "Save, then Activate",
-    pickOrder: "Pick an order first",
     slot1: "Merge first",
     slot2: "Merge second",
     slot3: "Send back to its author",
@@ -112,13 +94,8 @@ export const TEXTS = {
     stampMerge: "Merge complete",
     stampRelease: "Released: US-019, then US-018",
     timeBonus: "Time bonus +{{n}}",
-    c_r1: "Morning! US-018 is in integration. I granted Crew_Capacity_Cap__c on Helios_Delivery_Manager, one line from yours, I think.",
-    c_you2:
-      "Your Crew Over Cap and my flat-roof minimum collide. A flat roof whose cap is 2: which one wins?",
-    c_mariia2:
-      "The cap wins. A crew larger than the installation allows is a safety problem; a crew of 2 on a flat roof is a slow day.",
-    c_mariia2b:
-      "Take my version for now: Accept Incoming on every conflict. Then put your rule back in Flow Builder, before my cap. Not in the XML, please.",
+    c_r1: "Morning! US-018 is in the integration branch. I granted Crew_Capacity_Cap__c on Helios_Delivery_Manager, one line from yours, I think.",
+    c_mariia2: "Sorry, I put Crew_Capacity_Cap__c on the Installation record page too, right where you put yours.",
     c_romain3:
       "Green, small, nothing in its way. Thanks for taking mine first.",
     c_mariia3:
@@ -126,8 +103,6 @@ export const TEXTS = {
     ok_both: "Both grants kept",
     ok_r1: "Two complete blocks, in alphabetical order",
     ok_r1_unsorted: "Two blocks, but not in alphabetical order",
-    ok_in: "Mariia's version, for now",
-    ok_flow: "Flat roofs raised first, the cap has the last word",
     ok_r3: "US-019, then US-018, and US-020 back to Mariia",
     e_marker: "The check fails on a conflict marker.",
     e_marker_tip:
@@ -140,15 +115,6 @@ export const TEXTS = {
       "Element field is duplicated at this location in type PermissionSetFieldPermissions",
     e_dup_tip:
       "One <fieldPermissions> block names one field: the fix is two blocks, not one block with two <field> lines.",
-    e_blind: "You picked a side without asking",
-    e_blind_tip:
-      "This is the moment that matters, and the answer is not technical: go and ask Mariia. On a real project, a conflict in business logic is a conversation, not a merge strategy.",
-    e_current: "Crew Over Cap is gone from the flow",
-    e_current_tip:
-      "Click Accept Incoming above each conflict of the Incoming pane, then Complete Merge: Mariia's whole version wins for now.",
-    e_order: "The cap no longer has the last word",
-    e_order_tip:
-      "Your decision first, her Crew Over Cap decision last: the flow raises a flat roof crew to three first, and her cap, which now runs last, has the final word.",
     e_failing: "US-020 is failing, and it is in the release",
     e_failing_tip:
       "A failing Pull Request is not a decision, it is a task for its author. Send it back with one comment, and leave it open.",
@@ -157,44 +123,37 @@ export const TEXTS = {
       "All else equal, merge the smaller one first: its author has less to redo if the other one lands badly.",
     info_unsorted:
       "Your two blocks were not in alphabetical order: Salesforce writes them Crew_Capacity_Cap__c first, and so does the lab.",
-    info_blind:
-      "You picked a side of the flow before asking Mariia: in the lab, a conflict in business logic is a conversation, not a merge strategy.",
-    tickMerged: "Merged #{{n}} {{title}} into integration",
-    tickDeployed: "Deployed to helios-integration: both grants are there",
+    tickMerged: "Merged #{{n}} {{title}} into the integration branch",
+    tickDeployed: "Deployed to the helios-integration org: both grants are there",
     tickBack:
       "Comment on #3: InstallationSchedulerTest does not compile, earliestInstallDate returns a Datetime",
     screenBad: "Not deployable",
-    screenAsk: "Asking Mariia",
-    screenFlow: "Flow Builder",
+    fix_page: "Take both fields!",
+    ok_page: "Both fields on the record page",
+    e_pageLostYours: "Panels Required is gone from the record page",
+    e_pageLostHers: "Mariia's Crew Capacity Cap is gone from the record page",
+    e_page_tip: "Each side added one complete field block. Accept Incoming alone drops your field, Accept Current alone drops Mariia's: click both, and the page shows the two fields.",
+    prList: "Pull Requests · integration branch",
   },
   fr: {
     intro:
       "Mariia a mergé avant vous, sur les fichiers que vous avez touchés. Fusionnez votre travail avec le sien, puis mettez trois Pull Requests dans l'ordre en release manager.",
     how1: "Prenez les deux : Accept Incoming, puis Accept Current",
-    how2: "Sur le flow, allez demander à Mariia avant de choisir",
+    how2: "Sur la page d'enregistrement, gardez les deux champs : Accept Incoming et Accept Current",
     how3: "Flèches pour bouger, Entrée pour valider, glissez les cartes",
     g_r1_take: "Accept Incoming et Accept Current",
     g_r1_split: "Ajoutez les quatre lignes : deux blocs",
     g_r1_sort: "Triez les blocs, puis mergez",
     g_complete: "Cliquez sur Complete Merge",
-    g_r2_ask: "Demandez à Mariia avant de choisir",
-    g_r2_wait: "Écoutez Mariia",
-    g_r2_incoming: "Accept Incoming, sur les deux conflits",
-    g_r2_order: "Choisissez l'ordre, puis Activate",
     g_r3: "Ordonnez les 3 Pull Requests, puis mergez",
     g_r3_merge: "Regardez les merges passer",
     co_r1: "Manche 1 : prenez les deux côtés !",
-    co_r2: "Manche 2 : la logique se heurte. Demandez d'abord !",
+    co_r2: "Manche 2 : deux champs, une page. Gardez les deux !",
     co_r3: "Manche 3 : vous êtes release manager !",
     co_read: "Lisez maintenant le Result !",
-    co_asked: "La version de Mariia l'emporte, pour l'instant",
-    co_builder: "Reconstruisez-le dans Flow Builder",
     fix_marker: "Acceptez d'abord un côté",
     fix_oneSide: "Prenez les deux côtés !",
     fix_dup: "Ajoutez les quatre lignes : deux blocs",
-    fix_blind: "Allez d'abord demander à Mariia !",
-    fix_current: "Accept Incoming à la place",
-    fix_order: "Son plafond doit tourner en dernier",
     fix_failing: "Renvoyez US-020 à Mariia",
     fix_smaller: "La plus petite passe d'abord",
     screenConflict: "Conflit",
@@ -206,21 +165,12 @@ export const TEXTS = {
     round: "Manche {{n}} / 3",
     r1_task:
       "Mariia a mergé ce matin. Pas vous. Construisez le Result avec les deux côtés, lisez-le, puis Complete Merge.",
-    r2_task:
-      "Son plafond et votre minimum toiture plate, dans le même chemin de décision. Lues séparément, les deux sont correctes.",
-    r2b_task:
-      "La version de Mariia est en place. Remettez votre règle toiture plate dans Flow Builder : dans quel ordre ?",
+    r2_task: "Vous avez ajouté Panels_Required__c à la page d'enregistrement Installation. Mariia a ajouté Crew_Capacity_Cap__c au même endroit. La page a de la place pour les deux.",
     r3_task:
       "Vendredi après-midi. Trois stories étaient prévues pour la release de la semaine. Mettez-les dans l'ordre où vous les mergeriez.",
     accepted: "Accepté",
     split: "Ajouter les quatre lignes : deux blocs",
     sort: "Trier : Crew_Capacity_Cap__c en premier",
-    ask: "Aller demander à Mariia",
-    asked: "Mariia a répondu",
-    orderA: "Flat Roof Minimum, puis Crew Over Cap",
-    orderB: "Crew Over Cap, puis Flat Roof Minimum",
-    activate: "Save, puis Activate",
-    pickOrder: "Choisissez d'abord un ordre",
     slot1: "Merger en premier",
     slot2: "Merger en second",
     slot3: "Renvoyer à son auteur",
@@ -242,13 +192,8 @@ export const TEXTS = {
     stampMerge: "Merge terminé",
     stampRelease: "En release : US-019, puis US-018",
     timeBonus: "Bonus de temps +{{n}}",
-    c_r1: "Salut ! US-018 est dans integration. J'ai donné Crew_Capacity_Cap__c sur Helios_Delivery_Manager, à une ligne du tien, je crois.",
-    c_you2:
-      "Ton Crew Over Cap et mon minimum toiture plate se heurtent. Une toiture plate dont le plafond est 2 : lequel gagne ?",
-    c_mariia2:
-      "Le plafond l'emporte. Une équipe plus grande que ce que l'installation autorise est un problème de sécurité ; une équipe de 2 sur une toiture plate est une journée lente.",
-    c_mariia2b:
-      "Prends ma version pour l'instant : Accept Incoming sur chaque conflit. Puis remets ta règle dans Flow Builder, avant mon plafond. Pas dans le XML, s'il te plaît.",
+    c_r1: "Salut ! US-018 est dans la branch integration. J'ai donné Crew_Capacity_Cap__c sur Helios_Delivery_Manager, à une ligne du tien, je crois.",
+    c_mariia2: "Désolée, j'ai aussi mis Crew_Capacity_Cap__c sur la page d'enregistrement Installation, juste là où tu as mis le tien.",
     c_romain3:
       "Verte, petite, rien sur son chemin. Merci d'avoir pris la mienne en premier.",
     c_mariia3:
@@ -256,8 +201,6 @@ export const TEXTS = {
     ok_both: "Les deux accès gardés",
     ok_r1: "Deux blocs complets, par ordre alphabétique",
     ok_r1_unsorted: "Deux blocs, mais pas par ordre alphabétique",
-    ok_in: "La version de Mariia, pour l'instant",
-    ok_flow: "Les toitures plates d'abord, le plafond a le dernier mot",
     ok_r3: "US-019, puis US-018, et US-020 repart chez Mariia",
     e_marker: "Le contrôle échoue sur un marqueur de conflit.",
     e_marker_tip:
@@ -270,15 +213,6 @@ export const TEXTS = {
       "Element field is duplicated at this location in type PermissionSetFieldPermissions",
     e_dup_tip:
       "Un bloc <fieldPermissions> nomme un champ : la correction est deux blocs, pas un bloc avec deux lignes <field>.",
-    e_blind: "Vous avez choisi un côté sans demander",
-    e_blind_tip:
-      "C'est le moment qui compte, et la réponse n'est pas technique : allez demander à Mariia. Sur un vrai projet, un conflit dans la logique métier est une conversation, pas une stratégie de merge.",
-    e_current: "Crew Over Cap a disparu du flow",
-    e_current_tip:
-      "Cliquez sur Accept Incoming au-dessus de chaque conflit du volet Incoming, puis sur Complete Merge : la version entière de Mariia l'emporte pour l'instant.",
-    e_order: "Le plafond n'a plus le dernier mot",
-    e_order_tip:
-      "Votre décision d'abord, sa décision Crew Over Cap en dernier : le flow porte d'abord l'équipe d'une toiture plate à trois, et son plafond, qui tourne maintenant en dernier, a le dernier mot.",
     e_failing: "US-020 est en échec, et elle est dans la release",
     e_failing_tip:
       "Une Pull Request en échec n'est pas une décision, c'est une tâche pour son auteur. Renvoyez-la avec un commentaire, et laissez-la ouverte.",
@@ -287,15 +221,17 @@ export const TEXTS = {
       "Toutes choses égales par ailleurs, mergez la plus petite d'abord : son auteur a moins à refaire si l'autre atterrit mal.",
     info_unsorted:
       "Vos deux blocs n'étaient pas par ordre alphabétique : Salesforce les écrit avec Crew_Capacity_Cap__c en premier, et le lab aussi.",
-    info_blind:
-      "Vous avez choisi un côté du flow avant de demander à Mariia : dans le lab, un conflit dans la logique métier est une conversation, pas une stratégie de merge.",
-    tickMerged: "#{{n}} {{title}} mergée dans integration",
-    tickDeployed: "Déployé sur helios-integration : les deux accès sont là",
+    tickMerged: "#{{n}} {{title}} mergée dans la branch integration",
+    tickDeployed: "Déployé sur l'org helios-integration : les deux accès sont là",
     tickBack:
       "Commentaire sur #3 : InstallationSchedulerTest ne compile pas, earliestInstallDate renvoie un Datetime",
     screenBad: "Pas déployable",
-    screenAsk: "On discute",
-    screenFlow: "Flow Builder",
+    fix_page: "Prenez les deux champs !",
+    ok_page: "Les deux champs sur la page d'enregistrement",
+    e_pageLostYours: "Panels Required a disparu de la page d'enregistrement",
+    e_pageLostHers: "Le Crew Capacity Cap de Mariia a disparu de la page d'enregistrement",
+    e_page_tip: "Chaque côté a ajouté un bloc de champ complet. Accept Incoming seul retire votre champ, Accept Current seul retire celui de Mariia : cliquez sur les deux, et la page montre les deux champs.",
+    prList: "Pull Requests · branch integration",
   },
 };
 
@@ -304,9 +240,7 @@ export const QUOTES = [
   { lab: "2.7", text: "Accept Incoming" },
   { lab: "2.7", text: "Accept Current" },
   { lab: "2.7", text: "Complete Merge" },
-  { lab: "2.7", text: "Merge Changes" },
   { lab: "2.7", text: "Helios_Delivery_Manager.permissionset-meta.xml" },
-  { lab: "2.7", text: "Installation_Assign_Crew.flow-meta.xml" },
   { lab: "2.7", text: "Installation__c.Crew_Notes__c" },
   { lab: "2.7", text: "Installation__c.Crew_Capacity_Cap__c" },
   { lab: "2.7", text: "<<<<<<< HEAD" },
@@ -319,11 +253,6 @@ export const QUOTES = [
     lab: "2.7",
     text: "Element field is duplicated at this location in type PermissionSetFieldPermissions",
   },
-  { lab: "2.7", text: "Crew Over Cap" },
-  { lab: "2.7", text: "Move To Scheduled" },
-  { lab: "2.7", text: "Installation Assign Crew" },
-  { lab: "2.7", text: "Flow Builder" },
-  { lab: "2.7", text: "Activate" },
   { lab: "3.4", text: "US-018 Cap the crew size" },
   { lab: "3.4", text: "US-019 Quote PDF" },
   { lab: "3.4", text: "US-020 Refactor InstallationScheduler" },
@@ -362,20 +291,23 @@ const PRS = {
   },
 };
 
-// The two conflicts of the flow: what each side wrote at the same place
-const FLOW_CONFLICTS = [
-  {
-    cur: ["        <targetReference>Flat_Roof_Minimum</targetReference>"],
-    in: ["        <targetReference>Crew_Over_Cap</targetReference>"],
-  },
-  {
-    cur: [
-      "    <name>Flat_Roof_Minimum</name>",
-      "    <label>Flat Roof Minimum</label>",
-    ],
-    in: ["    <name>Crew_Over_Cap</name>", "    <label>Crew Over Cap</label>"],
-  },
-];
+// The record page: each side added one field block at the same place
+const PAGE_FIELDS = {
+  in: [
+    "<itemInstances>",
+    "    <fieldInstance>",
+    "        <fieldItem>Record.Crew_Capacity_Cap__c</fieldItem>",
+    "    </fieldInstance>",
+    "</itemInstances>",
+  ],
+  cur: [
+    "<itemInstances>",
+    "    <fieldInstance>",
+    "        <fieldItem>Record.Panels_Required__c</fieldItem>",
+    "    </fieldInstance>",
+    "</itemInstances>",
+  ],
+};
 
 export function createWorld(ctx) {
   const { THREE, t, hud, pig, paint } = ctx;
@@ -600,7 +532,7 @@ export function createWorld(ctx) {
   // Mariia's desk, to the right: her US-018 on screen, her chair, her name
   const herCard = new THREE.MeshBasicMaterial({
     map: paint.texture("w5-her-screen", 512, 304, (c, w, h) =>
-      drawBig(c, w, h, SLDS.purple, "flow", "US-018"),
+      drawBig(c, w, h, SLDS.purple, "branch", "US-018"),
     ),
     toneMapped: false,
   });
@@ -618,7 +550,7 @@ export function createWorld(ctx) {
     block(purple, 0.5, 0.55, 0.07, 0, 0.72, 0.24, chair);
     block(steel, 0.06, 0.4, 0.06, 0, 0.2, 0, chair);
   }
-  // Mariia herself, on her chair: she turns to the guinea pig when it comes
+  // Mariia herself, on her chair: she turns to the guinea pig when she talks
   const mariia = new THREE.Group();
   mariia.position.set(0, 0.46, 0.02);
   chair.add(mariia);
@@ -681,15 +613,15 @@ export function createWorld(ctx) {
     return node;
   }
 
-  // What each conflict is about, on both desks: the permission set, then the flow
+  // What each conflict is about, on both desks: the permission set, then the record page
   const roundItems = {
     1: [
       item("permission-set", 0.7, 0.95, deskTop, -1.15),
       item("permission-set", 0.7, -2.75, deskTop, -1.1),
     ],
     2: [
-      item("flow", 0.7, 0.95, deskTop, -1.15),
-      item("flow", 0.7, -2.75, deskTop, -1.1),
+      item("record", 0.7, 0.95, deskTop, -1.15),
+      item("record", 0.7, -2.75, deskTop, -1.1),
     ],
   };
   // Round 3: the three Pull Requests over the desk, in the order the player sets
@@ -783,7 +715,6 @@ export function createWorld(ctx) {
   }
 
   const HOME = new THREE.Vector3(0, 0, 0);
-  const VISIT = new THREE.Vector3(-2.2, 0, -0.05);
   // Turned a little to the camera: from straight behind it is only a coat
   const HOME_FACE = -0.8;
   pig.setSitting(true);
@@ -828,8 +759,8 @@ export function createWorld(ctx) {
   const timers = [];
   // Round 1: which sides were accepted, in the order they were, and the split
   const r1 = { accepted: [], split: false };
-  // Round 2: asked Mariia, and the choice on each conflict
-  const r2 = { asked: false, choice: [null, null], order: null };
+  // Round 2: which sides of the record page were accepted, in order
+  const r2 = { accepted: [] };
   // Round 3: the order of the cards, and the one picked up with the keyboard
   const r3 = {
     order: ["018", "019", "020"],
@@ -842,10 +773,9 @@ export function createWorld(ctx) {
   let rows = [];
   let cursor = { row: 0, col: 0 };
 
-  // The guinea pig: a hop when right, a shake when wrong, a walk to Mariia
+  // The guinea pig: a hop when right, a shake when wrong
   let hop = 0;
   let wobble = 0;
-  let walk = null;
 
   function later(seconds, fn) {
     timers.push({ at: clock + seconds, fn });
@@ -898,14 +828,8 @@ export function createWorld(ctx) {
       }
       return r1.accepted[0] === "in" ? "g_complete" : "g_r1_sort";
     }
-    if (round === 2 && step === "merge") {
-      if (!r2.asked) {
-        return "g_r2_ask";
-      }
-      return r2.choice.every((c) => c) ? "g_complete" : "g_r2_incoming";
-    }
     if (round === 2) {
-      return "g_r2_order";
+      return r2.accepted.length < 2 ? "g_r1_take" : "g_complete";
     }
     return r3.merged.length || busy ? "g_r3_merge" : "g_r3";
   }
@@ -915,22 +839,11 @@ export function createWorld(ctx) {
     const buttons = [...win.querySelectorAll(".gr-w5-btn")];
     const byText = (text) => buttons.filter((b) => b.textContent === text);
     let next = [];
-    if (round === 1) {
+    if (round < 3) {
       next = buttons.filter((b) => b.classList.contains("gr-w5-lensbtn"));
-      if (r1.split) {
+      if (round === 1 ? r1.split : r2.accepted.length === 2) {
         next.push(...byText("Complete Merge"));
       }
-    } else if (round === 2 && step === "merge") {
-      if (!r2.asked) {
-        next = buttons.filter((b) => b.classList.contains("gr-w5-ask"));
-      } else {
-        next = byText("Accept Incoming");
-        if (r2.choice.every((c) => c)) {
-          next.push(...byText("Complete Merge"));
-        }
-      }
-    } else if (round === 2 && r2.order) {
-      next = byText(t("activate"));
     }
     for (const b of next) {
       b.classList.add("is-next");
@@ -978,7 +891,7 @@ export function createWorld(ctx) {
       return "permset";
     }
     if (round === 2) {
-      return step === "builder" ? "flow" : "flowconflict";
+      return "pageconflict";
     }
     return "prs";
   }
@@ -1000,10 +913,8 @@ export function createWorld(ctx) {
     win.setAttribute("data-round", String(round));
     if (round === 1) {
       renderPermissionSet();
-    } else if (round === 2 && step === "merge") {
-      renderFlow();
     } else if (round === 2) {
-      renderBuilder();
+      renderPage();
     } else {
       renderPullRequests();
     }
@@ -1206,150 +1117,51 @@ export function createWorld(ctx) {
     ]);
   }
 
-  function renderFlow() {
-    fileName.textContent = FLOW_FILE;
-    const askNode = document.createElement("div");
-    askNode.className = "gr-w5-askbox";
-    let askButton = null;
-    if (r2.asked) {
-      done(askNode, t("asked"));
-    } else {
-      askButton = button(askNode, t("ask"), "gr-w5-ask", askMariia);
-    }
-    task(t("r2_task"), askNode);
-    if (askButton) {
-      rows.push([askButton]);
-    }
+  function renderPage() {
+    fileName.textContent = PAGE_FILE;
+    task(t("r2_task"));
     const grid = el("div", "gr-w5-grid", body);
-    const incoming = pane(grid, "in", "Incoming", "origin/integration");
-    const current = pane(grid, "cur", "Current", "HEAD");
-    const result = pane(grid, "res", "Result", FLOW_FILE);
-    const conflictRows = [[], []];
-    const side = (code, sideName, k) => {
+    const accept = [];
+    for (const [side, title, detail, label] of [
+      ["in", "Incoming", "origin/integration", "Accept Incoming"],
+      ["cur", "Current", "HEAD", "Accept Current"],
+    ]) {
+      const code = pane(grid, side, title, detail);
+      lineNumber = 0;
       const box = lens(code);
-      if (r2.choice[k] === sideName) {
+      if (r2.accepted.includes(side)) {
         done(box);
-      } else if (
-        r2.choice[k] === null &&
-        sideName === "cur" &&
-        mistakes.has("current")
-      ) {
-        el("span", "gr-w5-gone", box, "Accept Current");
-      } else if (r2.choice[k] === null) {
-        conflictRows[k].push(
-          button(
-            box,
-            sideName === "in" ? "Accept Incoming" : "Accept Current",
-            "gr-w5-lensbtn",
-            () => acceptFlow(k, sideName),
-          ),
+      } else {
+        accept.push(
+          button(box, label, "gr-w5-lensbtn", () => acceptPage(side)),
         );
       }
-      lines(code, FLOW_CONFLICTS[k][sideName], sideName);
-    };
-    for (const [code, sideName] of [
-      [incoming, "in"],
-      [current, "cur"],
-    ]) {
-      lineNumber = 0;
-      lines(code, [
-        "<assignments>",
-        "    <name>Move_To_Scheduled</name>",
-        "    <connector>",
-      ]);
-      side(code, sideName, 0);
-      lines(code, ["    </connector>", "</assignments>", "<decisions>"]);
-      side(code, sideName, 1);
-      lines(code, ["</decisions>"]);
+      lines(code, PAGE_FIELDS[side], side);
     }
+    if (accept.length) {
+      rows.push(accept);
+    }
+    const result = pane(grid, "res", "Result", PAGE_FILE);
     lineNumber = 0;
-    const conflictArea = (k) => {
-      if (r2.choice[k] === "in") {
-        lines(result, FLOW_CONFLICTS[k].in, "in");
-        return;
-      }
+    if (!r2.accepted.length) {
       line(result, HEAD, "marker");
-      lines(result, FLOW_CONFLICTS[k].cur, "cur");
+      lines(result, PAGE_FIELDS.cur, "cur");
       line(result, SPLIT, "marker");
-      lines(result, FLOW_CONFLICTS[k].in, "in");
+      lines(result, PAGE_FIELDS.in, "in");
       line(result, THEIRS, "marker");
-    };
-    lines(result, [
-      "<assignments>",
-      "    <name>Move_To_Scheduled</name>",
-      "    <connector>",
-    ]);
-    conflictArea(0);
-    lines(result, ["    </connector>", "</assignments>", "<decisions>"]);
-    conflictArea(1);
-    lines(result, ["</decisions>"]);
-    for (const row of conflictRows) {
-      if (row.length) {
-        rows.push(row);
+    } else {
+      for (const side of r2.accepted) {
+        lines(result, PAGE_FIELDS[side], side);
       }
     }
     const buttons = newFooter();
     rows.push([
-      button(buttons, "Complete Merge", "gr-w5-primary", completeFlow),
+      button(buttons, "Complete Merge", "gr-w5-primary", completePage),
     ]);
   }
 
-  function renderBuilder() {
-    fileName.textContent = "Flow Builder · Installation Assign Crew";
-    task(t("r2b_task"));
-    const canvas = el("div", "gr-w5-flow", body);
-    const chain = ["Start", "Move To Scheduled"];
-    if (r2.order === "a") {
-      chain.push("Flat Roof Minimum", "Crew Over Cap");
-    } else if (r2.order === "b") {
-      chain.push("Crew Over Cap", "Flat Roof Minimum");
-    } else {
-      chain.push("?", "?");
-    }
-    chain.forEach((label, i) => {
-      if (i > 0) {
-        el("span", "gr-w5-arrow", canvas, "↓");
-      }
-      const node = el(
-        "span",
-        "gr-w5-node" +
-          (label === "?" ? " is-empty" : "") +
-          (label === "Crew Over Cap"
-            ? " is-hers"
-            : label === "Flat Roof Minimum"
-              ? " is-yours"
-              : ""),
-        canvas,
-        label,
-      );
-      node.setAttribute("data-i", String(i));
-    });
-    const options = el("div", "gr-w5-options", body);
-    const optionRow = [];
-    for (const key of ["a", "b"]) {
-      if (key === "b" && mistakes.has("order")) {
-        el("span", "gr-w5-option gr-w5-gone", options, t("orderB"));
-        continue;
-      }
-      const option = button(
-        options,
-        t(key === "a" ? "orderA" : "orderB"),
-        "gr-w5-option" + (r2.order === key ? " is-selected" : ""),
-        () => {
-          r2.order = key;
-          ctx.sound.play("click");
-          render();
-        },
-      );
-      optionRow.push(option);
-    }
-    rows.push(optionRow);
-    const buttons = newFooter();
-    rows.push([button(buttons, t("activate"), "gr-w5-primary", activateFlow)]);
-  }
-
   function renderPullRequests() {
-    fileName.textContent = "Pull Requests · integration";
+    fileName.textContent = t("prList");
     task(t("r3_task"));
     const list = el("ol", "gr-w5-prs", body);
     r3.order.forEach((id, i) => {
@@ -1507,117 +1319,42 @@ export function createWorld(ctx) {
     endRound();
   }
 
-  /* ---------- Round 2: the flow, and Mariia ---------- */
+  /* ---------- Round 2: the record page ---------- */
 
-  function askMariia() {
-    if (r2.asked) {
+  function acceptPage(side) {
+    if (r2.accepted.includes(side)) {
       return;
     }
-    r2.asked = true;
-    busy = true;
-    win.classList.add("is-busy");
-    showScreen("ask");
-    ctx.sound.play("power");
-    setGoal("g_r2_wait");
-    talking = 7;
-    hud.chat("you", t("c_you2"), 5200);
-    walk = {
-      from: HOME.clone(),
-      to: VISIT.clone(),
-      t: 0,
-      dur: 1.1,
-      face: Math.atan2(VISIT.x - chair.position.x, VISIT.z - chair.position.z),
-    };
-    later(2.2, () => {
-      hud.chat("mariia", t("c_mariia2"), 7000);
-      ctx.sound.play("wheek");
-      ctx.fx.burst(-2.6, 1.6, -0.3, {
-        count: 24,
-        colors: [0xe3066a, 0x9050e9, 0xffb400],
-        speed: 2,
-        up: 3,
-        life: 1.2,
-      });
-    });
-    later(5.2, () => hud.chat("mariia", t("c_mariia2b"), 7000));
-    later(6.6, () => {
-      walk = {
-        from: VISIT.clone(),
-        to: HOME.clone(),
-        t: 0,
-        dur: 1.1,
-        face: HOME_FACE,
-      };
-    });
-    later(7.8, () => {
-      busy = false;
-      win.classList.remove("is-busy");
-      showScreen("flowconflict");
-      ctx.collect(100, t("asked"));
-      coach("co_asked");
-      render();
-      cursorOn(0);
-    });
-  }
-
-  function acceptFlow(k, side) {
-    if (!r2.asked) {
-      win.querySelector(".gr-w5-ask")?.classList.add("is-pulsing");
-      wrong("blind", t("e_blind"), t("e_blind_tip"));
-      if (!missed.includes("info_blind")) {
-        missed.push("info_blind");
-      }
-      return;
+    r2.accepted.push(side);
+    ctx.sound.play("click");
+    if (r2.accepted.length === 2) {
+      ctx.collect(60, t("ok_page"));
+      happy();
+      coach("co_read");
+    } else {
+      spark(10);
     }
-    if (side === "cur") {
-      // Accept Current is never right here: once tried, it is gone
-      wrong("current", t("e_current"), t("e_current_tip"));
-      render();
-      return;
-    }
-    r2.choice[k] = "in";
-    resolved += 1;
-    ctx.collect(80, t("ok_in"));
-    happy();
     render();
-    cursorOn(r2.choice.every((c) => c) ? rows.length - 1 : 0);
+    // Both taken: the cursor goes to Complete Merge, else to the other side
+    cursorOn(r2.accepted.length === 2 ? rows.length - 1 : 0);
   }
 
-  function completeFlow() {
-    if (r2.choice.some((c) => c === null)) {
+  function completePage() {
+    const n = r2.accepted.length;
+    if (n === 0) {
       wrong("marker", t("e_marker"), t("e_marker_tip"));
       return;
     }
-    ctx.collect(100, "Complete Merge");
-    showMark("pass");
-    happy();
-    flashStamp(t("stampMerge"));
-    step = "builder";
-    showScreen("flow");
-    busy = true;
-    later(1.2, () => {
-      busy = false;
-      render();
-      cursorOn(0);
-      coach("co_builder");
-    });
-  }
-
-  function activateFlow() {
-    if (!r2.order) {
-      hud.toast(t("pickOrder"), "bad");
-      ctx.sound.play("wrong");
-      cursorOn(0);
+    if (n === 1) {
+      wrong(
+        "page",
+        r2.accepted[0] === "in" ? t("e_pageLostYours") : t("e_pageLostHers"),
+        t("e_page_tip"),
+      );
       return;
     }
-    if (r2.order === "b") {
-      // The wrong order is crossed out, only the right one is left
-      r2.order = null;
-      wrong("order", t("e_order"), t("e_order_tip"));
-      render();
-      return;
-    }
-    ctx.collect(150, t("ok_flow"));
+    resolved += 1;
+    ctx.collect(150, "Complete Merge");
     endRound();
   }
 
@@ -1811,8 +1548,8 @@ export function createWorld(ctx) {
       cursorOn(noteFound ? 0 : 1);
     }
     if (n === 2) {
-      // The cursor starts on the first conflict: the Ask button is one row up
-      cursorOn(1);
+      talking = 4;
+      hud.chat("mariia", t("c_mariia2"), 5000);
     }
   }
 
@@ -1897,22 +1634,6 @@ export function createWorld(ctx) {
       speed: 0,
       height: 0,
     };
-    if (walk) {
-      walk.t = Math.min(1, walk.t + dt / walk.dur);
-      const e = walk.t * walk.t * (3 - 2 * walk.t);
-      pig.object.position.lerpVectors(walk.from, walk.to, e);
-      const dx = walk.to.x - walk.from.x;
-      const dz = walk.to.z - walk.from.z;
-      pig.setSitting(false);
-      pig.object.rotation.y = Math.atan2(-dx, -dz);
-      state.running = true;
-      state.speed = 3;
-      if (walk.t >= 1) {
-        pig.object.rotation.y = walk.face;
-        pig.setSitting(true);
-        walk = null;
-      }
-    }
     hop = Math.max(0, hop - dt);
     const lift = hop > 0 ? Math.sin((hop / 0.4) * Math.PI) * 0.16 : 0;
     pig.object.position.y = lift;
@@ -1921,7 +1642,7 @@ export function createWorld(ctx) {
       wobble = Math.max(0, wobble - dt * 1.5);
       pig.hitWobble(wobble);
     }
-    // Mariia turns to the guinea pig while it is at her desk, and nods as she talks
+    // Mariia turns to the guinea pig and nods while she talks
     talking = Math.max(0, talking - dt);
     herTurn += ((talking > 0 ? 1.2 : 0) - herTurn) * Math.min(1, dt * 4);
     mariia.rotation.y = herTurn;
@@ -2058,7 +1779,6 @@ function el(tag, className, parent, text) {
   return node;
 }
 
-/** The guinea pig's monitor: a small merge editor, a flow, or the verdict. */
 /** One glyph and a word or two, big enough to read on the monitor. */
 function drawBig(c, w, h, color, icon, word) {
   c.fillStyle = "#1F1F1F";
@@ -2079,7 +1799,7 @@ function drawBig(c, w, h, color, icon, word) {
 
 /** The guinea pig's monitor: where the merge stands, in one glyph and a word. */
 function drawScreen(c, w, h, kind, t) {
-  if (kind === "permset" || kind === "flowconflict") {
+  if (kind === "permset" || kind === "pageconflict") {
     drawBig(c, w, h, SLDS.error, "warning", t("screenConflict"));
   } else if (kind === "ok") {
     drawBig(c, w, h, SLDS.success, "check", t("screenMerged"));
@@ -2087,10 +1807,6 @@ function drawScreen(c, w, h, kind, t) {
     drawBig(c, w, h, SLDS.errorDark, "error", t("screenBad"));
   } else if (kind === "dup") {
     drawBig(c, w, h, SLDS.warningDark, "warning", t("screenDup"));
-  } else if (kind === "ask") {
-    drawBig(c, w, h, SLDS.purple, "eye", t("screenAsk"));
-  } else if (kind === "flow") {
-    drawBig(c, w, h, SLDS.brand, "flow", t("screenFlow"));
   } else if (kind === "released") {
     drawBig(c, w, h, SLDS.success, "star", t("screenReleased"));
   } else {
@@ -2099,6 +1815,14 @@ function drawScreen(c, w, h, kind, t) {
 }
 
 export const CSS = `
+/* On a wide screen the editor fills the left: the "Why?" box sits on the right, off its buttons */
+@media (min-width: 761px) {
+  .guinea-run:has(.gr-w5) .gr-tipbar {
+    left: calc(min(60vw, 860px) + 24px + (100% - min(60vw, 860px) - 36px) / 2);
+    max-width: calc(100% - min(60vw, 860px) - 48px);
+  }
+}
+
 .guinea-run .gr-w5 {
   position: absolute;
   top: calc(env(safe-area-inset-top, 0px) + 104px);
@@ -2173,19 +1897,6 @@ export const CSS = `
   gap: 8px;
   padding: 8px 10px;
   border-bottom: 1px solid #e5e5e5;
-}
-.guinea-run .gr-w5-gone {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 30px;
-  padding: 2px 10px;
-  border: 1px dashed #c9c9c9;
-  border-radius: 4px;
-  color: #a0a0a0;
-  font-family: 'Open Sans', 'Segoe UI', Arial, sans-serif;
-  font-size: 12px;
-  text-decoration: line-through;
 }
 .guinea-run .gr-w5-task {
   flex: 1 1 260px;
@@ -2345,17 +2056,6 @@ export const CSS = `
 .guinea-run .gr-w5-primary:hover {
   background: #014486;
 }
-.guinea-run .gr-w5-ask {
-  border-color: #9050e9;
-  background: #9050e9;
-  color: #ffffff;
-}
-.guinea-run .gr-w5-ask:hover {
-  background: #7526e3;
-}
-.guinea-run .gr-w5-ask.is-pulsing {
-  animation: gr-w5-pulse 0.8s ease-in-out 3;
-}
 .guinea-run .gr-w5-done {
   display: inline-flex;
   align-items: center;
@@ -2416,60 +2116,6 @@ export const CSS = `
 }
 .guinea-run .gr-w5-stamp::before {
   content: "\\2713  ";
-}
-.guinea-run .gr-w5-flow {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 10px;
-  border: 1px solid #d8dde6;
-  border-radius: 4px;
-  background: #ffffff repeating-linear-gradient(0deg, transparent 0 19px, #f0f2f5 19px 20px);
-}
-.guinea-run .gr-w5-node {
-  min-width: 190px;
-  padding: 6px 14px;
-  border-radius: 6px;
-  background: #fe9339;
-  color: #ffffff;
-  font-weight: 700;
-  text-align: center;
-}
-.guinea-run .gr-w5-node[data-i="0"] {
-  border-radius: 999px;
-  background: #2e844a;
-}
-.guinea-run .gr-w5-node.is-yours {
-  background: #0176d3;
-}
-.guinea-run .gr-w5-node.is-hers {
-  background: #9050e9;
-}
-.guinea-run .gr-w5-node.is-empty {
-  border: 2px dashed #c9c9c9;
-  background: transparent;
-  color: #706e6b;
-}
-.guinea-run .gr-w5-arrow {
-  color: #706e6b;
-  font-size: 14px;
-}
-.guinea-run .gr-w5-options {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-  margin-top: 10px;
-}
-.guinea-run .gr-w5-option {
-  min-height: 48px;
-  color: #181818;
-  font-weight: 600;
-}
-.guinea-run .gr-w5-option.is-selected {
-  border-color: #0176d3;
-  background: #e5f1fb;
-  box-shadow: inset 0 0 0 2px #0176d3;
 }
 .guinea-run .gr-w5-prs {
   display: flex;
@@ -2590,11 +2236,6 @@ export const CSS = `
     transform: translate(-50%, -50%) scale(1) rotate(-4deg);
   }
 }
-@keyframes gr-w5-pulse {
-  50% {
-    box-shadow: 0 0 0 8px rgba(144, 80, 233, 0.35);
-  }
-}
 @media (pointer: coarse) {
   .guinea-run .gr-w5-btn,
   .guinea-run .gr-w5-lensbtn {
@@ -2617,9 +2258,6 @@ export const CSS = `
   }
   .guinea-run .gr-w5-pane--res {
     grid-column: auto;
-  }
-  .guinea-run .gr-w5-options {
-    grid-template-columns: minmax(0, 1fr);
   }
   .guinea-run .gr-w5-pritem {
     grid-template-columns: minmax(0, 1fr) auto;
