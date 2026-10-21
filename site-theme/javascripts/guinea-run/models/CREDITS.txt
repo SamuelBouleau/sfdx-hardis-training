@@ -10,8 +10,8 @@ salesforce.glb
   the sfdx-hardis badge mark extruded from site-theme/images. Part of this
   repository.
 
-office.glb, platform.glb, nature.glb, space.glb
-  Models from Kenney's Furniture Kit, Platformer Kit, Nature Kit and Space Kit
+office.glb, platform.glb, nature.glb
+  Models from Kenney's Furniture Kit, Platformer Kit and Nature Kit
   (https://kenney.nl), released under Creative Commons Zero (CC0), see
   KENNEY-LICENSE.txt. Merged into one file per theme by
   scripts/blender/kenney-packs.py.

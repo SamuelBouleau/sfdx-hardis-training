@@ -3,7 +3,7 @@
  * scripts/blender/salesforce-items.py (salesforce: org-cloud, custom-field,
  * permission-set, flow, apex, package-xml, check-pass, cloudity-logo...), and
  * the Kenney scenery packs built by scripts/blender/kenney-packs.py (office,
- * platform, nature, space), loaded
+ * platform, nature), loaded
  * once per page and shared by every world that names them.
  *
  * A world declares the packs it needs (export const MODELS = ["office"]); the
@@ -17,7 +17,7 @@
  * disposed by a world, only when the game closes.
  */
 
-const PACKS = ["salesforce", "office", "platform", "nature", "space"];
+const PACKS = ["salesforce", "office", "platform", "nature"];
 
 export function createModels(THREE, base) {
   const loaded = new Map();

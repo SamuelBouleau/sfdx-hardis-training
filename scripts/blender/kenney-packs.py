@@ -46,13 +46,6 @@ PACKS = {
         "rock_largeA", "rock_smallA", "mushroom_red", "stump_round", "grass_large", "log", "tent_smallOpen",
         "campfire_logs", "platform_grass",
     ]),
-    # Servers, antennas and a rocket: integration, production
-    "space": ("kenney_space-kit", [
-        "rocket_baseA", "rocket_fuelA", "rocket_topA", "rocket_finsA", "satelliteDish", "satelliteDish_large",
-        "machine_generator", "machine_generatorLarge", "machine_wireless", "machine_barrel", "desk_computer",
-        "desk_computerScreen", "desk_chair", "astronautA", "craft_speederA", "hangar_roundGlass", "structure",
-        "pipe_straight", "rock_crystals", "monorail_trainFront", "gate_simple", "platform_large", "barrels",
-    ]),
 }
 
 
