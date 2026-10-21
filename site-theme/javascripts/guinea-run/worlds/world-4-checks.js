@@ -1369,8 +1369,10 @@ export function createWorld(ctx) {
     source.material = sourceMaterial("US-052");
     setChecks(["ok", t("passing")], ["ok", t("passing")], "ready");
     hud.setPads([]);
-    // The review needs the room: the coverage is done with
+    // The review needs the room: the coverage is done with, and on a phone
+    // the messages go under the top bar, off the review's buttons
     meter.hidden = true;
+    ctx.setData("messages", "top");
     hud.chat("mariia", t("mariia_open"), 5000);
     review = buildReview();
     ctx.setData("review", "pending");
