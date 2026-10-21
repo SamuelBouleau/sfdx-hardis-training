@@ -16,8 +16,8 @@ import { SLDS, glyph, fitText, rounded } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump", "duck", "confirm"];
 
-// The Kenney office pack: desks, chairs, screens, plants, rugs, a bookcase
-export const MODELS = ["office"];
+// The office furniture of the story, and the Salesforce things on the desks
+export const MODELS = ["office", "salesforce"];
 
 const PERMSET_FILE = "Helios_Delivery_Manager.permissionset-meta.xml";
 const FLOW_FILE = "Installation_Assign_Crew.flow-meta.xml";
@@ -502,8 +502,6 @@ export function createWorld(ctx) {
       plant.add(ball);
     }
   }
-  model("bookcaseOpen", { height: 2.2 }, 3.3, 0, -1.85);
-  model("books", { width: 0.7, shadows: false }, 3.3, 1.12, -1.85);
   model("sideTable", { height: 0.7 }, 2.3, 0, -1.6);
   model(
     "kitchenCoffeeMachine",
@@ -513,13 +511,13 @@ export function createWorld(ctx) {
     -1.6,
     -0.4,
   );
-  model("trashcan", { height: 0.55, shadows: false }, 1.35, 0, -0.9);
   model("loungeSofa", { width: 2.6 }, -6.4, 0, -1.4, 0.5);
-  model("plantSmall1", { height: 0.5, shadows: false }, -5.6, 0, -0.2);
-  const plaque = new THREE.Mesh(plane, paint.plaque());
-  plaque.scale.set(1.1, 0.53, 1);
-  plaque.position.set(1.8, 1.75, -2.18);
-  ctx.root.add(plaque);
+  if (!model("cloudity-logo", { height: 0.95 }, -1.8, 2.15, -2.1, Math.PI)) {
+    const plaque = new THREE.Mesh(plane, paint.plaque());
+    plaque.scale.set(1.1, 0.53, 1);
+    plaque.position.set(1.8, 1.75, -2.18);
+    ctx.root.add(plaque);
+  }
 
   /** A desk with its monitor, facing +Z. Returns the screen mesh. */
   function desk(x, z, screenMaterial) {
@@ -548,15 +546,6 @@ export function createWorld(ctx) {
           0,
           height,
           0.2,
-          0,
-          group,
-        );
-        model(
-          "lampRoundTable",
-          { height: 0.5, shadows: false },
-          -0.68,
-          height,
-          -0.12,
           0,
           group,
         );
@@ -670,6 +659,128 @@ export function createWorld(ctx) {
   let talking = 0;
   let herTurn = 0;
   let clockHead = 0;
+
+  /* ---------- The Salesforce things on the desks ---------- */
+
+  // The items of the salesforce pack face -Z: turned to the camera, at +X +Z
+  const TO_CAMERA = Math.atan2(CAMERA_WIDE.x, CAMERA_WIDE.z);
+  const deskTop = mine.top * DESK_SCALE;
+
+  function item(name, height, x, y, z, turn) {
+    const node = model(
+      name,
+      { height, shadows: false },
+      x,
+      y,
+      z,
+      turn === undefined ? TO_CAMERA : turn,
+    );
+    if (node) {
+      node.userData.base = node.scale.x;
+    }
+    return node;
+  }
+
+  // What each conflict is about, on both desks: the permission set, then the flow
+  const roundItems = {
+    1: [
+      item("permission-set", 0.7, 0.95, deskTop, -1.15),
+      item("permission-set", 0.7, -2.75, deskTop, -1.1),
+    ],
+    2: [
+      item("flow", 0.7, 0.95, deskTop, -1.15),
+      item("flow", 0.7, -2.75, deskTop, -1.1),
+    ],
+  };
+  // Round 3: the three Pull Requests over the desk, in the order the player sets
+  const prItems = {};
+  for (const id of Object.keys(PRS)) {
+    const node = item("pull-request", 0.42, 0, deskTop + 0.3, -1.15);
+    if (node) {
+      const sign = paint.sign("w5-pr-" + id, "US-" + id, {
+        color: PRS[id].ok ? SLDS.success : SLDS.error,
+        height: 0.24,
+      });
+      ctx.root.add(sign);
+      prItems[id] = { node, sign, x: 0, z: -1.15 };
+    }
+  }
+  // Victor's sticky note on the desk, until it is found in the editor
+  const noteItem = item("note", 0.32, -0.95, deskTop, -1.2);
+  let notePop = -1;
+  // A big tick or cross over the monitor when a merge goes right or wrong
+  const marks = {
+    pass: item("check-pass", 0.6, 1.0, 2.0, -1.2),
+    fail: item("check-fail", 0.6, 1.0, 2.0, -1.2),
+  };
+  let markNode = null;
+  let markTime = 0;
+
+  for (const node of [marks.pass, marks.fail]) {
+    if (node) {
+      node.visible = false;
+    }
+  }
+  let itemClock = 0;
+
+  function showMark(kind) {
+    if (markNode) {
+      markNode.visible = false;
+    }
+    markNode = marks[kind];
+    markTime = 1.4;
+  }
+
+  function animateItems(dt) {
+    itemClock += dt;
+    for (const [n, list] of Object.entries(roundItems)) {
+      for (const node of list) {
+        if (node) {
+          node.visible = Number(n) === round;
+        }
+      }
+    }
+    r3.order.forEach((id, i) => {
+      const pr = prItems[id];
+      if (!pr) {
+        return;
+      }
+      const shown = round === 3;
+      pr.node.visible = shown;
+      pr.sign.visible = shown;
+      const back = r3.back && id === "020";
+      const ease = Math.min(1, dt * 5);
+      pr.x += ((back ? -2.3 : -0.8 + i * 0.8) - pr.x) * ease;
+      pr.z += ((back ? -0.6 : -1.15) - pr.z) * ease;
+      const y =
+        deskTop +
+        0.3 +
+        Math.sin(itemClock * 2 + i) * 0.04 +
+        (r3.merged.includes(id) ? 0.3 : 0);
+      pr.node.position.set(pr.x, y, pr.z);
+      pr.sign.position.set(pr.x, y + 0.62, pr.z);
+    });
+    if (noteItem && noteItem.visible) {
+      if (notePop >= 0) {
+        notePop += dt;
+        noteItem.scale.setScalar(noteItem.userData.base * (1 + notePop * 4));
+        noteItem.position.y = deskTop + notePop * 2;
+        noteItem.visible = notePop < 0.35;
+      } else {
+        noteItem.rotation.z = Math.sin(itemClock * 3) * 0.08;
+      }
+    }
+    if (markNode) {
+      markTime -= dt;
+      const pop = Math.min(1, (1.4 - markTime) * 7);
+      markNode.visible = markTime > 0;
+      markNode.scale.setScalar(markNode.userData.base * pop);
+      markNode.rotation.y = TO_CAMERA + Math.sin(itemClock * 5) * 0.2;
+      if (markTime <= 0) {
+        markNode = null;
+      }
+    }
+  }
 
   const HOME = new THREE.Vector3(0, 0, 0);
   const VISIT = new THREE.Vector3(-2.2, 0, -0.05);
@@ -839,6 +950,7 @@ export function createWorld(ctx) {
       shake = 0.35;
     }
     coach("fix_" + key);
+    showMark("fail");
     showScreen(screen || "bad");
     if (mistakes.has(key) || FREE_MISTAKES.includes(key)) {
       ctx.sound.play("wrong");
@@ -995,6 +1107,7 @@ export function createWorld(ctx) {
     lineNumber += 1;
     const node = button(parent, "", "gr-w5-line gr-w5-noteline", () => {
       noteFound = true;
+      notePop = 0;
       ctx.foundNote();
       ctx.sound.play("wheek");
       render();
@@ -1476,6 +1589,7 @@ export function createWorld(ctx) {
       return;
     }
     ctx.collect(100, "Complete Merge");
+    showMark("pass");
     happy();
     flashStamp(t("stampMerge"));
     step = "builder";
@@ -1672,6 +1786,7 @@ export function createWorld(ctx) {
 
   function endRound() {
     happy(true);
+    showMark("pass");
     addTimeBonus();
     busy = true;
     win.classList.add("is-busy");
@@ -1774,6 +1889,7 @@ export function createWorld(ctx) {
   }
 
   function animatePig(dt) {
+    animateItems(dt);
     const state = {
       running: false,
       airborne: false,
