@@ -1,0 +1,254 @@
+/*
+ * The words of the Guinea Run shell: the map, the world cards, the results
+ * and the controls. English is the reference: French follows it key for key,
+ * and a key missing in French falls back to English.
+ *
+ * Each world module carries its own words (TEXTS), merged in when it loads.
+ * Branch names, metadata types, API names, error messages and sfdx-hardis
+ * features stay in English in every language, as they do in the labs.
+ */
+const TEXTS = {
+  en: {
+    title: "Guinea Run",
+    subtitle: "You are the change of US-014. Travel the pipeline, from a laptop with nothing installed to production.",
+    loading: "Loading the pipeline...",
+    mapTitle: "The pipeline of US-014",
+    mapHint: "Finish a world to open the next one. Your progress stays in this browser.",
+    play: "Play",
+    replay: "Play again",
+    locked: "Locked",
+    resetProgress: "Start again from scratch",
+    resetConfirm: "Forget every world, star and badge?",
+    labs: "Learn it for real",
+    theRule: "The rule",
+    world: "World {{n}}",
+    starsLabel: "{{n}} of 3 stars",
+    notesFound: "Victor's notes: {{n}} of 9",
+    starFinish: "Finish the world",
+    starClean: "Without losing an attempt",
+    starNote: "Find Victor's note",
+    start: "Start",
+    resume: "Resume",
+    quit: "Quit",
+    close: "Close the game",
+    backToMap: "Back to the map",
+    nextWorld: "Next world",
+    retry: "Try again",
+    paused: "Paused",
+    worldDone: "World complete",
+    worldFailed: "Out of attempts",
+    inRealLife: "In real life",
+    goodToKnow: "Good to know",
+    howToPlay: "How to play",
+    tipTitle: "Why?",
+    score: "Score",
+    best: "Best",
+    newBest: "New best score!",
+    attempts: "Attempts",
+    levelComplete: "Level {{level}} complete",
+    badgeEarned: "Badge earned",
+    badgesEarned: "Badges earned",
+    tapToContinue: "Tap to continue",
+    pressToContinue: "Press Enter to continue",
+    noteFoundTitle: "Victor's note",
+    noteFoundHint: "Victor Squeeker left the company. He left notes.",
+    mute: "Sound off (M)",
+    unmute: "Sound on (M)",
+    keysTitle: "Controls",
+    keysMove: "Move: left / right arrows, or A / D (Q / D on AZERTY)",
+    keysJump: "Jump: up arrow, W (Z on AZERTY) or Space",
+    keysDuck: "Duck: down arrow or S",
+    keysConfirm: "Choose: Enter",
+    keysOther: "Pause: P, sound: M, quit: Esc",
+    keysTouch: "Swipe, tap, or use the buttons at the bottom",
+    showButtons: "Show the on-screen buttons",
+    btnLeft: "Left",
+    btnRight: "Right",
+    btnJump: "Jump",
+    btnDuck: "Duck",
+    btnOk: "OK",
+    btnPause: "Pause",
+    noWebgl: "Your browser cannot draw 3D, so the game cannot start here.",
+    loadFailed: "The game could not load. Check your connection and try again.",
+    footerHint: "Psst. Five times.",
+    style_runner: "Runner",
+    style_platformer: "Platformer",
+    style_sorting: "Sorting",
+    style_puzzle: "Puzzle",
+    style_defense: "Defense",
+    style_merge: "Merge editor",
+    style_musical: "Musical run",
+    castYou: "You",
+    w0_name: "Get set up",
+    w0_pitch: "Install everything a contributor needs, then open your scratch org.",
+    w0_rule: "Installed but not found? Close VS Code completely and open it again.",
+    w1_name: "Build it in the org",
+    w1_pitch: "Start US-014 on its own branch, then build the Panels Required field in Setup.",
+    w1_rule: "A field no permission grants is invisible to everybody, the admin who created it included.",
+    w2_name: "Retrieve and commit",
+    w2_pitch: "Recent Changes lists everything you touched. Commit only what US-014 needs.",
+    w2_rule: "A one-field story is two to four files. Eighty is never right.",
+    w3_name: "Open the Pull Request",
+    w3_pitch: "Fix the deployment check, then declare the deployment actions the release needs.",
+    w3_rule: "Pre-deploy is for what must happen with the org as it was. Everything a story brings is post-deploy.",
+    w4_name: "Pass the checks",
+    w4_pitch: "Hold the code quality gate and the coverage, then review a teammate's Pull Request.",
+    w4_rule: "Green checks mean this will deploy, not this is right.",
+    w5_name: "Resolve the conflict",
+    w5_pitch: "Mariia merged first, on the files you touched. Merge your work with hers.",
+    w5_rule: "Take both when the conflict is mechanical. When the logic collides, go and ask your teammate.",
+    w6_name: "Deploy to integration",
+    w6_pitch: "Your Pull Request is merged. Run its deployment actions, and read the log.",
+    w6_rule: "A green deployment is not a working feature.",
+    w7_name: "Promote to uat and preprod",
+    w7_pitch: "Carry the release up the pipeline, and promote only the stories that are ready.",
+    w7_rule: "Squash is for feature Pull Requests, and for nothing else.",
+    w8_name: "Release to production",
+    w8_pitch: "The last branch. Deploy fast, then read what your DORA metrics say.",
+    w8_rule: "Days, not weeks: a long lead time means work is sitting somewhere.",
+    creditsTitle: "US-014 is in production",
+    creditsText: "The crew now sees how many panels a job needs. You did every step of the pipeline.",
+    teaser: "Friday, 17:40. Saves of cancelled installations are refused...",
+    allDone: "Every world done. Replay any of them for three stars."
+  },
+  fr: {
+    title: "Guinea Run",
+    subtitle: "Vous êtes le changement de US-014. Traversez le pipeline, d'un poste où rien n'est installé jusqu'en production.",
+    loading: "Chargement du pipeline...",
+    mapTitle: "Le pipeline de US-014",
+    mapHint: "Terminez un monde pour ouvrir le suivant. Votre progression reste dans ce navigateur.",
+    play: "Jouer",
+    replay: "Rejouer",
+    locked: "Verrouillé",
+    resetProgress: "Tout recommencer",
+    resetConfirm: "Oublier tous les mondes, étoiles et badges ?",
+    labs: "Pour de vrai",
+    theRule: "La règle",
+    world: "Monde {{n}}",
+    starsLabel: "{{n}} étoiles sur 3",
+    notesFound: "Notes de Victor : {{n}} sur 9",
+    starFinish: "Terminer le monde",
+    starClean: "Sans perdre d'essai",
+    starNote: "Trouver la note de Victor",
+    start: "Jouer",
+    resume: "Reprendre",
+    quit: "Quitter",
+    close: "Fermer le jeu",
+    backToMap: "Retour à la carte",
+    nextWorld: "Monde suivant",
+    retry: "Réessayer",
+    paused: "Pause",
+    worldDone: "Monde terminé",
+    worldFailed: "Plus d'essais",
+    inRealLife: "En vrai",
+    goodToKnow: "Bon à savoir",
+    howToPlay: "Comment jouer",
+    tipTitle: "Pourquoi ?",
+    score: "Score",
+    best: "Record",
+    newBest: "Nouveau record !",
+    attempts: "Essais",
+    levelComplete: "Niveau {{level}} terminé",
+    badgeEarned: "Badge obtenu",
+    badgesEarned: "Badges obtenus",
+    tapToContinue: "Touchez pour continuer",
+    pressToContinue: "Appuyez sur Entrée pour continuer",
+    noteFoundTitle: "La note de Victor",
+    noteFoundHint: "Victor Squeeker a quitté l'entreprise. Il a laissé des notes.",
+    mute: "Couper le son (M)",
+    unmute: "Remettre le son (M)",
+    keysTitle: "Commandes",
+    keysMove: "Se déplacer : flèches gauche / droite, ou Q / D en AZERTY (A / D en QWERTY)",
+    keysJump: "Sauter : flèche haut, Z en AZERTY (W en QWERTY) ou Espace",
+    keysDuck: "Se baisser : flèche bas ou S",
+    keysConfirm: "Choisir : Entrée",
+    keysOther: "Pause : P, son : M, quitter : Échap",
+    keysTouch: "Glissez, touchez, ou utilisez les boutons en bas",
+    showButtons: "Afficher les boutons à l'écran",
+    btnLeft: "Gauche",
+    btnRight: "Droite",
+    btnJump: "Sauter",
+    btnDuck: "Se baisser",
+    btnOk: "OK",
+    btnPause: "Pause",
+    noWebgl: "Votre navigateur ne sait pas afficher la 3D, le jeu ne peut pas démarrer ici.",
+    loadFailed: "Le jeu n'a pas pu se charger. Vérifiez votre connexion et réessayez.",
+    footerHint: "Psst. Cinq fois.",
+    style_runner: "Course",
+    style_platformer: "Plateformes",
+    style_sorting: "Tri",
+    style_puzzle: "Puzzle",
+    style_defense: "Défense",
+    style_merge: "Éditeur de merge",
+    style_musical: "Course musicale",
+    castYou: "Vous",
+    w0_name: "S'installer",
+    w0_pitch: "Installez tout ce dont un contributeur a besoin, puis ouvrez votre scratch org.",
+    w0_rule: "Installé mais introuvable ? Fermez complètement VS Code et rouvrez-le.",
+    w1_name: "Construire dans l'org",
+    w1_pitch: "Démarrez US-014 sur sa propre branch, puis créez le champ Panels Required dans Setup.",
+    w1_rule: "Un champ qu'aucune permission n'accorde est invisible pour tout le monde, y compris l'admin qui l'a créé.",
+    w2_name: "Récupérer et commiter",
+    w2_pitch: "Recent Changes liste tout ce que vous avez touché. Ne commitez que ce dont US-014 a besoin.",
+    w2_rule: "Une story d'un champ, c'est deux à quatre fichiers. Quatre-vingts, jamais.",
+    w3_name: "Ouvrir la Pull Request",
+    w3_pitch: "Corrigez le contrôle de déploiement, puis déclarez les actions de déploiement dont la release a besoin.",
+    w3_rule: "Le pre-deploy, c'est ce qui doit se passer avec l'org telle qu'elle était. Tout ce qu'une story apporte est post-deploy.",
+    w4_name: "Passer les contrôles",
+    w4_pitch: "Tenez la porte de qualité du code et la couverture, puis relisez la Pull Request d'une collègue.",
+    w4_rule: "Des contrôles verts veulent dire que ça se déploiera, pas que c'est juste.",
+    w5_name: "Résoudre le conflit",
+    w5_pitch: "Mariia a mergé avant vous, sur les fichiers que vous avez touchés. Fusionnez votre travail avec le sien.",
+    w5_rule: "Gardez les deux quand le conflit est mécanique. Quand la logique se heurte, allez voir votre collègue.",
+    w6_name: "Déployer en integration",
+    w6_pitch: "Votre Pull Request est mergée. Exécutez ses actions de déploiement, et lisez le log.",
+    w6_rule: "Un déploiement vert n'est pas une fonctionnalité qui marche.",
+    w7_name: "Promouvoir en uat et preprod",
+    w7_pitch: "Montez la release dans le pipeline, et ne promouvez que les stories prêtes.",
+    w7_rule: "Le squash est pour les Pull Requests de feature, et pour rien d'autre.",
+    w8_name: "Livrer en production",
+    w8_pitch: "La dernière branch. Déployez vite, puis lisez ce que disent vos métriques DORA.",
+    w8_rule: "Des jours, pas des semaines : un lead time long veut dire que du travail attend quelque part.",
+    creditsTitle: "US-014 est en production",
+    creditsText: "L'équipe voit maintenant combien de panneaux demande un chantier. Vous avez fait chaque étape du pipeline.",
+    teaser: "Vendredi, 17 h 40. Les enregistrements d'installations annulées sont refusés...",
+    allDone: "Tous les mondes sont terminés. Rejouez-les pour trois étoiles."
+  }
+};
+
+/**
+ * Returns the translator of a language: t("key", { var: value }). Extra tables
+ * ({ en: {...}, fr: {...} }) are the words of a world, looked up first.
+ */
+export function translator(lang, extra) {
+  const tables = (extra || []).concat([TEXTS]);
+  return function t(key, vars) {
+    let text;
+    for (const table of tables) {
+      const own = table[lang] && table[lang][key];
+      if (own !== undefined) {
+        text = own;
+        break;
+      }
+    }
+    if (text === undefined) {
+      for (const table of tables) {
+        if (table.en && table.en[key] !== undefined) {
+          text = table.en[key];
+          break;
+        }
+      }
+    }
+    if (text === undefined) {
+      text = key;
+    }
+    if (vars) {
+      for (const name of Object.keys(vars)) {
+        text = text.split("{{" + name + "}}").join(String(vars[name]));
+      }
+    }
+    return text;
+  };
+}
+
+export const SHELL_TEXTS = TEXTS;
