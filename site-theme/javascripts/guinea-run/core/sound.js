@@ -224,10 +224,11 @@ export function createSound() {
     combo() {
       [0, 2, 4].forEach((step, i) => bell(PENTATONIC[step + 1], i * 0.07, 0.2, 0.4));
     },
-    // Hit: a frightened squeak over a soft thump
+    // A lost attempt: a grumble from the guinea pig, and a low two-note "no"
     hit() {
-      thump(0, 0.5);
-      clip("scared", 0.55, 0.02);
+      clip("annoyed", 0.45);
+      bell(392, 0, 0.16, 0.35, 2.5);
+      bell(329.6, 0.12, 0.16, 0.5, 2.5);
     },
     power() {
       swish(0, 0.25, 600, 4000);
@@ -240,11 +241,10 @@ export function createSound() {
     click() {
       bell(1760, 0, 0.06, 0.08);
     },
-    // Wrong: a grumble from the guinea pig, and a low two-note "no"
+    // Something went wrong that costs no attempt: a frightened squeak over a soft thump
     wrong() {
-      clip("annoyed", 0.45);
-      bell(392, 0, 0.16, 0.35, 2.5);
-      bell(329.6, 0.12, 0.16, 0.5, 2.5);
+      thump(0, 0.5);
+      clip("scared", 0.55, 0.02);
     },
     // A world done: the guinea pig purrs
     happy() {
