@@ -77,7 +77,7 @@ export const MUSICAL_TEXTS = {
 export const MUSICAL_CSS = `
 .guinea-run .gr-mu-choice {
   position: absolute;
-  top: 118px;
+  top: 160px;
   left: 50%;
   width: min(640px, calc(100vw - 24px));
   transform: translateX(-50%);
@@ -119,6 +119,7 @@ export const MUSICAL_CSS = `
   font: inherit;
   font-size: 16px;
   font-weight: 800;
+  overflow-wrap: anywhere;
   cursor: pointer;
   touch-action: manipulation;
   transition: transform 0.08s, background 0.08s;
@@ -152,7 +153,8 @@ export const MUSICAL_CSS = `
 }
 @media (max-width: 600px) {
   .guinea-run .gr-mu-choice {
-    top: 104px;
+    top: auto;
+    bottom: 112px;
   }
   .guinea-run .gr-mu-prompt {
     font-size: 16px;
@@ -391,8 +393,9 @@ export function createMusicalRun(ctx, def) {
   track.receiveShadow = true;
   root.add(track);
   const base = new THREE.Mesh(box, paint.plain(0x0b5cab, { roughness: 0.8, emissive: 0x041a33 }));
-  base.scale.set(X(lastQuarter * QUARTER - firstQuarter * QUARTER), 1.4, 3.4);
-  base.position.set(X((lastQuarter * QUARTER + firstQuarter * QUARTER) / 2), -1.75, 0);
+  // Deep enough that a tall phone screen never sees under it
+  base.scale.set(X(lastQuarter * QUARTER - firstQuarter * QUARTER), 16, 3.4);
+  base.position.set(X((lastQuarter * QUARTER + firstQuarter * QUARTER) / 2), -9.05, 0);
   root.add(base);
 
   /* ---------- The scenery: hills, clouds and an equalizer that dances ---------- */
@@ -699,6 +702,7 @@ export function createMusicalRun(ctx, def) {
   let camX = 0;
   let camY = 2;
   let shake = 0;
+  let lookUp = 0;
   let lastCoach = -10;
   let lastPortrait = null;
   let choiceUi = null;
@@ -1360,16 +1364,19 @@ export function createMusicalRun(ctx, def) {
       camera.updateProjectionMatrix();
     }
     const px = pig.object.position.x;
-    const lead = portrait ? 3.1 : 5;
+    const lead = portrait ? 2.6 : 5;
     const wantX = px + lead;
     camX = run.mode === "rewind" ? camX + (wantX - camX) * Math.min(1, dt * 5) : wantX;
     const wantY = 2 + Math.max(0, pig.object.position.y - 1.6) * 0.65;
     camY += (wantY - camY) * Math.min(1, dt * 4);
     shake = Math.max(0, shake - dt);
     const jitter = shake > 0 ? (Math.random() - 0.5) * shake : 0;
-    const distance = portrait ? 17.5 : 12.5;
-    camera.position.set(camX + jitter, camY + (portrait ? 1.2 : 0.9), distance);
-    camera.lookAt(camX, camY + (portrait ? -0.4 : 0.75), 0);
+    const distance = portrait ? 14 : 12.5;
+    // On a phone a choice sits at the bottom of the screen: the scene moves up
+    const choosing = portrait && run.mode === "stop" && run.stop && run.stop.type === "choice";
+    lookUp += ((choosing ? -2.6 : 0) - lookUp) * Math.min(1, dt * 4);
+    camera.position.set(camX + jitter, camY + (portrait ? 1.2 : 0.9) + lookUp, distance);
+    camera.lookAt(camX, camY + (portrait ? 1 : 0.75) + lookUp, 0);
     engine.aimSun(px, 0);
   }
 
@@ -1573,8 +1580,8 @@ export function createMusicalRun(ctx, def) {
       camera.updateProjectionMatrix();
       const px = pig.object.position.x;
       const sway = Math.sin(time * 0.4) * 0.8;
-      camera.position.set(px + 2.5 + sway, (portrait ? 3 : 2.6), portrait ? 15 : 10.5);
-      camera.lookAt(px + 2.5, portrait ? 0.6 : 1.2, 0);
+      camera.position.set(px + 2.5 + sway, portrait ? 3.4 : 2.6, portrait ? 13 : 10.5);
+      camera.lookAt(px + 2.5, portrait ? 2.2 : 1.2, 0);
       engine.aimSun(px, 0);
     },
     dispose() {

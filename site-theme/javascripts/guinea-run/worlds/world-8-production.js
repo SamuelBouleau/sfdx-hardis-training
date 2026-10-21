@@ -60,7 +60,6 @@ export const TEXTS = {
     goal2: "The production Pull Request: read the check like it matters",
     goal3: "The same riff, for real. Watch for drift",
     goal4: "Verify in production: the new story, and an old one",
-    goal5: "Read your DORA metrics",
     coachRehearse: "preprod: the same riff as production, for free",
     coachProd: "Same riff as preprod, with one surprise",
     coachQuick: "Quick Deploy: the tests already ran during the validation",
@@ -165,7 +164,6 @@ export const TEXTS = {
     goal2: "La Pull Request de production : lisez le contrôle comme si ça comptait",
     goal3: "Le même riff, pour de vrai. Attention à la dérive",
     goal4: "Vérifiez en production : la nouvelle story, et une ancienne",
-    goal5: "Lisez vos métriques DORA",
     coachRehearse: "preprod : le même riff qu'en production, gratuitement",
     coachProd: "Le même riff qu'en preprod, avec une surprise",
     coachQuick: "Quick Deploy : les tests ont déjà tourné pendant la validation",
@@ -495,8 +493,10 @@ export function createWorld(ctx) {
   function showDora() {
     phase = "dora";
     ctx.setData("phase", "dora");
-    hud.goal(t("goal5"));
+    // The card says what to do; on a phone the goal line and the jump pad would cover it
+    hud.goal("");
     hud.setPath([], 0);
+    hud.setPads([]);
     card = el("div", "gr-w8-card gr-scroll", hud.layer);
     const head = el("div", "gr-w8-head", card);
     el("strong", "", head, t("doraTitle"));
@@ -555,7 +555,13 @@ export function createWorld(ctx) {
         finished = true;
         hud.toast(t("shipped"), "good");
         run.finale();
-        ctx.finish(bonus(), missedInfo());
+        // After the last world the shell shows the credits, not a result: say what was missed here too
+        const info = missedInfo();
+        if (info) {
+          hud.tip(info, 8000);
+        }
+        ctx.setData("missed", info ? "yes" : "no");
+        ctx.finish(bonus(), info);
       }
     } else {
       button.disabled = true;

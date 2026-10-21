@@ -161,9 +161,9 @@ const WORLD_PROBES = {
   3: { keys: ["ArrowDown", "Enter"], attr: "phase", changes: true },
   4: { keys: ["ArrowLeft"], attr: "lane", expect: "0" },
   5: { keys: [], attr: "round", expect: "1" },
-  6: { keys: ["ArrowRight"], attr: "lane", expect: "2" },
+  6: { keys: ["ArrowUp"], attr: "jumps", changes: true },
   7: { keys: ["ArrowLeft"], attr: "lane", expect: "0" },
-  8: { keys: ["ArrowRight"], attr: "lane", expect: "2" }
+  8: { keys: ["ArrowUp"], attr: "jumps", changes: true }
 };
 
 try {

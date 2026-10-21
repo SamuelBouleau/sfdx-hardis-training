@@ -416,11 +416,16 @@ export function createHud(t, options) {
     },
 
     /** The end of the game, after world 8. */
-    credits(earned) {
+    credits(earned, missed) {
       screen("credits", t("creditsTitle"), (body, footer) => {
         element("div", "gr-logo gr-logo--happy", body).innerHTML = GUINEA_SVG;
         element("p", "", body, t("creditsText"));
         badgesRow(body, earned);
+        if (missed) {
+          const box = element("div", "gr-rule gr-rule--info", body);
+          element("strong", "", box, t("goodToKnow"));
+          element("span", "", box, missed);
+        }
         element("p", "gr-teaser", body, t("teaser"));
         button(footer, "map", t("backToMap"), "gr-primary");
       });

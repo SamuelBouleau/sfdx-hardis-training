@@ -559,7 +559,9 @@ export function createWorld(ctx) {
         hud.goal("");
         hud.toast(t("arrived"), "good");
         run.finale();
-        ctx.finish(bonus(), missedInfo());
+        const info = missedInfo();
+        ctx.setData("missed", info ? "yes" : "no");
+        ctx.finish(bonus(), info);
       }
     }
   });
@@ -580,16 +582,17 @@ export function createWorld(ctx) {
   function missedInfo() {
     const lines = [];
     const s = run.stats;
+    // What the plan of World 3 got wrong comes first: it is what the lab is about
+    if (!(verdict.backfill.ok && post.includes("backfill"))) {
+      lines.push(t("info_backfill"));
+    } else if (misplaced > 0) {
+      lines.push(t("info_misplaced", { n: misplaced }));
+    }
     if (!run.powerTaken("log")) {
       lines.push(t("info_log"));
     }
     if (!run.powerTaken("quick")) {
       lines.push(t("info_quick"));
-    }
-    if (!(verdict.backfill.ok && post.includes("backfill"))) {
-      lines.push(t("info_backfill"));
-    } else if (misplaced > 0) {
-      lines.push(t("info_misplaced", { n: misplaced }));
     }
     if (s.got < s.coins * 0.9) {
       lines.push(t("info_coins", { got: s.got, total: s.coins }));

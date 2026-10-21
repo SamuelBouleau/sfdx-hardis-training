@@ -30,7 +30,9 @@ import { WORLDS, judgePlan } from "./core/story.js";
 import { createGuineaPig } from "./guinea-pig.js";
 import { createFx } from "./core/fx.js";
 
-const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js";
+// scripts/build/vendor-three.mjs copies the add-ons of this same version
+const THREE_VERSION = "0.170.0";
+const THREE_URL = "https://cdn.jsdelivr.net/npm/three@" + THREE_VERSION + "/build/three.module.min.js";
 // Generous on purpose: the worlds teach, they are not meant to stop anyone
 const ATTEMPTS = 5;
 // A slow frame is played as several short steps, so a weak device keeps the
@@ -549,7 +551,7 @@ function createGame(options) {
         progress.setFinished();
         track("easter_egg_finished", { score: run.score, trigger: options.trigger });
         state = "credits";
-        hud.credits(progress.badges);
+        hud.credits(progress.badges, result.missed);
       } else {
         state = "done";
         hud.result(result);
