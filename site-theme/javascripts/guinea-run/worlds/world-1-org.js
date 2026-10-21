@@ -884,7 +884,7 @@ export function createWorld(ctx) {
     part.flying = 0.01;
     const big = part.event === "save" || part.event === "mgrRead";
     const color = new THREE.Color(part.color).getHex();
-    ctx.fx.burst(part.x, part.y, 0.3, { count: big ? 60 : 16, colors: big ? undefined : [color, 0xffd24a, 0xffffff], speed: big ? 5 : 3, up: big ? 6 : 3 });
+    ctx.fx.burst(part.x, part.y, 0.3, big ? { count: 60, speed: 5, up: 6 } : { count: 16, colors: [color, 0xffd24a, 0xffffff], speed: 3, up: 3 });
     ctx.collect(skipped ? 25 : big ? 150 : 50, skipped ? "" : part.label);
     if (skipped) {
       hud.toast(t("outOfOrder", { label: part.label, first: skipped.label }), "power");

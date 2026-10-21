@@ -8,16 +8,26 @@
  * again, because VS Code only reads the PATH at startup. The gates at the end
  * of the first two sections are that restart, as a quiz.
  *
- * The scratch org portal opens only once every card of the Setup panel is
- * green: a missed install comes back down the track as a pending install.
+ * A missed install comes back down the track as a pending install, and what
+ * is still missing at the end costs points, never the end of the world.
+ *
+ * The goal line always says what is next (the tools of the section, the
+ * restart that is owed, the green door), and the coach teaches each new
+ * thing the first time it comes.
  */
-import { createRunner } from "./runner.js";
+import { createRunner, RUNNER_TEXTS, RUNNER_CSS } from "./runner.js";
 
 export const PADS = ["left", "right", "jump", "duck"];
 
 // What VS Code only sees after a restart
 const NEEDS_RESTART = ["git", "node", "cli"];
 const REQUIRED = ["git", "vscode", "node", "pack", "cli", "plugin", "org", "devhub", "fork"];
+// The tools each section brings, for the goal line
+const BY_SECTION = [
+  ["git", "vscode", "node", "pack"],
+  ["cli", "plugin"],
+  ["org", "devhub", "fork"]
+];
 // Where each required item comes down the track, and in which lane
 const PLACES = {
   git: [40, 1],
@@ -33,7 +43,28 @@ const PLACES = {
 
 export const TEXTS = {
   en: {
-    intro: "Your first morning on a Salesforce team: five things to install before anyone gives you a ticket. Collect them, connect your org, and open your scratch org. Watch the Setup panel at the top.",
+    ...RUNNER_TEXTS.en,
+    intro: "Your first morning on a Salesforce team: install your tools, connect your org, open your scratch org. The Setup panel at the top turns green as you go.",
+    how1: "Collect Git, VS Code, Node.js and the other tools",
+    how2: "Arrows or swipe: change lane, Up to jump, Down to duck",
+    how3: "Pick the right door, then the green one at the end",
+    goal0: "Collect the 4 tools: {{n}} left",
+    goal1: "Collect the Salesforce CLI and sfdx-hardis: {{n}} left",
+    goal2: "Connect helios-prod, Dev Hub and your fork: {{n}} left",
+    goalReady: "All collected: get ready for the door",
+    goalDoor: "Read the question, steer into the right door",
+    goalRestart: "Restart VS Code: grab the restart power-up",
+    goalPortal: "Take the green door: Set up my training environment",
+    coachStart: "Collect the tools! Left and Right to change lane",
+    coachStartTouch: "Collect the tools! Swipe left or right",
+    coachFound: "Installed, not found: see the orange card?",
+    coachRestart: "Grab the restart power-up!",
+    coachGreen: "Setup panel all green!",
+    coachPortal: "Green door: Set up my training environment!",
+    q0: "Git and Node.js are installed, but VS Code says they are missing. What do you do?",
+    q1: "The Setup panel installed the Salesforce CLI, then says it is missing. What now?",
+    q2: "Last card of the Setup panel: your training environment. Which door?",
+    signQuiz: "Which door?",
     note: "Your first morning on any Salesforce team. Five things before anyone gives you a ticket. - V.",
     s0: "Install",
     s1: "Setup panel",
@@ -44,6 +75,31 @@ export const TEXTS = {
     stateOk: "ready",
     o_path: "Installed, but VS Code does not see it",
     o_path_tip: "Close VS Code completely, windows and all, and open it again: VS Code only reads the PATH at startup.",
+    o_path_s: "PATH",
+    o_trust_s: "Trust?",
+    o_gitbash_s: "No Git Bash",
+    o_cli_s: "CLI missing",
+    o_noext_s: "No extension",
+    o_redline_s: "Red line",
+    o_outdated_s: "Outdated",
+    o_sandbox_s: "Wrong login",
+    o_fork_s: "Fork failed",
+    o_devhub_s: "Dev Hub off",
+    o_threeorgs_s: "3 / 3 orgs",
+    o_api_s: "API limit",
+    p_pending_s: "Pending installs",
+    p_reload_s: "Reload Window",
+    p_vibes_s: "Agentforce Vibes",
+    p_delete_s: "Delete org",
+    p_restart_s: "Restart VS Code",
+    g_restart_s: "Restart VS Code",
+    g_keep_s: "Wait",
+    g_terminal_s: "New terminal",
+    g_again_s: "Run again",
+    g_reinstall_s: "Reinstall CLI",
+    g_setup_s: "Set up",
+    g_recreate_s: "Recreate org",
+    g_testlogin_s: "test.salesforce.com",
     o_trust: "Do you trust the publishers of these extensions?",
     o_trust_tip: "Answer Trust Publishers & Install, or the install stops.",
     o_gitbash: "Errors that look like nothing to do with Git",
@@ -96,7 +152,28 @@ export const TEXTS = {
     created: "OK  helios-dev is created, for 30 days."
   },
   fr: {
-    intro: "Votre premier matin dans une équipe Salesforce : cinq choses à installer avant qu'on vous donne un ticket. Récupérez-les, connectez votre org, et ouvrez votre scratch org. Surveillez le Setup panel en haut.",
+    ...RUNNER_TEXTS.fr,
+    intro: "Votre premier matin dans une équipe Salesforce : installez vos outils, connectez votre org, ouvrez votre scratch org. Le Setup panel en haut passe au vert à mesure.",
+    how1: "Récupérez Git, VS Code, Node.js et les autres outils",
+    how2: "Flèches ou swipe : changez de voie, Haut saute, Bas baisse",
+    how3: "Choisissez la bonne porte, puis la verte à la fin",
+    goal0: "Récupérez les 4 outils : encore {{n}}",
+    goal1: "Récupérez la Salesforce CLI et sfdx-hardis : encore {{n}}",
+    goal2: "Connectez helios-prod, le Dev Hub et votre fork : encore {{n}}",
+    goalReady: "Tout est récupéré : préparez-vous pour la porte",
+    goalDoor: "Lisez la question, prenez la bonne porte",
+    goalRestart: "Redémarrez VS Code : attrapez le bonus de redémarrage",
+    goalPortal: "Prenez la porte verte : Set up my training environment",
+    coachStart: "Récupérez les outils ! Gauche et Droite pour changer de voie",
+    coachStartTouch: "Récupérez les outils ! Swipe à gauche ou à droite",
+    coachFound: "Installé, introuvable : vous voyez la carte orange ?",
+    coachRestart: "Attrapez le bonus de redémarrage !",
+    coachGreen: "Setup panel tout vert !",
+    coachPortal: "Porte verte : Set up my training environment !",
+    q0: "Git et Node.js sont installés, mais VS Code dit qu'ils manquent. Que faites-vous ?",
+    q1: "Le Setup panel a installé la Salesforce CLI, puis dit qu'elle manque. Et maintenant ?",
+    q2: "Dernière carte du Setup panel : votre environnement de formation. Quelle porte ?",
+    signQuiz: "Quelle porte ?",
     note: "Votre premier matin dans une équipe Salesforce. Cinq choses avant qu'on vous donne un ticket. - V.",
     s0: "Installer",
     s1: "Setup panel",
@@ -107,6 +184,31 @@ export const TEXTS = {
     stateOk: "prêt",
     o_path: "Installé, mais VS Code ne le voit pas",
     o_path_tip: "Fermez complètement VS Code, toutes ses fenêtres, et rouvrez-le : VS Code ne lit le PATH qu'au démarrage.",
+    o_path_s: "PATH",
+    o_trust_s: "Trust ?",
+    o_gitbash_s: "Pas de Git Bash",
+    o_cli_s: "CLI manquante",
+    o_noext_s: "Pas d'extension",
+    o_redline_s: "Ligne rouge",
+    o_outdated_s: "Pas à jour",
+    o_sandbox_s: "Mauvais login",
+    o_fork_s: "Fork raté",
+    o_devhub_s: "Dev Hub éteint",
+    o_threeorgs_s: "3 / 3 orgs",
+    o_api_s: "Limite API",
+    p_pending_s: "Installations",
+    p_reload_s: "Reload Window",
+    p_vibes_s: "Agentforce Vibes",
+    p_delete_s: "Supprimer l'org",
+    p_restart_s: "Redémarrer VS Code",
+    g_restart_s: "Redémarrer VS Code",
+    g_keep_s: "Attendre",
+    g_terminal_s: "Nouveau terminal",
+    g_again_s: "Relancer",
+    g_reinstall_s: "Réinstaller la CLI",
+    g_setup_s: "Set up",
+    g_recreate_s: "Recréer l'org",
+    g_testlogin_s: "test.salesforce.com",
     o_trust: "Do you trust the publishers of these extensions?",
     o_trust_tip: "Répondez Trust Publishers & Install, sinon l'installation s'arrête.",
     o_gitbash: "Des erreurs qui semblent sans rapport avec Git",

@@ -878,10 +878,12 @@ export function createRunner(ctx, config) {
       ctx.hud.layer.appendChild(doorsPanel);
     }
     doorsPanel.textContent = "";
-    if (gate.spec.question) {
+    // An older spec gives its question as a text banner
+    const question = gate.spec.question || (typeof gate.spec.banner === "string" ? gate.spec.banner : "");
+    if (question) {
       const q = document.createElement("div");
       q.className = "gr-run-q";
-      q.textContent = gate.spec.question;
+      q.textContent = question;
       doorsPanel.appendChild(q);
     }
     const row = document.createElement("div");
