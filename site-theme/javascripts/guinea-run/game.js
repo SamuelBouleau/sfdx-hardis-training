@@ -30,6 +30,8 @@ import { WORLDS, judgePlan } from "./core/story.js";
 import { createGuineaPig } from "./guinea-pig.js";
 import { createFx } from "./core/fx.js";
 import { createModels } from "./core/models.js";
+import { createMusic } from "./core/music.js";
+import { THEMES } from "./core/themes.js";
 
 // scripts/build/vendor-three.mjs copies the add-ons of this same version
 const THREE_VERSION = "0.186.1";
@@ -684,9 +686,64 @@ function createGame(options) {
     });
   }
 
+  /* ---------- The background music ---------- */
+
+  // A theme per world (core/themes.js), and a soft one on the map. It plays
+  // while a world is played, holds on pause, stops on the card, the
+  // celebration, the result and the close. A musical run plays its own song.
+  let backgroundMusic = null;
+
+  function wantedTheme() {
+    if (state === "map") {
+      return THEMES.map ? { key: "map", run: null } : null;
+    }
+    if (!current || !current.world || (state !== "playing" && state !== "paused")) {
+      return null;
+    }
+    const own = current.module.MUSIC;
+    if (own === false || current.info.style === "musical") {
+      return null;
+    }
+    const key = own !== undefined ? own : current.info.id;
+    return THEMES[key] ? { key, run } : null;
+  }
+
+  function updateBackgroundMusic(dt) {
+    const wanted = wantedTheme();
+    const same = backgroundMusic && wanted && backgroundMusic.key === wanted.key && backgroundMusic.run === wanted.run;
+    if (!same) {
+      stopBackgroundMusic();
+      if (wanted) {
+        const theme = THEMES[wanted.key];
+        backgroundMusic = { key: wanted.key, run: wanted.run, theme, music: createMusic(sound, theme), pace: Number(overlay.getAttribute("data-pace")) || 1 };
+        backgroundMusic.base = backgroundMusic.pace;
+        backgroundMusic.music.start();
+      }
+    }
+    if (!backgroundMusic || (state !== "playing" && state !== "map")) {
+      return;
+    }
+    // A world that speeds up (data-pace) takes its theme along, gently, on a bar line
+    const pace = Number(overlay.getAttribute("data-pace")) || backgroundMusic.base;
+    if (Math.abs(pace - backgroundMusic.pace) > 0.02) {
+      backgroundMusic.pace = pace;
+      const factor = 1 + (pace / backgroundMusic.base - 1) * 0.6;
+      backgroundMusic.music.setTempo(backgroundMusic.theme.bpm * factor, (backgroundMusic.music.bar + 1) * 4);
+    }
+    backgroundMusic.music.update(dt);
+  }
+
+  function stopBackgroundMusic() {
+    if (backgroundMusic) {
+      backgroundMusic.music.dispose();
+      backgroundMusic = null;
+    }
+  }
+
   /* ---------- The frame ---------- */
 
   function frame(dt, time) {
+    updateBackgroundMusic(dt);
     if (state === "playing" && current && current.world) {
       let left = dt;
       while (left > 1e-6 && state === "playing") {
@@ -734,6 +791,7 @@ function createGame(options) {
       return;
     }
     stopped = true;
+    stopBackgroundMusic();
     closeWorld();
     if (fx) {
       fx.dispose();

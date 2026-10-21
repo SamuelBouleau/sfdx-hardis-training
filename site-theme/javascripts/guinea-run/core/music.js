@@ -14,15 +14,24 @@
  *   music.beat, music.phase, music.pulse   // for the visuals
  *   music.setSection("chorus", bar);       // from that bar on
  *   music.note(i);                 // a collectable: a note of the chord being played
+ *   music.setTempo(bpm, beat);    // from that beat on (a bar line), a new tempo
  *   music.dispose();
  *
  * It plays through the master output of core/sound.js, so the limiter and
  * the mute (M) apply to it too. A song is { bpm, root (MIDI note of the key),
  * progression (one chord per bar, as scale degrees), lead: { name: [64
- * sixteenths, scale degrees or null] }, sections: { name: tracks } }.
+ * sixteenths, scale degrees or null] }, sections: { name: tracks } }, and
+ * optionally: scale (MINOR), volume, sevenths, swing (0 to 0.3, the late
+ * offbeats of lo-fi), leadVoice ("square", "bell", "soft"), stabVoice
+ * ("pluck", "keys"), and form: [[section, bars], ...] for a background theme
+ * that arranges itself (the first entry plays once, the rest loop).
+ *
+ * The same engine plays the musical runs in the foreground and the themes
+ * of the other worlds in the background (core/themes.js, started by the shell).
  */
 
 const MAJOR = [0, 2, 4, 5, 7, 9, 11];
+export const MINOR = [0, 2, 3, 5, 7, 8, 10];
 const STEPS_PER_BEAT = 4;
 const STEPS_PER_BAR = 16;
 const VOLUME = 0.34;
@@ -62,17 +71,45 @@ function mod(n, m) {
   return ((n % m) + m) % m;
 }
 
-function semitones(degree) {
-  return 12 * Math.floor(degree / 7) + MAJOR[mod(degree, 7)];
-}
-
 function frequency(midi) {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
 export function createMusic(sound, song) {
-  const spb = 60 / song.bpm;
+  // The tempo, in segments: from the beat of a segment on, its bpm. The song
+  // clock is in seconds; the beat is read from the segments, so a change of
+  // tempo never moves a beat that has already been played
+  let segments = [{ beat: 0, sec: 0, bpm: song.bpm }];
+  let seconds = 0;
+  function segmentAtBeat(b) {
+    let seg = segments[0];
+    for (const s of segments) {
+      if (s.beat <= b) {
+        seg = s;
+      }
+    }
+    return seg;
+  }
+  function secondsAt(b) {
+    const seg = segmentAtBeat(b);
+    return seg.sec + ((b - seg.beat) * 60) / seg.bpm;
+  }
+  function beatAt(sec) {
+    let seg = segments[0];
+    for (const s of segments) {
+      if (s.sec <= sec) {
+        seg = s;
+      }
+    }
+    return seg.beat + ((sec - seg.sec) * seg.bpm) / 60;
+  }
+  const spbAt = (b) => 60 / segmentAtBeat(b).bpm;
   const sections = Object.assign({}, SECTIONS, song.sections || {});
+  const scale = song.scale || MAJOR;
+  const volume = song.volume || VOLUME;
+  const semi = (degree) => 12 * Math.floor(degree / 7) + scale[mod(degree, 7)];
+  // A theme that arranges itself follows its form, until a world sets a section by hand
+  let manualSections = false;
   const progression = song.progression || [0, 4, 5, 3];
   let beat = 0;
   let started = false;
@@ -93,11 +130,11 @@ export function createMusic(sound, song) {
     }
     const c = audio.context;
     const bus = c.createGain();
-    bus.gain.value = sound.muted ? 0 : VOLUME;
+    bus.gain.value = sound.muted ? 0 : volume;
     bus.connect(audio.master);
     // A short echo on the lead and the bells, a quarter of a bar long
     const echo = c.createDelay(2);
-    echo.delayTime.value = spb * 0.75;
+    echo.delayTime.value = spbAt(beat) * 0.75;
     const feedback = c.createGain();
     feedback.gain.value = 0.3;
     const wet = c.createGain();
@@ -113,7 +150,7 @@ export function createMusic(sound, song) {
       data[i] = Math.random() * 2 - 1;
     }
     out = { c, bus, echo, noise, muted: sound.muted };
-    anchor = c.currentTime - beat * spb + LATENCY_S;
+    anchor = c.currentTime - seconds + LATENCY_S;
     return out;
   }
 
@@ -206,6 +243,14 @@ export function createMusic(sound, song) {
     osc("triangle", frequency(midi), t, length, filter);
   }
 
+  function keys(t, midi, v, length) {
+    const g = envelope(t, v, 0.01, length);
+    g.connect(out.bus);
+    g.connect(out.echo);
+    osc("triangle", frequency(midi), t, length, g);
+    osc("sine", frequency(midi) * 2.001, t, length * 0.6, g);
+  }
+
   function pad(t, midis, length, v) {
     for (const midi of midis) {
       const g = out.c.createGain();
@@ -256,7 +301,28 @@ export function createMusic(sound, song) {
 
   /* ---------- The song ---------- */
 
+  function formAt(bar) {
+    const form = song.form;
+    const head = form[0][1];
+    if (bar < head) {
+      return form[0][0];
+    }
+    const loop = form.slice(1);
+    const total = loop.reduce((sum, part) => sum + part[1], 0);
+    let at = mod(bar - head, total);
+    for (const [name, bars] of loop) {
+      if (at < bars) {
+        return name;
+      }
+      at -= bars;
+    }
+    return loop[0][0];
+  }
+
   function sectionAt(bar) {
+    if (song.form && !manualSections) {
+      return sections[formAt(bar)] || sections.silence;
+    }
     let name = queue[0].name;
     for (const entry of queue) {
       if (entry.bar <= bar) {
@@ -269,22 +335,32 @@ export function createMusic(sound, song) {
   /** The chord of a bar, as MIDI notes around the root. */
   function chord(bar) {
     const degree = progression[mod(bar, progression.length)];
-    return [degree, degree + 2, degree + 4].map((d) => song.root + semitones(d));
+    const degrees = song.sevenths ? [degree, degree + 2, degree + 4, degree + 6] : [degree, degree + 2, degree + 4];
+    return degrees.map((d) => song.root + semi(d));
   }
 
   function scheduleStep(step, t) {
+    const spb = spbAt(step / STEPS_PER_BEAT);
     const bar = Math.floor(step / STEPS_PER_BAR);
     const s = mod(step, STEPS_PER_BAR);
     const section = sectionAt(bar);
     const tones = chord(bar);
     const hit = (pattern) => (pattern ? pattern[s] : ".");
+    // Lo-fi swing: the offbeat sixteenths come a little late
+    if (song.swing && s % 2 === 1) {
+      t += (song.swing * spb) / 4;
+    }
     const k = hit(section.kick);
     if (k !== ".") {
       kick(t, k === "X" ? 1.2 : 1);
     }
     const c = hit(section.clap);
     if (c !== ".") {
-      clap(t, 1);
+      clap(t, c === "x" ? 1 : 0.6);
+    }
+    const sn = hit(section.snare);
+    if (sn !== ".") {
+      snare(t, sn === "X" ? 1 : 0.55);
     }
     const h = hit(section.hat);
     if (h !== ".") {
@@ -295,10 +371,14 @@ export function createMusic(sound, song) {
     }
     const b = hit(section.bass);
     if (b !== ".") {
-      bass(t, tones[0] - 24 + (b === "o" ? 12 : 0), spb * 0.45, 1);
+      bass(t, (b === "f" ? tones[2] : tones[0]) - 24 + (b === "o" ? 12 : 0), spb * (section.long ? 0.9 : 0.45), 1);
     }
     if (hit(section.stab) !== ".") {
-      tones.forEach((midi) => pluck(t, midi, 0.055, spb * 0.4));
+      if (song.stabVoice === "keys") {
+        tones.forEach((midi) => keys(t, midi, 0.045, spb * 1.6));
+      } else {
+        tones.forEach((midi) => pluck(t, midi, 0.055, spb * 0.4));
+      }
     }
     if (section.pad && s === 0) {
       pad(t, tones.map((m) => m - 12), spb * 4, 1);
@@ -308,7 +388,13 @@ export function createMusic(sound, song) {
       const i = order[mod(s / 2, order.length)];
       pluck(t, (i === 3 ? tones[0] + 12 : tones[i]) + 12, 0.03, spb * 0.3, out.echo);
     }
-    const melody = section.lead && song.lead && song.lead[section.lead];
+    playMelody(step, t, spb, section.lead, song.leadVoice, 12);
+    // A second voice that answers the first, a bell an octave up
+    playMelody(step, t, spb, section.answer, "bell", 24);
+  }
+
+  function playMelody(step, t, spb, key, voice, octave) {
+    const melody = key && song.lead && song.lead[key];
     if (melody) {
       const index = mod(step, melody.length);
       const degree = melody[index];
@@ -318,20 +404,27 @@ export function createMusic(sound, song) {
         while (length < 4 && (melody[mod(index + length, melody.length)] === null || melody[mod(index + length, melody.length)] === undefined)) {
           length += 1;
         }
-        lead(t, song.root + 12 + semitones(degree), (length * spb) / 4 + 0.05, 1);
+        const midi = song.root + octave + semi(degree);
+        if (voice === "bell") {
+          bell(t, midi, 0.7);
+        } else if (voice === "soft") {
+          keys(t, midi, 0.08, (length * spb) / 4 + 0.2);
+        } else {
+          lead(t, midi, (length * spb) / 4 + 0.05, 1);
+        }
       }
     }
   }
 
   function audioTime(songBeat) {
-    return anchor + songBeat * spb;
+    return anchor + secondsAt(songBeat);
   }
 
   function schedule(dt) {
     const c = out.c;
     const now = c.currentTime;
     // Where beat 0 is on the audio clock: followed gently, jumped to after a pause
-    const wanted = now - beat * spb + LATENCY_S;
+    const wanted = now - seconds + LATENCY_S;
     if (Math.abs(wanted - anchor) > 0.08) {
       anchor = wanted;
     } else {
@@ -339,13 +432,14 @@ export function createMusic(sound, song) {
     }
     if (out.muted !== sound.muted) {
       out.muted = sound.muted;
-      out.bus.gain.setTargetAtTime(sound.muted ? 0 : VOLUME, now, 0.02);
+      out.bus.gain.setTargetAtTime(sound.muted ? 0 : volume, now, 0.02);
     }
-    const horizon = beat + (Math.max(LOOKAHEAD_S, dt * 1.5) + LATENCY_S) / spb;
+    const horizon = beatAt(seconds + Math.max(LOOKAHEAD_S, dt * 1.5) + LATENCY_S);
     while (nextStep / STEPS_PER_BEAT < horizon) {
       const t = audioTime(nextStep / STEPS_PER_BEAT);
-      // A step the game has already left behind is skipped, never played late
-      if (t >= now - 0.02) {
+      // A step the game has already left behind is skipped, never played late;
+      // muted, nothing is made at all
+      if (t >= now - 0.02 && !sound.muted) {
         scheduleStep(nextStep, Math.max(t, now));
       }
       nextStep += 1;
@@ -383,10 +477,31 @@ export function createMusic(sound, song) {
       return Math.exp(-(beat / 4 - Math.floor(beat / 4)) * 3);
     },
     get secondsPerBeat() {
-      return spb;
+      return spbAt(beat);
+    },
+    /** The tempo being played now. */
+    get bpm() {
+      return segmentAtBeat(beat).bpm;
+    },
+    /** From that beat of the song on (a bar line, in the future), play at that tempo. */
+    setTempo(bpm, atBeat) {
+      const at = Math.max(atBeat, Math.ceil(beat));
+      const sec = secondsAt(at);
+      segments = segments.filter((seg) => seg.beat < at);
+      segments.push({ beat: at, sec, bpm });
+      if (out) {
+        try {
+          const t = Math.max(out.c.currentTime, audioTime(at));
+          out.echo.delayTime.setValueAtTime((60 / bpm) * 0.75, t);
+        } catch {
+          // The echo keeps its old length
+        }
+      }
     },
     start() {
       beat = 0;
+      seconds = 0;
+      segments = [{ beat: 0, sec: 0, bpm: song.bpm }];
       nextStep = 0;
       started = true;
       if (setup()) {
@@ -397,7 +512,8 @@ export function createMusic(sound, song) {
       if (!started || disposed) {
         return;
       }
-      beat += dt / spb;
+      seconds += dt;
+      beat = beatAt(seconds);
       if (!setup()) {
         return;
       }
@@ -409,6 +525,7 @@ export function createMusic(sound, song) {
     },
     /** From that bar on (a bar number of the song), play that section. */
     setSection(name, bar) {
+      manualSections = true;
       const from = bar === undefined ? Math.floor(beat / 4) + 1 : bar;
       queue = queue.filter((entry) => entry.bar < from);
       queue.push({ bar: from, name });

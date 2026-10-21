@@ -15,7 +15,7 @@
  * The finale is the DORA card of Lab 3.6, with the lab's own numbers, and two
  * questions about what they really say.
  */
-import { createLevel, createMusicalRun, MUSICAL_TEXTS, MUSICAL_CSS, missedInfo, musicalWorld } from "./musical.js";
+import { createLevel, createMusicalRun, MUSICAL_TEXTS, MUSICAL_CSS, endMissedInfo, musicalWorld } from "./musical.js";
 import { melody } from "../core/music.js";
 import { SLDS } from "../core/painter.js";
 
@@ -418,6 +418,13 @@ export function createWorld(ctx) {
   L.power(35 * BAR + 1, POWER("v1", SLDS.brand, "gear"));
   L.power(37 * BAR + 1, POWER("v2", SLDS.teal, "flow"));
   L.power(39 * BAR + 1, POWER("v3", SLDS.success, "check"));
+  // The song speeds up part by part, on bar lines: production plays the riff of preprod faster
+  [
+    [6, 1.06],
+    [18, 1.12],
+    [23, 1.2],
+    [35, 1.28]
+  ].forEach(([bar, pace]) => L.tempo(bar * BAR, pace));
   L.end(41 * BAR, { text: t("s_dora"), glyph: "star", color: SLDS.navy });
 
   /* ---------- The story on the way ---------- */
@@ -638,7 +645,7 @@ export function createWorld(ctx) {
     if (verified() < 3) {
       lines.push(t("info_verify", { n: verified() }));
     }
-    return missedInfo(lines, run, s, t);
+    return endMissedInfo(lines, run, s, t);
   }
 
   return musicalWorld(

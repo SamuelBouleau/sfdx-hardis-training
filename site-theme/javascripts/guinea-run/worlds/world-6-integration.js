@@ -17,7 +17,7 @@
  * shows the walls it hides), the green lie of Lab 2.3, and the three failed
  * actions of Mariia's US-062, each with its own way out, chosen on the beat.
  */
-import { createLevel, createMusicalRun, MUSICAL_TEXTS, MUSICAL_CSS, missedInfo, musicalWorld } from "./musical.js";
+import { createLevel, createMusicalRun, MUSICAL_TEXTS, MUSICAL_CSS, endMissedInfo, musicalWorld } from "./musical.js";
 import { melody } from "../core/music.js";
 import { SLDS } from "../core/painter.js";
 
@@ -454,6 +454,14 @@ export function createWorld(ctx) {
   const pe = { gap: LOOKS.empty, coin: OK };
   L.riff(48, "..-.", pe);
   ["o-o-", "G-o-", "o=o=", "G.G.", "----"].forEach((p, i) => L.riff(49 + i, p, pe));
+  // The song speeds up part by part, on bar lines: +28 % for the last lap
+  [
+    [6, 1.06],
+    [14, 1.12],
+    [22, 1.18],
+    [38, 1.24],
+    [49, 1.28]
+  ].forEach(([bar, pace]) => L.tempo(bar * BAR, pace));
   L.end(54 * BAR, { text: t("endSign"), glyph: "cloud", color: SLDS.brand });
 
   /* ---------- The story on the way ---------- */
@@ -611,7 +619,7 @@ export function createWorld(ctx) {
     if (!run.powerTaken("log")) {
       lines.push(t("info_log"));
     }
-    return missedInfo(lines, run, s, t);
+    return endMissedInfo(lines, run, s, t);
   }
 
   return musicalWorld(

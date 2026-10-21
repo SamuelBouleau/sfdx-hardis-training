@@ -46,6 +46,8 @@ const PERFECT_BEAT = 0.1;
 const GAP_FROM = 0.2;
 const GAP_TO = 0.8;
 const STREAK_STEP = 8;
+// After a respawn the tempo stays a step lower for this many beats (four bars)
+const MERCY_BEATS = 16;
 // The run clip of the guinea pig model lasts this long, and plays at
 // 0.7 + speed * 0.06 (guinea-pig.js): the speed passed makes two strides a beat
 const RUN_CLIP_S = 0.333;
@@ -66,7 +68,9 @@ export const MUSICAL_TEXTS = {
     mu_streak: "Streak x{{n}}",
     mu_perfect: "On the beat!",
     mu_soft: "In preprod, a mistake costs nothing",
-    mu_checkpoint: "Checkpoint"
+    mu_checkpoint: "Checkpoint",
+    mu_faster: "Faster!",
+    mu_mercy: "A little slower, for a few bars"
   },
   fr: {
     mu_start: "Sautez sur le temps, quand l'anneau se referme !",
@@ -78,7 +82,9 @@ export const MUSICAL_TEXTS = {
     mu_streak: "Série x{{n}}",
     mu_perfect: "Pile sur le temps !",
     mu_soft: "En preprod, une erreur ne coûte rien",
-    mu_checkpoint: "Checkpoint"
+    mu_checkpoint: "Checkpoint",
+    mu_faster: "Plus vite !",
+    mu_mercy: "Un peu plus lent, quelques mesures"
   }
 };
 
@@ -172,12 +178,11 @@ export const MUSICAL_CSS = `
 
 /* ---------- Writing a level ---------- */
 
-/** The builder of a level: every method adds events placed in run beats (4 per bar). */
 /**
  * The end of the "Good to know" message both musical worlds write: Quick
  * Deploy missed, too few components collected, then the first two reasons.
  */
-export function missedInfo(lines, run, stats, t) {
+export function endMissedInfo(lines, run, stats, t) {
   if (!run.powerTaken("quick")) {
     lines.push(t("info_quick"));
   }
@@ -212,6 +217,7 @@ export function musicalWorld(run, isFinished, cleanUp) {
   };
 }
 
+/** The builder of a level: every method adds events placed in run beats (4 per bar). */
 export function createLevel() {
   const events = [];
   const add = (event) => {
@@ -268,6 +274,10 @@ export function createLevel() {
     },
     music(at, section) {
       return add({ type: "music", at, section });
+    },
+    /** From that bar on, the song plays faster: pace 1.1 is the tempo of the song plus 10 %. */
+    tempo(at, pace) {
+      return add({ type: "tempo", at, pace });
     },
     /** A manual action: a button to bump before a barrier on beat `at` (a bar). */
     manual(at, def) {
@@ -342,10 +352,16 @@ export function createMusicalRun(ctx, def) {
   const { THREE, root, pig, paint, hud, engine, sound, t } = ctx;
   const camera = ctx.camera;
   const music = createMusic(sound, def.song);
-  const spb = 60 / def.song.bpm;
+  // The tempo climbs (tempo events), so a beat is not always as long: a jump
+  // lasts one beat at the tempo of the moment, and so does everything placed on the beat
+  const spbNow = () => music.secondsPerBeat;
   const U = UNITS_PER_BEAT;
-  const G = (8 * JUMP_H) / (spb * spb);
-  const V0 = (4 * JUMP_H) / spb;
+  const gravity = () => (8 * JUMP_H) / (spbNow() * spbNow());
+  const jumpSpeed = () => (4 * JUMP_H) / spbNow();
+  const pace = () => music.bpm / def.song.bpm;
+  // Faster means a beat is shorter: the hit boxes and the edges of the gaps
+  // forgive more, so the windows to jump stay as long in seconds
+  const forgiveness = () => Math.max(0.7, 1 - 0.6 * (pace() - 1));
   const calls = def.callbacks || {};
   const shadows = engine.settings.shadows;
   const own = [];
@@ -956,6 +972,7 @@ export function createMusicalRun(ctx, def) {
         break;
       case "music":
       case "script":
+      case "tempo":
         triggers.push({ event: e, done: false });
         break;
       default:
@@ -1140,7 +1157,18 @@ export function createMusicalRun(ctx, def) {
 
   /* ---------- The run ---------- */
 
-  const run = { mode: "ready", offset: 0, beat: 0, prev: 0, stop: null, resumeAt: 0, rewindUntil: 0, rewindFrom: 0, cp: checkpoints[0], inv: 0, section: def.song.start || "intro", choiceStart: 0, lit: -1 };
+  // The paces of the tempo events, and the pace a beat of the run is played at
+  const paces = Array.from(new Set(events.filter((e) => e.type === "tempo").map((e) => e.pace).concat([1]))).sort((a, b) => a - b);
+  function paceAt(beat) {
+    let value = 1;
+    for (const e of events) {
+      if (e.type === "tempo" && e.at <= beat) {
+        value = e.pace;
+      }
+    }
+    return value;
+  }
+  const run = { pace: 1, mercyUntil: -1, mode: "ready", offset: 0, beat: 0, prev: 0, stop: null, resumeAt: 0, rewindUntil: 0, rewindFrom: 0, cp: checkpoints[0], inv: 0, section: def.song.start || "intro", choiceStart: 0, lit: -1 };
   const player = { y: 0, vy: 0, grounded: true, coyote: 0, buffer: 0, floaty: false, squash: 0, jumps: 0, wobble: 0, pressBeat: -10 };
   const stats = { coins: coins.filter((c) => !c.hidden).length, got: 0, hits: 0, perfect: 0, streak: 0, best: 0 };
   let camX = 0;
@@ -1149,10 +1177,11 @@ export function createMusicalRun(ctx, def) {
   let launchAt = null;
   let rewardAt = null;
   let frames = 0;
+  let presses = 0;
   const frustum = new THREE.Frustum();
   const viewProjection = new THREE.Matrix4();
   const sphere3 = new THREE.Sphere();
-  const runAnimSpeed = Math.max(0, ((STRIDES_PER_BEAT * RUN_CLIP_S) / spb - 0.7) / 0.06);
+  const runAnimSpeed = () => Math.max(0, ((STRIDES_PER_BEAT * RUN_CLIP_S) / spbNow() - 0.7) / 0.06);
   let lookUp = 0;
   let lastCoach = -10;
   let lastPortrait = null;
@@ -1181,7 +1210,7 @@ export function createMusicalRun(ctx, def) {
     if (fromY < -0.3) {
       return null;
     }
-    const foot = FOOT / U;
+    const foot = (FOOT * pace()) / U;
     if (inGap(beat) && inGap(beat - foot) && inGap(beat + foot)) {
       return null;
     }
@@ -1190,13 +1219,12 @@ export function createMusicalRun(ctx, def) {
 
   function jump() {
     const onSpring = player.grounded && springs.some((s) => Math.abs(s.at - run.beat) < 0.38);
-    player.vy = V0;
+    player.vy = jumpSpeed();
     player.floaty = onSpring;
     player.grounded = false;
     player.coyote = 0;
     player.buffer = 0;
     player.jumps += 1;
-    setData("jumps", player.jumps);
     music.hop();
     if (onSpring) {
       sound.play("power");
@@ -1234,7 +1262,7 @@ export function createMusicalRun(ctx, def) {
     }
     if (!player.grounded) {
       const fromY = player.y;
-      player.vy -= (player.floaty ? G / 2 : G) * dt;
+      player.vy -= (player.floaty ? gravity() / 2 : gravity()) * dt;
       player.y += player.vy * dt;
       const top = run.mode === "run" ? surface(run.beat, fromY) : 0;
       if (player.vy <= 0 && top !== null && player.y <= top) {
@@ -1256,13 +1284,13 @@ export function createMusicalRun(ctx, def) {
     const y = player.y;
     if (run.inv <= 0) {
       for (const b of blocks) {
-        if (b.dead || Math.abs(b.x - x) > PIG_HALF + BLOCK_W * 0.4) {
+        if (b.dead || Math.abs(b.x - x) > (PIG_HALF + BLOCK_W * 0.4) * forgiveness()) {
           continue;
         }
         if (y < b.h && y + PIG_TALL > 0) {
           if (player.vy < 0 && y > b.h - 0.35) {
             // Landing on top of a block is not a mistake: a bounce
-            player.vy = V0 * 0.55;
+            player.vy = jumpSpeed() * 0.55;
             player.y = b.h;
             b.squash = 1;
             ctx.points(5);
@@ -1320,7 +1348,7 @@ export function createMusicalRun(ctx, def) {
         if (player.vy > 0) {
           player.vy = -1;
         } else {
-          player.vy = V0 * 0.5;
+          player.vy = jumpSpeed() * 0.5;
           player.y = b.y + 0.3;
         }
         pressManual(s, true);
@@ -1349,7 +1377,7 @@ export function createMusicalRun(ctx, def) {
   function hit(look, block) {
     if (isSoft(run.beat)) {
       // A rehearsal: the guinea pig bounces off and goes on
-      player.vy = V0 * 0.75;
+      player.vy = jumpSpeed() * 0.75;
       player.grounded = false;
       player.y = Math.max(player.y, 0);
       run.inv = 0.6;
@@ -1390,6 +1418,14 @@ export function createMusicalRun(ctx, def) {
     music.setSection("break", Math.floor(music.beat / 4));
     music.setSection(run.cp.section, run.rewindUntil / 4);
     music.fill(run.rewindUntil, 1);
+    // Mercy: back at the checkpoint, the tempo drops a step for a few bars, then climbs again
+    run.pace = paceAt(run.cp.at);
+    const mercy = Math.max(1, paces.filter((x) => x < run.pace - 0.001).pop() || 1);
+    music.setTempo(def.song.bpm * mercy, run.rewindUntil);
+    run.mercyUntil = mercy < run.pace ? run.rewindUntil + MERCY_BEATS : -1;
+    if (run.mercyUntil > 0) {
+      hud.toast(t("mu_mercy"), "good");
+    }
     stats.streak = 0;
   }
 
@@ -1415,7 +1451,7 @@ export function createMusicalRun(ctx, def) {
       }
     }
     for (const trigger of triggers) {
-      if (trigger.event.type === "music" && trigger.event.at > run.cp.at) {
+      if ((trigger.event.type === "music" || trigger.event.type === "tempo") && trigger.event.at > run.cp.at) {
         trigger.done = false;
       }
     }
@@ -1513,7 +1549,8 @@ export function createMusicalRun(ctx, def) {
     if (songBeat < run.choiceStart || !open.length) {
       return -1;
     }
-    return open[Math.floor(songBeat - run.choiceStart) % open.length];
+    const beatsEach = pace() >= 1.12 ? 2 : 1;
+    return open[Math.floor((songBeat - run.choiceStart) / beatsEach) % open.length];
   }
 
   function pick(stop, index) {
@@ -1600,6 +1637,14 @@ export function createMusicalRun(ctx, def) {
         if (e.type === "music") {
           run.section = e.section;
           music.setSection(e.section, Math.round((e.at + run.offset) / 4));
+        } else if (e.type === "tempo") {
+          const before = run.pace;
+          run.pace = e.pace;
+          run.mercyUntil = -1;
+          music.setTempo(def.song.bpm * e.pace, Math.round((e.at + run.offset) / 4) * 4);
+          if (e.pace > before + 0.001) {
+            hud.toast(t("mu_faster"), "power");
+          }
         } else if (e.run) {
           e.run(api);
         }
@@ -1860,14 +1905,15 @@ export function createMusicalRun(ctx, def) {
     pig.shadow.visible = overGround;
     pig.shadow.position.set(x, 0.012, 0.05);
     const running = run.mode === "run" && player.grounded;
-    pig.state = { running, airborne: !player.grounded || run.mode === "rewind", ducking: false, speed: running ? runAnimSpeed : 0, height: Math.max(0, y) };
+    pig.state = { running, airborne: !player.grounded || run.mode === "rewind", ducking: false, speed: running ? runAnimSpeed() : 0, height: Math.max(0, y) };
     // Blink while it cannot be hurt
     pig.object.visible = run.inv <= 0 || Math.floor(time * 12) % 2 === 0;
   }
 
   function placeCamera(dt) {
     const portrait = engine.portrait;
-    const fov = portrait ? 62 : 44;
+    // A little wider as the song speeds up: the speed is felt
+    const fov = Math.round(((portrait ? 62 : 44) + (pace() - 1) * 12) * 2) / 2;
     if (camera.fov !== fov) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -1921,6 +1967,7 @@ export function createMusicalRun(ctx, def) {
 
   function writeData() {
     setData("mode", run.mode);
+    setData("pace", pace().toFixed(2));
     setData("beat", run.beat.toFixed(2));
     setData("y", player.y.toFixed(1));
     const next = targets.find((x) => !x.bonus && x.at > run.beat - 0.05 && !(x.owner && x.owner.dead) && !(x.owner && x.owner.done));
@@ -2019,6 +2066,8 @@ export function createMusicalRun(ctx, def) {
         run.prev = cp.at;
         run.section = cp.section;
         music.setSection(cp.section, 0);
+        run.pace = paceAt(cp.at);
+        music.setTempo(def.song.bpm * run.pace, 0);
         for (const c of checkpoints) {
           c.passed = c.at <= cp.at;
         }
@@ -2042,7 +2091,7 @@ export function createMusicalRun(ctx, def) {
       }
       music.update(dt);
       run.prev = run.beat;
-      run.inv = Math.max(0, run.inv - dt / spb);
+      run.inv = Math.max(0, run.inv - dt / spbNow());
       if (run.mode === "run") {
         run.beat = music.beat - run.offset;
         const stop = stops.find((s) => !s.done && run.prev <= s.at + 0.001 && run.beat >= s.at);
@@ -2067,6 +2116,12 @@ export function createMusicalRun(ctx, def) {
       } else if (run.mode === "rewind" && music.beat >= run.rewindUntil) {
         respawn();
       }
+      // The end of the mercy: the tempo of the part comes back on a bar
+      if (run.mercyUntil > 0 && music.beat >= run.mercyUntil - 1) {
+        music.setTempo(def.song.bpm * run.pace, run.mercyUntil);
+        run.mercyUntil = -1;
+        hud.toast(t("mu_faster"), "power");
+      }
       if (run.mode === "run") {
         fireTriggers();
         if (!ctx.playing) {
@@ -2077,7 +2132,7 @@ export function createMusicalRun(ctx, def) {
       if (run.mode === "end" && player.grounded && Math.floor(music.beat) !== hopBeat) {
         // At the end, a little happy hop on each beat
         hopBeat = Math.floor(music.beat);
-        player.vy = V0 * 0.45;
+        player.vy = jumpSpeed() * 0.45;
         player.grounded = false;
       }
       stepPlayer(dt);
@@ -2104,6 +2159,10 @@ export function createMusicalRun(ctx, def) {
       if (name !== "jump" && name !== "tap" && name !== "confirm") {
         return;
       }
+      // Every press counts here, even one the guinea pig cannot use yet (in the
+      // air, flying back to a checkpoint): what a check reads to see the world react
+      presses += 1;
+      setData("jumps", presses);
       if (run.mode === "stop" && run.stop && run.stop.type === "choice") {
         // The press counts for what is lit: what the player sees
         pick(run.stop, litAt(music.beat));
