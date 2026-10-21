@@ -286,7 +286,7 @@ export function createWorld(ctx) {
   wall.position.set(0, 1.4, -2.1);
   root.add(wall);
   // The Cloudity logo on the wall, in 3D; the flat plaque if the items did not load
-  if (!model("cloudity-logo", { width: 1.1 }, -1.75, 2.15, -2.0)) {
+  if (!model("cloudity-logo", { width: 1.0 }, -2.05, 1.78, -1.75, 0.7)) {
     const plaque = new THREE.Mesh(paint.geometry("plaque", () => new THREE.PlaneGeometry(1.3, 0.63)), paint.plaque());
     plaque.position.set(-1.45, 2.1, -2.03);
     root.add(plaque);
