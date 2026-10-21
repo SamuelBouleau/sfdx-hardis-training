@@ -132,6 +132,17 @@ async function newPage(options) {
 
 const state = (page) => page.evaluate(() => document.querySelector(".guinea-run")?.getAttribute("data-state") || null);
 const data = (page, name) => page.evaluate((n) => document.querySelector(".guinea-run")?.getAttribute("data-" + n) || null, name);
+// One frame of the software renderer can take longer than a fixed wait: poll
+// for what should happen, and give up after a few seconds
+async function settles(page, read, wanted, ms = 5000) {
+  const end = Date.now() + ms;
+  let value = await read();
+  while (value !== wanted && Date.now() < end) {
+    await page.waitForTimeout(150);
+    value = await read();
+  }
+  return value === wanted;
+}
 const waitState = (page, values) =>
   page
     .waitForFunction((list) => list.includes(document.querySelector(".guinea-run")?.getAttribute("data-state")), [].concat(values), { timeout: OPEN_TIMEOUT })
@@ -188,11 +199,9 @@ try {
     await page.keyboard.press("Enter");
     expect(await waitState(page, "playing"), "Enter on the world card starts it");
     await page.keyboard.press("ArrowLeft");
-    await page.waitForTimeout(400);
-    expect((await data(page, "lane")) === "0", "the left arrow moves the guinea pig to the left lane");
+    expect(await settles(page, () => data(page, "lane"), "0"), "the left arrow moves the guinea pig to the left lane");
     await page.keyboard.press("d");
-    await page.waitForTimeout(400);
-    expect((await data(page, "lane")) === "1", "D moves it back to the middle lane");
+    expect(await settles(page, () => data(page, "lane"), "1"), "D moves it back to the middle lane");
     await page.keyboard.press("p");
     expect((await state(page)) === "paused", "P pauses the world");
     await page.keyboard.press("Escape");
@@ -207,8 +216,7 @@ try {
       document.querySelector(".md-nav--primary a.md-nav__link[href*='level-1']").click();
     });
     await page.waitForFunction(() => /level-1/.test(window.location.pathname), null, { timeout: 10000 });
-    await page.waitForTimeout(500);
-    expect((await state(page)) === null, "an instant navigation closes the game");
+    expect(await settles(page, () => state(page), null), "an instant navigation closes the game");
     await page.context().close();
   }
 
@@ -361,11 +369,9 @@ try {
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * 0.7, y, { steps: 4 });
     await page.mouse.up();
-    await page.waitForTimeout(400);
-    expect((await data(page, "lane")) === "2", "a swipe to the right moves the guinea pig to the right lane");
+    expect(await settles(page, () => data(page, "lane"), "2"), "a swipe to the right moves the guinea pig to the right lane");
     await page.tap('.guinea-run .gr-controls [data-pad="left"]');
-    await page.waitForTimeout(400);
-    expect((await data(page, "lane")) === "1", "the left pad moves it back to the middle lane");
+    expect(await settles(page, () => data(page, "lane"), "1"), "the left pad moves it back to the middle lane");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "the page does not scroll sideways on a phone");
     await page.tap('.guinea-run [data-action="quit"]');
     await page.waitForTimeout(300);
