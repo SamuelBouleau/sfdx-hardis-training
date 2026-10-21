@@ -78,14 +78,16 @@ export const TEXTS = {
     goal2: "Throw a fix at every red error",
     goal3: "Hit the big loop before it reaches 101",
     goal4: "Catch the green tests, throw at No assert",
-    goal5: "Tap the field that disappears from the layout",
-    goal5b: "Press Request changes, not Merge",
+    goal5: "1. Compare Before and After",
+    goal5drag: "2. Drag the comment onto the missing field",
+    goal5b: "3. Request changes, do not merge",
     coach1: "Grey warnings do not block: let them walk by!",
     coach2: "Red errors block the merge: throw at them!",
     coach3: "Throw at the big red loop!",
     coach4: "Stand in front of green tests to catch them!",
     coach5: "Green checks. Is the layout right?",
     coach5b: "Found it! Now press Request changes",
+    coach5drag: "Drag the comment onto a line of Before",
     coachWarn: "Grey is a warning: let it pass",
     coachError: "Change lane and throw at the red ones!",
     coachTestShot: "Do not throw at green tests: catch them",
@@ -160,7 +162,18 @@ export const TEXTS = {
     ready: "Ready to merge into integration",
     merged: "Merged",
     review_desc: "Installation layout: the crew capacity cap moves to the second column",
-    review_task: "Files changed: the layout. Tap the field that leaves it and comes back nowhere.",
+    review_task: "Files changed: Installation Layout, Information section",
+    review_step1: "Compare Before and After",
+    review_step2: "Drag the comment",
+    review_step3: "Request changes",
+    review_lab: "Does anything disappear? A removed field, a removed picklist value, a removed permission. Salesforce will happily deploy a deletion.",
+    review_descTitle: "Mariia's description:",
+    review_card: "Review comment",
+    review_cardHint: "Drag it onto the line of the field that is gone",
+    review_movedShort: "moves to column 2",
+    review_movedIn: "moved here",
+    review_missing: "nowhere in After",
+    mergeCaption: "Green checks only mean it will deploy",
     review_before: "Before",
     review_after: "After",
     review_empty: "Empty column",
@@ -170,7 +183,7 @@ export const TEXTS = {
     pick_you: "That one is you, US-014: still on the layout.",
     pick_still: "Still there, in the first column",
     pick_found: "Total_Capacity_kW__c leaves the layout, and the description does not say so",
-    request_hint: "Find the field first: a review comment goes on its line.",
+    request_hint: "First drop the comment on the line of the field that is gone.",
     comment: "Total_Capacity_kW__c comes off the layout with this change, and the description does not say so. I think it went missing with the move: can you put it back in the second column, under the cap, read only?",
     mergeTitle: "Merged too early",
     mergeTip: "Green checks mean this will deploy, not this is right. Read the diff, comment on the removed line and ask for the change. If you merged too early: Restore branch, and review the fix in a new Pull Request.",
@@ -194,14 +207,16 @@ export const TEXTS = {
     goal2: "Lancez une correction sur chaque erreur rouge",
     goal3: "Touchez la grosse boucle avant 101",
     goal4: "Attrapez les tests verts, visez les Sans assertion",
-    goal5: "Touchez le champ qui disparaît de la présentation",
-    goal5b: "Appuyez sur Request changes, pas sur Merge",
+    goal5: "1. Comparez Avant et Après",
+    goal5drag: "2. Glissez le commentaire sur le champ disparu",
+    goal5b: "3. Request changes, ne mergez pas",
     coach1: "Les avertissements gris ne bloquent pas : laissez-les passer !",
     coach2: "Les erreurs rouges bloquent le merge : visez-les !",
     coach3: "Visez la grosse boucle rouge !",
     coach4: "Placez-vous devant les tests verts pour les attraper !",
     coach5: "Contrôles verts. La présentation est-elle juste ?",
     coach5b: "Trouvé ! Appuyez sur Request changes",
+    coach5drag: "Glissez le commentaire sur une ligne d'Avant",
     coachWarn: "Gris, c'est un avertissement : laissez passer",
     coachError: "Changez de couloir et visez les rouges !",
     coachTestShot: "Ne visez pas les tests verts : attrapez-les",
@@ -276,7 +291,18 @@ export const TEXTS = {
     ready: "Ready to merge into integration",
     merged: "Merged",
     review_desc: "Présentation de page Installation : le plafond de capacité de l'équipe passe dans la deuxième colonne",
-    review_task: "Files changed : la présentation de page. Touchez le champ qui en sort et ne revient nulle part.",
+    review_task: "Files changed : présentation de page Installation, section Information",
+    review_step1: "Comparer Avant et Après",
+    review_step2: "Glisser le commentaire",
+    review_step3: "Request changes",
+    review_lab: "Est-ce que quelque chose disparaît ? Un champ retiré, une valeur de liste de sélection retirée, une permission retirée. Salesforce déploiera volontiers une suppression.",
+    review_descTitle: "La description de Mariia :",
+    review_card: "Commentaire de revue",
+    review_cardHint: "Glissez-le sur la ligne du champ disparu",
+    review_movedShort: "passe en colonne 2",
+    review_movedIn: "déplacé ici",
+    review_missing: "nulle part dans Après",
+    mergeCaption: "Des contrôles verts veulent seulement dire que ça se déploie",
     review_before: "Avant",
     review_after: "Après",
     review_empty: "Colonne vide",
@@ -286,7 +312,7 @@ export const TEXTS = {
     pick_you: "Celui-là, c'est vous, US-014 : toujours sur la présentation de page.",
     pick_still: "Toujours là, dans la première colonne",
     pick_found: "Total_Capacity_kW__c sort de la présentation de page, et la description n'en dit rien",
-    request_hint: "Trouvez d'abord le champ : un commentaire de revue se pose sur sa ligne.",
+    request_hint: "Posez d'abord le commentaire sur la ligne du champ disparu.",
     comment: "Total_Capacity_kW__c comes off the layout with this change, and the description does not say so. I think it went missing with the move: can you put it back in the second column, under the cap, read only?",
     mergeTitle: "Mergée trop tôt",
     mergeTip: "Des contrôles verts veulent dire que ça se déploiera, pas que c'est juste. Lisez le diff, commentez la ligne supprimée et demandez la correction. Mergé trop tôt : Restore branch, puis relisez la correction dans une nouvelle Pull Request.",
@@ -884,7 +910,10 @@ export function createWorld(ctx) {
     showBanner(n);
     // On a phone the review panel says it itself, under the top bar
     hud.goal(n === 5 && engine.portrait ? "" : t("goal" + n));
-    after(2.9, () => coach("coach" + n, true));
+    // The review has its own steps on the panel: no big coach over it
+    if (n < 5) {
+      after(2.9, () => coach("coach" + n, true));
+    }
     let lane = 1;
     if (n === 1) {
       source.material = sourceMaterial("Mega-Linter");
@@ -1362,7 +1391,8 @@ export function createWorld(ctx) {
   }
 
   function buildReview() {
-    const state = { found: false, wrong: 0, merges: 0, done: false };
+    const state = { found: false, wrong: 0, merges: 0, done: false, step: 1 };
+    const tipsShown = {};
     const panel = el("div", "gr-w4-review gr-scroll", hud.layer);
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", "US-052");
@@ -1371,90 +1401,225 @@ export function createWorld(ctx) {
     const titles = el("div", "", head);
     el("strong", "", titles, "US-052 The Installation layout in two columns");
     el("span", "", titles, t("mariiaInto"));
-    const checks = el("div", "gr-w4-checks", panel);
+    const checks = el("div", "gr-w4-checks", head);
     const checkNodes = ["Simulate Deployment to Major Org", "Mega-Linter"].map((name) => el("span", "gr-w4-check is-ok", checks, name));
-    el("p", "gr-w4-desc", panel, "- " + t("review_desc"));
+
+    // The three steps, always in sight; the current one is lit
+    const steps = el("ol", "gr-w4-steps", panel);
+    const stepNodes = ["review_step1", "review_step2", "review_step3"].map((key) => el("li", "", steps, t(key)));
+    function setStep(n) {
+      state.step = n;
+      stepNodes.forEach((node, i) => node.setAttribute("data-state", i + 1 < n ? "done" : i + 1 === n ? "now" : "todo"));
+      hud.goal(engine.portrait ? "" : t(["goal5", "goal5drag", "goal5b"][n - 1]));
+    }
+
+    // What a reviewer looks for, from the lab, and what Mariia wrote
+    el("p", "gr-w4-lab", panel, t("review_lab"));
+    const desc = el("p", "gr-w4-desc", panel);
+    el("strong", "", desc, t("review_descTitle") + " ");
+    el("span", "", desc, t("review_desc"));
+
+    // The review comment to drag onto the line of the field that is gone
+    const dockRow = el("div", "gr-w4-dockrow", panel);
+    el("p", "gr-w4-task", dockRow, t("review_task"));
+    const dock = el("div", "gr-w4-dock", dockRow);
+    const card = el("button", "gr-w4-card", dock);
+    card.type = "button";
+    el("strong", "", card, t("review_card"));
+    el("span", "", card, t("review_cardHint"));
+    const comment = el("blockquote", "gr-w4-comment", null);
+    el("strong", "", comment, t("review_card"));
+    el("span", "", comment, t("comment"));
+
+    const diff = el("div", "gr-w4-diff", panel);
+
+    const before = el("div", "gr-w4-side gr-w4-before", diff);
+    el("span", "gr-w4-ltitle", before, t("review_before"));
+    const beforeCols = el("div", "gr-w4-cols", before);
+    const beforeCol = el("div", "gr-w4-col", beforeCols);
+    const beforeEmpty = el("div", "gr-w4-col gr-w4-col2", beforeCols);
+    el("span", "gr-w4-c2", beforeEmpty, t("review_column2"));
+    el("span", "gr-w4-empty", beforeEmpty, t("review_empty"));
+    const rows = [];
+    for (const [label, api] of LAYOUT) {
+      // Every line of Before is a drop zone, and a button for taps and keys
+      const row = el("button", "gr-w4-field gr-w4-drop", beforeCol);
+      row.type = "button";
+      el("span", "", row, label);
+      if (api === MOVED) {
+        el("em", "gr-w4-arrow", row, t("review_movedShort"));
+      }
+      row.title = api;
+      row.setAttribute("data-field", api);
+      row.addEventListener("click", () => drop(api, row));
+      rows.push(row);
+    }
+
+    const afterSide = el("div", "gr-w4-side gr-w4-after", diff);
+    el("span", "gr-w4-ltitle", afterSide, t("review_after"));
+    const afterCols = el("div", "gr-w4-cols", afterSide);
+    const afterCol = el("div", "gr-w4-col", afterCols);
+    const afterCol2 = el("div", "gr-w4-col gr-w4-col2", afterCols);
+    for (const [label, api] of LAYOUT) {
+      if (api !== MOVED && api !== DROPPED) {
+        const cell = el("span", "gr-w4-field is-static", afterCol);
+        el("span", "", cell, label);
+        cell.title = api;
+      }
+    }
+    el("span", "gr-w4-c2", afterCol2, t("review_column2"));
+    const capCell = el("span", "gr-w4-field is-static is-moved", afterCol2);
+    el("em", "gr-w4-arrow", capCell, t("review_movedIn"));
+    el("span", "", capCell, "Crew Capacity Cap");
+    capCell.title = MOVED;
+
     const actions = el("div", "gr-w4-actions", panel);
     const hint = el("p", "gr-w4-hint", actions, t("request_hint"));
     const requestButton = el("button", "gr-button gr-w4-request", actions, "Request changes");
     requestButton.type = "button";
     requestButton.disabled = true;
-    const mergeButton = el("button", "gr-button gr-w4-merge", actions, "Squash and merge");
+    const mergeBox = el("div", "gr-w4-mergebox", actions);
+    const mergeButton = el("button", "gr-button gr-w4-merge", mergeBox, "Squash and merge");
     mergeButton.type = "button";
+    el("span", "gr-w4-trap", mergeBox, t("mergeCaption"));
     const merged = el("div", "gr-w4-merged", panel);
     merged.hidden = true;
     el("strong", "", merged, t("merged"));
     el("span", "", merged, t("mergedBody"));
     const restoreButton = el("button", "gr-button", merged, "Restore branch");
     restoreButton.type = "button";
-    const comment = el("blockquote", "gr-w4-comment", panel, t("comment"));
-    comment.hidden = true;
-    el("p", "gr-w4-task", panel, t("review_task"));
-    const layouts = el("div", "gr-w4-layouts", panel);
 
-    function layoutBox(title) {
-      const box = el("div", "gr-w4-layout", layouts);
-      el("span", "gr-w4-ltitle", box, title);
-      el("span", "gr-w4-section", box, "Information");
-      const grid = el("div", "gr-w4-grid", box);
-      return { box, col1: el("div", "gr-w4-col", grid), col2: el("div", "gr-w4-col gr-w4-col2", grid) };
+    /* ---- Drag and drop, with the pointer: mouse, pen or finger ---- */
+    let drag = null;
+    const ghost = el("div", "gr-w4-ghost", null, t("review_card"));
+
+    function rowAt(x, y) {
+      const hit = document.elementFromPoint(x, y);
+      const row = hit && hit.closest ? hit.closest(".gr-w4-drop") : null;
+      return row && !row.disabled && panel.contains(row) ? row : null;
     }
 
-    const before = layoutBox(t("review_before"));
-    const fieldButtons = [];
-    for (const [label, api] of LAYOUT) {
-      const button = el("button", "gr-w4-field", before.col1);
-      button.type = "button";
-      el("span", "", button, label);
-      button.title = api;
-      button.setAttribute("data-field", api);
-      button.addEventListener("click", () => pick(api, button));
-      fieldButtons.push(button);
-    }
-    el("span", "gr-w4-empty", before.col2, t("review_empty"));
-
-    const afterBox = layoutBox(t("review_after"));
-    for (const [label, api] of LAYOUT) {
-      if (api !== MOVED && api !== DROPPED) {
-        const cell = el("span", "gr-w4-field is-static", afterBox.col1);
-        el("span", "", cell, label);
-        cell.title = api;
+    function hover(row) {
+      for (const r of rows) {
+        r.classList.toggle("is-over", r === row);
       }
     }
-    el("span", "gr-w4-c2", afterBox.col2, t("review_column2"));
-    const capCell = el("span", "gr-w4-field is-static is-moved", afterBox.col2);
-    el("span", "", capCell, "Crew Capacity Cap");
-    capCell.title = MOVED;
 
+    // Near the top or the bottom of the panel, the list scrolls by itself
+    function autoScroll() {
+      if (!drag) {
+        return;
+      }
+      const box = panel.getBoundingClientRect();
+      // The bottom of the list is the top of the sticky buttons
+      const bottom = actions.hidden ? box.bottom : actions.getBoundingClientRect().top;
+      const edge = 28;
+      if (drag.y < box.top + edge) {
+        panel.scrollTop -= 6;
+      } else if (drag.y > bottom - edge) {
+        panel.scrollTop += 6;
+      }
+      hover(rowAt(drag.x, drag.y));
+      drag.frame = window.requestAnimationFrame(autoScroll);
+    }
 
-    function pick(api, button) {
+    card.addEventListener("pointerdown", (event) => {
       if (state.found || state.done) {
         return;
       }
-      if (api === DROPPED) {
-        state.found = true;
-        button.classList.add("is-found");
-        ctx.sound.play("wheek");
-        ctx.collect(150, t("pick_found"));
-        comment.hidden = false;
-        hint.hidden = true;
-        hint.textContent = "";
-        requestButton.disabled = false;
-        requestButton.focus();
-        hud.goal(engine.portrait ? "" : t("goal5b"));
-        coach("coach5b", true);
+      event.preventDefault();
+      card.setPointerCapture(event.pointerId);
+      drag = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false, frame: 0 };
+      ghost.style.left = event.clientX + "px";
+      ghost.style.top = event.clientY + "px";
+      hud.layer.appendChild(ghost);
+      card.classList.add("is-lifted");
+      if (state.step < 2) {
+        setStep(2);
+      }
+      drag.frame = window.requestAnimationFrame(autoScroll);
+    });
+    card.addEventListener("pointermove", (event) => {
+      if (!drag || event.pointerId !== drag.id) {
         return;
       }
+      drag.x = event.clientX;
+      drag.y = event.clientY;
+      drag.moved = true;
+      ghost.style.left = event.clientX + "px";
+      ghost.style.top = event.clientY + "px";
+    });
+    function endDrag(event, cancelled) {
+      if (!drag || event.pointerId !== drag.id) {
+        return;
+      }
+      window.cancelAnimationFrame(drag.frame);
+      const row = cancelled ? null : rowAt(event.clientX, event.clientY);
+      const wasMoved = drag.moved;
+      drag = null;
+      ghost.remove();
+      card.classList.remove("is-lifted");
+      hover(null);
+      if (row) {
+        drop(row.getAttribute("data-field"), row);
+      } else if (!wasMoved) {
+        // A tap on the card: say how it works, and send the focus to the lines
+        hud.toast(t("coach5drag"), "good");
+        rows.find((r) => !r.disabled).focus();
+      }
+    }
+    card.addEventListener("pointerup", (event) => endDrag(event, false));
+    card.addEventListener("pointercancel", (event) => endDrag(event, true));
+    // Keys: Enter on the card moves to the lines, Enter on a line drops the comment there
+    card.addEventListener("click", (event) => {
+      if (event.detail === 0) {
+        setStep(Math.max(state.step, 2));
+        rows.find((r) => !r.disabled).focus();
+      }
+    });
+
+    function drop(api, row) {
+      if (state.found || state.done) {
+        return;
+      }
+      if (state.step < 2) {
+        setStep(2);
+      }
+      if (api === DROPPED) {
+        state.found = true;
+        row.classList.add("is-found");
+        el("em", "gr-w4-missing", row, t("review_missing"));
+        // The comment opens with the buttons, so it is never scrolled away
+        actions.prepend(comment);
+        actions.classList.add("is-found");
+        card.hidden = true;
+        ctx.sound.play("wheek");
+        ctx.collect(150, t("pick_found"));
+        hint.hidden = true;
+        requestButton.disabled = false;
+        requestButton.focus({ preventScroll: true });
+        row.scrollIntoView({ block: "nearest" });
+        setStep(3);
+        return;
+      }
+      // A wrong line shakes, says why once, and cannot be chosen again
       state.wrong += 1;
-      button.classList.add("is-wrong");
-      button.disabled = true;
+      row.classList.add("is-wrong", "is-shake");
+      window.setTimeout(() => row.classList.remove("is-shake"), 500);
+      row.disabled = true;
       if (state.wrong >= 2) {
-        // A hint rather than a wall: the field that goes is marked
-        fieldButtons.find((b) => b.getAttribute("data-field") === DROPPED).classList.add("is-hint");
+        // A hint rather than a wall: the line that goes is marked
+        rows.find((r) => r.getAttribute("data-field") === DROPPED).classList.add("is-hint");
       }
       ctx.points(-10);
       ctx.sound.play("wrong");
-      hud.toast(t(api === MOVED ? "pick_moved" : api === "Panels_Required__c" ? "pick_you" : "pick_still"), "bad");
+      const key = api === MOVED ? "pick_moved" : api === "Panels_Required__c" ? "pick_you" : "pick_still";
+      if (!tipsShown[key] && hud.tip) {
+        tipsShown[key] = true;
+        hud.tip(t(key), 4000);
+      } else {
+        hud.toast(t(key), "bad");
+      }
     }
 
     requestButton.addEventListener("click", () => {
@@ -1464,7 +1629,6 @@ export function createWorld(ctx) {
       state.done = true;
       ctx.setData("review", "changes");
       hud.goal("");
-
       ctx.fx.burst(player.x, 1.2, PIG_Z, { count: 60, speed: 5, up: 6, life: 1.4 });
       ctx.sound.play("happy");
       requestButton.disabled = true;
@@ -1472,13 +1636,14 @@ export function createWorld(ctx) {
       ctx.sound.play("gate");
       ctx.points(200);
       hud.toast("Request changes", "good");
-      for (const button of fieldButtons) {
-        button.disabled = true;
+      stepNodes[2].setAttribute("data-state", "done");
+      for (const row of rows) {
+        row.disabled = true;
       }
       // Mariia answers on the same branch, and the checks run again
       after(1.2, () => {
         hud.chat("mariia", t("mariia_fix"), 6000);
-        const back = el("span", "gr-w4-field is-static is-back", afterBox.col2);
+        const back = el("span", "gr-w4-field is-static is-back", afterCol2);
         el("span", "", back, "Total Capacity kW (" + t("review_readonly") + ")");
         back.title = DROPPED;
         hud.tick(t("rerun"));
@@ -1539,16 +1704,24 @@ export function createWorld(ctx) {
     restoreButton.addEventListener("click", () => {
       merged.hidden = true;
       mergeButton.disabled = true;
+      mergeBox.classList.add("is-off");
       actions.hidden = false;
       prView.box = "ready";
       drawPr();
       ctx.setData("review", "pending");
       ctx.sound.play("power");
-      (state.found ? requestButton : fieldButtons[0]).focus();
+      (state.found ? requestButton : card.hidden ? rows[0] : card).focus();
     });
 
-    fieldButtons[0].focus({ preventScroll: true });
-    return { panel, state };
+    setStep(1);
+    // Step 1 is a look: after a moment the goal moves on to the drag
+    after(4, () => {
+      if (state.step === 1) {
+        setStep(2);
+      }
+    });
+    card.focus({ preventScroll: true });
+    return { panel, state, ghost };
   }
 
   /** Arrows move the focus from button to button of the review; Enter presses it. */
@@ -1604,6 +1777,14 @@ export function createWorld(ctx) {
 
   return {
     start() {
+      // guinea-at=5 (a check setting, like a runner's metres) opens the review directly
+      if (ctx.params.startAt === 5) {
+        coverage = COVERAGE_TARGET + 0.52;
+        shownCoverage = coverage;
+        renderMeter();
+        startWave(5);
+        return;
+      }
       startWave(1);
     },
     update(dt, time) {
@@ -1704,6 +1885,7 @@ export function createWorld(ctx) {
       banner.remove();
       if (review) {
         review.panel.remove();
+        review.ghost.remove();
       }
       hud.setPath([], 0);
       pig.object.scale.setScalar(1);
@@ -1810,22 +1992,26 @@ export const CSS = `
 }
 .guinea-run .gr-w4-review {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 136px);
+  top: calc(env(safe-area-inset-top, 0px) + 132px);
   left: 50%;
-  bottom: 118px;
-  width: min(760px, calc(100vw - 24px));
+  bottom: 40px;
+  width: min(780px, calc(100vw - 24px));
   transform: translateX(-50%);
   overflow-y: auto;
   padding: 12px 14px;
   border: 1px solid #c9c9c9;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   color: #181818;
-  font-size: 13px;
+  font-size: 14px;
+}
+.guinea-run .gr-w4-review[hidden] {
+  display: none;
 }
 .guinea-run .gr-w4-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }
@@ -1834,19 +2020,19 @@ export const CSS = `
   flex-direction: column;
 }
 .guinea-run .gr-w4-head strong {
-  font-size: 15px;
+  font-size: 16px;
 }
 .guinea-run .gr-w4-head span {
   color: #444444;
-  font-size: 12px;
+  font-size: 13px;
 }
 .guinea-run .gr-w4-prtile {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 6px;
   background: #2e844a;
   color: #ffffff !important;
@@ -1856,10 +2042,10 @@ export const CSS = `
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 8px 0 4px;
+  margin: 0 0 0 auto;
 }
 .guinea-run .gr-w4-check {
-  padding: 2px 8px;
+  padding: 1px 8px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
@@ -1875,44 +2061,143 @@ export const CSS = `
   background: #e5e5e5;
   color: #444444;
 }
+.guinea-run .gr-w4-steps {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 6px;
+  padding: 0;
+  list-style: none;
+  counter-reset: w4step;
+}
+.guinea-run .gr-w4-steps li {
+  flex: 1 1 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #f3f3f3;
+  color: #706e6b;
+  font-size: 13px;
+  font-weight: 700;
+  counter-increment: w4step;
+}
+.guinea-run .gr-w4-steps li::before {
+  content: counter(w4step) ". ";
+}
+.guinea-run .gr-w4-steps li[data-state="now"] {
+  background: #0176d3;
+  color: #ffffff;
+}
+.guinea-run .gr-w4-steps li[data-state="done"] {
+  background: #2e844a;
+  color: #ffffff;
+}
+.guinea-run .gr-w4-steps li[data-state="done"]::before {
+  content: "\\2713  ";
+}
+.guinea-run .gr-w4-lab {
+  margin: 0 0 6px;
+  padding: 6px 10px;
+  border-left: 4px solid #fe9339;
+  border-radius: 4px;
+  background: #fff4e5;
+  color: #3e2b00;
+  font-size: 13px;
+}
 .guinea-run .gr-w4-desc {
-  margin: 4px 0;
+  margin: 0 0 8px;
   color: #444444;
-  font-style: italic;
+  font-size: 13px;
+}
+.guinea-run .gr-w4-dockrow {
+  position: sticky;
+  top: -12px;
+  z-index: 2;
+  padding: 4px 0;
+  background: #ffffff;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+}
+.guinea-run .gr-w4-dock {
+  display: flex;
+  justify-content: center;
+}
+.guinea-run .gr-w4-card,
+.guinea-run .gr-w4-ghost {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 52px;
+  padding: 8px 16px 8px 44px;
+  border: 2px solid #0176d3;
+  border-radius: 10px;
+  background: #eef4ff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230176d3' d='M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z'/%3E%3C/svg%3E") no-repeat 12px center / 22px;
+  color: #032d60;
+  font: inherit;
+  text-align: left;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  box-shadow: 0 2px 0 #014486;
+}
+.guinea-run .gr-w4-card strong {
+  font-size: 15px;
+}
+.guinea-run .gr-w4-card span {
+  font-size: 12px;
+}
+.guinea-run .gr-w4-card:focus-visible {
+  outline: 3px solid #fe9339;
+}
+.guinea-run .gr-w4-card.is-lifted {
+  opacity: 0.4;
+}
+.guinea-run .gr-w4-card[hidden] {
+  display: none;
+}
+.guinea-run .gr-w4-ghost {
+  position: fixed;
+  z-index: 5;
+  min-height: 0;
+  padding: 8px 14px 8px 40px;
+  font-weight: 800;
+  transform: translate(-50%, -120%) rotate(-3deg);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+  pointer-events: none !important;
 }
 .guinea-run .gr-w4-task {
-  margin: 6px 0;
+  margin: 0;
   color: #032d60;
-  font-weight: 700;
+  font-weight: 800;
 }
-.guinea-run .gr-w4-layouts {
+.guinea-run .gr-w4-diff {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
-.guinea-run .gr-w4-layout {
-  border: 1px solid #c9c9c9;
-  border-radius: 4px;
-  background: #f3f3f3;
+.guinea-run .gr-w4-side {
   padding: 6px;
+  border: 1px solid #c9c9c9;
+  border-radius: 6px;
+}
+.guinea-run .gr-w4-before {
+  background: #fef1ee;
+}
+.guinea-run .gr-w4-after {
+  background: #ebf7e6;
 }
 .guinea-run .gr-w4-ltitle {
   display: block;
-  color: #706e6b;
-  font-size: 12px;
+  margin-bottom: 4px;
+  color: #032d60;
+  font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
 }
-.guinea-run .gr-w4-section {
-  display: block;
-  margin: 2px 0 4px;
-  padding: 3px 6px;
-  border-radius: 3px;
-  background: #ffffff;
-  color: #032d60;
-  font-weight: 700;
-}
-.guinea-run .gr-w4-grid {
+.guinea-run .gr-w4-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px;
@@ -1920,47 +2205,80 @@ export const CSS = `
 .guinea-run .gr-w4-col {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 .guinea-run .gr-w4-field {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-height: 28px;
-  padding: 3px 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 1px 8px;
   border: 1px solid #dddbda;
-  border-radius: 3px;
+  border-radius: 4px;
   background: #ffffff;
   color: #181818;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   text-align: left;
+}
+.guinea-run button.gr-w4-drop {
   cursor: pointer;
+  border-style: dashed;
+  border-color: #8ab8e6;
 }
-.guinea-run button.gr-w4-field:hover,
-.guinea-run button.gr-w4-field:focus-visible {
-  border-color: #0176d3;
-  outline: 2px solid #0176d3;
+.guinea-run button.gr-w4-drop:hover,
+.guinea-run button.gr-w4-drop:focus-visible,
+.guinea-run .gr-w4-drop.is-over {
+  border: 2px solid #0176d3;
+  outline: none;
+  background: #d8ecff;
 }
-.guinea-run .gr-w4-field code {
-  color: #706e6b;
-  font-size: 12px;
-  word-break: break-all;
+.guinea-run .gr-w4-arrow {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #0176d3;
+  color: #ffffff;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+.guinea-run .gr-w4-arrow::before {
+  content: "\\2192  ";
+}
+.guinea-run .gr-w4-missing {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ea001e;
+  color: #ffffff;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
 }
 .guinea-run .gr-w4-field.is-wrong {
   border-color: #fe9339;
   background: #fff4e5;
+  cursor: default;
+}
+.guinea-run .gr-w4-field.is-shake {
+  animation: gr-w4-shake 0.45s;
+}
+@keyframes gr-w4-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
 }
 .guinea-run .gr-w4-field.is-hint {
-  border-color: #ea001e;
   outline: 2px dashed #ea001e;
 }
 .guinea-run .gr-w4-field:disabled {
   cursor: default;
 }
 .guinea-run .gr-w4-field.is-found {
-  border-color: #ea001e;
+  border: 2px solid #ea001e;
   background: #fef1ee;
+}
+.guinea-run .gr-w4-field.is-found > span {
   text-decoration: line-through;
 }
 .guinea-run .gr-w4-field.is-moved {
@@ -1969,10 +2287,15 @@ export const CSS = `
 }
 .guinea-run .gr-w4-field.is-back {
   border-color: #2e844a;
-  background: #ebf7e6;
+  background: #ffffff;
 }
-.guinea-run .gr-w4-empty,
 .guinea-run .gr-w4-c2 {
+  display: block;
+  color: #706e6b;
+  font-size: 12px;
+  font-weight: 700;
+}
+.guinea-run .gr-w4-empty {
   display: block;
   padding: 6px;
   border: 1px dashed #c9c9c9;
@@ -1981,55 +2304,92 @@ export const CSS = `
   font-size: 12px;
   text-align: center;
 }
-.guinea-run .gr-w4-c2 {
-  display: none;
+.guinea-run .gr-w4-comment strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #ba0517;
+  font-family: 'Open Sans', Arial, sans-serif;
 }
 .guinea-run .gr-w4-comment {
-  margin: 8px 0;
+  margin: 10px 0 4px;
   padding: 6px 10px;
   border-left: 4px solid #0176d3;
-  background: #f3f3f3;
+  border-radius: 4px;
+  background: #ffffff;
   font-family: 'JetBrains Mono', Consolas, monospace;
   font-size: 12px;
 }
-.guinea-run .gr-w4-hint {
-  flex: 1 1 200px;
-  margin: 0;
-  align-self: center;
-  color: #706e6b;
-  font-size: 12px;
-}
 .guinea-run .gr-w4-actions {
+  position: sticky;
+  bottom: -12px;
+  z-index: 1;
+  padding: 8px 0 10px;
+  border-top: 1px solid #e5e5e5;
+  background: #ffffff;
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 6px;
+  gap: 10px;
+  margin-top: 10px;
+}
+.guinea-run .gr-w4-actions .gr-w4-comment {
+  flex: 1 1 100%;
+  margin: 0;
+}
+.guinea-run .gr-w4-actions.is-found {
+  flex-wrap: wrap;
 }
 .guinea-run .gr-w4-actions[hidden] {
   display: none;
 }
-.guinea-run .gr-w4-request,
-.guinea-run .gr-w4-merge {
-  min-height: 44px;
+.guinea-run .gr-w4-hint {
+  flex: 1 1 200px;
+  align-self: center;
+  margin: 0;
+  color: #706e6b;
+  font-size: 13px;
+}
+.guinea-run .gr-w4-request {
+  min-height: 48px;
+  font-size: 16px;
+}
+.guinea-run .gr-w4-request:not(:disabled) {
+  border-color: #0176d3;
+  background: #0176d3;
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(1, 118, 211, 0.25);
 }
 .guinea-run .gr-w4-request:disabled {
   opacity: 0.5;
   cursor: default;
 }
+.guinea-run .gr-w4-mergebox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  max-width: 230px;
+}
 .guinea-run .gr-button.gr-w4-merge {
-  padding: 8px 26px;
+  min-height: 48px;
+  padding: 8px 22px;
   border-color: #2e844a;
   background: #2e844a;
   color: #ffffff;
-  font-size: 17px;
-  box-shadow: 0 0 0 4px rgba(46, 132, 74, 0.25);
+  font-size: 16px;
 }
 .guinea-run .gr-button.gr-w4-merge:hover {
   background: #22683a;
 }
 .guinea-run .gr-w4-merge:disabled {
   opacity: 0.4;
+}
+.guinea-run .gr-w4-trap {
+  color: #ba0517;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
 }
 .guinea-run .gr-w4-merged {
   display: flex;
@@ -2053,42 +2413,92 @@ export const CSS = `
     width: 120px;
   }
   .guinea-run .gr-w4-review {
-    top: calc(env(safe-area-inset-top, 0px) + 150px);
-    bottom: 192px;
+    top: calc(env(safe-area-inset-top, 0px) + 136px);
+    bottom: 140px;
     padding: 8px;
+    font-size: 13px;
   }
-  .guinea-run .gr-w4-layouts {
+  .guinea-run .gr-w4-prtile,
+  .guinea-run .gr-w4-head div span {
+    display: none;
+  }
+  .guinea-run .gr-w4-head {
+    gap: 4px;
+  }
+  .guinea-run .gr-w4-head strong {
+    font-size: 14px;
+  }
+  .guinea-run .gr-w4-checks {
+    margin: 0;
+  }
+  .guinea-run .gr-w4-check {
+    font-size: 11px;
+  }
+  .guinea-run .gr-w4-steps {
+    margin: 6px 0 4px;
+  }
+  .guinea-run .gr-w4-lab,
+  .guinea-run .gr-w4-desc {
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .guinea-run .gr-w4-dockrow {
+    top: -8px;
+  }
+  .guinea-run .gr-w4-task {
+    font-size: 12px;
+  }
+  .guinea-run .gr-w4-card {
+    width: 100%;
+    min-height: 48px;
+  }
+  .guinea-run .gr-w4-actions {
+    bottom: -8px;
+    padding: 6px 0 8px;
     gap: 6px;
   }
-  .guinea-run .gr-w4-grid {
+  .guinea-run .gr-w4-trap {
+    font-size: 11px;
+  }
+  .guinea-run .gr-w4-steps li {
+    padding: 3px 5px;
+    font-size: 11px;
+  }
+  .guinea-run .gr-w4-diff {
+    gap: 6px;
+  }
+  .guinea-run .gr-w4-cols {
     grid-template-columns: 1fr;
   }
   .guinea-run .gr-w4-field {
     min-height: 44px;
-    justify-content: center;
+    padding: 3px 6px;
   }
-  .guinea-run .gr-w4-desc {
-    margin: 2px 0;
-    font-size: 12px;
+  .guinea-run .gr-w4-empty {
+    padding: 2px;
   }
   .guinea-run .gr-w4-actions {
     flex-wrap: nowrap;
+  }
+  .guinea-run .gr-w4-actions.is-found {
+    flex-wrap: wrap;
+  }
+  .guinea-run .gr-w4-actions .gr-w4-comment {
+    max-height: 30vh;
+    overflow-y: auto;
   }
   .guinea-run .gr-w4-hint {
     display: none;
   }
   .guinea-run .gr-w4-request,
-  .guinea-run .gr-button.gr-w4-merge {
+  .guinea-run .gr-w4-mergebox {
     flex: 1 1 0;
+  }
+  .guinea-run .gr-w4-request,
+  .guinea-run .gr-button.gr-w4-merge {
+    width: 100%;
     padding: 6px 8px;
     font-size: 15px;
-  }
-  .guinea-run .gr-w4-c2 {
-    display: block;
-    padding: 2px;
-  }
-  .guinea-run .gr-w4-empty {
-    padding: 2px;
   }
 }
 `;
