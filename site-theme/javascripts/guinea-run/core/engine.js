@@ -2,6 +2,10 @@
  * The 3D part every world shares: the renderer, the scene with its Salesforce
  * sky and its light, the camera, the quality tiers, and the loop.
  *
+ * Three.js's WebGPU renderer draws it: WebGPU where the browser has it, WebGL 2
+ * everywhere else, the same scene either way. On the high tier a soft bloom
+ * makes the lights and the bright colours glow.
+ *
  * The loop runs at the screen's rate while a world is being played, and at 15
  * frames per second on the map, an intro card or the pause screen, where only
  * the guinea pig turns slowly. A hidden tab draws nothing at all.
@@ -11,13 +15,21 @@ import { TIERS, initialTier, createQualityMonitor, reducedMotion } from "./quali
 const IDLE_FRAME_MS = 1000 / 15;
 const MAX_DT = 0.25;
 
-export function createEngine(THREE, canvas, overlay, onFrame) {
+/** options.forceWebGL: the WebGL 2 backend even where WebGPU exists (tests, comparisons). */
+export async function createEngine(THREE, canvas, overlay, onFrame, options) {
   const motion = !reducedMotion();
   let tier = initialTier();
   const settings = () => TIERS[tier];
   const dropListeners = [];
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: settings().antialias, powerPreference: "high-performance" });
+  const renderer = new THREE.WebGPURenderer({
+    canvas,
+    antialias: settings().antialias,
+    powerPreference: "high-performance",
+    forceWebGL: Boolean(options && options.forceWebGL)
+  });
+  await renderer.init();
+  const backend = renderer.backend && renderer.backend.isWebGPUBackend ? "webgpu" : "webgl";
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.12;
@@ -30,6 +42,24 @@ export function createEngine(THREE, canvas, overlay, onFrame) {
   scene.fog = new THREE.Fog(horizon, 35, settings().drawDistance);
 
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 260);
+  // The bloom is built only for the tier that uses it, and dropped with it
+  let post = null;
+  async function buildPost() {
+    try {
+      const { bloom } = await import("../vendor/BloomNode.js");
+      // RenderPipeline since r183, PostProcessing before
+      const Pipeline = THREE.RenderPipeline || THREE.PostProcessing;
+      const pipeline = new Pipeline(renderer);
+      const scenePass = (THREE.TSL || THREE).pass(scene, camera);
+      const color = scenePass.getTextureNode("output");
+      // Only what is brighter than white glows: emissive tiles, coins, highlights.
+      // A lower threshold veils the whole pastel scene in haze
+      pipeline.outputNode = color.add(bloom(color, 0.45, 0.3, 1.05));
+      post = pipeline;
+    } catch {
+      post = null;
+    }
+  }
   const hemi = new THREE.HemisphereLight(0xeaf6ff, 0xb3a58c, 1.7);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffeccc, 2.6);
@@ -56,6 +86,13 @@ export function createEngine(THREE, canvas, overlay, onFrame) {
 
   function applyQuality() {
     const s = settings();
+    const wantsBloom = s.bloom && !(options && options.noBloom);
+    if (wantsBloom && !post) {
+      buildPost();
+    } else if (!wantsBloom && post) {
+      post.dispose && post.dispose();
+      post = null;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, s.pixelRatio));
     renderer.shadowMap.enabled = s.shadows;
     sun.castShadow = s.shadows;
@@ -109,7 +146,11 @@ export function createEngine(THREE, canvas, overlay, onFrame) {
       quality.frame(dt * 1000);
     }
     onFrame(dt, time);
-    renderer.render(scene, camera);
+    if (post) {
+      post.render();
+    } else {
+      renderer.render(scene, camera);
+    }
   }
 
   applyQuality();
@@ -133,6 +174,13 @@ export function createEngine(THREE, canvas, overlay, onFrame) {
     },
     get portrait() {
       return camera.aspect < 1;
+    },
+    /** "webgpu" or "webgl": the backend that draws. */
+    backend,
+    /** Compiles what the scene holds now, so its first frames do not stutter. */
+    warm() {
+      const compile = renderer.compileAsync ? renderer.compileAsync(scene, camera) : Promise.resolve();
+      return Promise.race([compile.catch(() => {}), new Promise((resolve) => window.setTimeout(resolve, 4000))]);
     },
     start() {
       last = performance.now();
@@ -173,6 +221,9 @@ export function createEngine(THREE, canvas, overlay, onFrame) {
     },
     dispose() {
       renderer.setAnimationLoop(null);
+      if (post && post.dispose) {
+        post.dispose();
+      }
       sky.dispose();
       renderer.dispose();
     }

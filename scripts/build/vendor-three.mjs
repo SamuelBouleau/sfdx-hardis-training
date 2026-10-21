@@ -38,10 +38,15 @@ for (const [name, source] of Object.entries(FILES)) {
     throw new Error(`${source}: HTTP ${response.status}`);
   }
   let code = await response.text();
+  // "three/tsl" is a file that itself imports "three/webgpu": its functions are
+  // read from the TSL namespace the WebGPU build exports instead
   code = code
-    .replace(/from 'three(\/tsl|\/webgpu)?'/g, `from '${THREE_URL}'`)
-    .replace(/from '\.\.\/utils\/BufferGeometryUtils\.js'/g, "from './BufferGeometryUtils.js'");
-  const leftover = code.match(/from '(?!https:|\.\/)[^']+'/);
+    .replace(/import\s*\{([^}]*)\}\s*from 'three\/tsl';/g, (all, names) => `import { TSL as THREE_TSL } from '${THREE_URL}';
+const {${names}} = THREE_TSL;`)
+    .replace(/from 'three(\/webgpu)?'/g, `from '${THREE_URL}'`)
+    .replace(/from '\.\.\/utils\/(BufferGeometryUtils|SkeletonUtils)\.js'/g, "from './$1.js'");
+  // Only real import lines count: the doc comments quote "three/addons/..." paths
+  const leftover = code.match(/^\s*(?:import|export)\b[^;]*?from '(?!https:|\.\/)[^']+'/m);
   if (leftover) {
     throw new Error(`${name}: an import is left unresolved: ${leftover[0]}`);
   }

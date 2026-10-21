@@ -9,11 +9,11 @@
 
 export const TIERS = [
   // 0: weak phones
-  { name: "low", pixelRatio: 1, shadows: false, drawDistance: 70, antialias: false },
+  { name: "low", pixelRatio: 1, shadows: false, drawDistance: 70, antialias: false, bloom: false },
   // 1: most phones and small laptops
-  { name: "medium", pixelRatio: 1.5, shadows: false, drawDistance: 95, antialias: true },
+  { name: "medium", pixelRatio: 1.5, shadows: false, drawDistance: 95, antialias: true, bloom: false },
   // 2: desktops
-  { name: "high", pixelRatio: 1.75, shadows: true, drawDistance: 110, antialias: true }
+  { name: "high", pixelRatio: 1.75, shadows: true, drawDistance: 110, antialias: true, bloom: true }
 ];
 
 const SAMPLE_MS = 2000;

@@ -1,5 +1,5 @@
-// three@0.170.0 examples/jsm/utils/SkeletonUtils.js, MIT License (https://github.com/mrdoob/three.js/blob/dev/LICENSE).
-// Copied by scripts/build/vendor-three.mjs, imports pointed at https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.webgpu.min.js. Do not edit.
+// three@0.186.1 examples/jsm/utils/SkeletonUtils.js, MIT License (https://github.com/mrdoob/three.js/blob/dev/LICENSE).
+// Copied by scripts/build/vendor-three.mjs, imports pointed at https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.min.js. Do not edit.
 import {
 	AnimationClip,
 	AnimationMixer,
@@ -9,7 +9,12 @@ import {
 	SkeletonHelper,
 	Vector3,
 	VectorKeyframeTrack
-} from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.webgpu.min.js';
+} from 'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.min.js';
+
+/**
+ * @module SkeletonUtils
+ * @three_import import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+ */
 
 function getBoneName( bone, options ) {
 
@@ -23,6 +28,16 @@ function getBoneName( bone, options ) {
 
 }
 
+/**
+ * Retargets the skeleton from the given source to the target.
+ *
+ * Both `target` and `source` can be a 3D object with a skeleton property (e.g. a skinned mesh)
+ * or a {@link Skeleton} directly.
+ *
+ * @param {Object3D|Skeleton} target - The target object.
+ * @param {Object3D|Skeleton} source - The source object.
+ * @param {module:SkeletonUtils~RetargetOptions} options - The options.
+ */
 function retarget( target, source, options = {} ) {
 
 	const quat = new Quaternion(),
@@ -198,6 +213,18 @@ function retarget( target, source, options = {} ) {
 
 }
 
+/**
+ * Retargets the animation clip of the source to the target 3D object.
+ *
+ * The `source` can be a 3D object with a skeleton property (e.g. a skinned mesh)
+ * or a {@link Skeleton} directly.
+ *
+ * @param {Object3D} target - The target 3D object. Must have a `skeleton` property.
+ * @param {Object3D|Skeleton} source - The source object.
+ * @param {AnimationClip} clip - The animation clip.
+ * @param {module:SkeletonUtils~RetargetOptions} options - The options.
+ * @return {AnimationClip} The retargeted animation clip.
+ */
 function retargetClip( target, source, clip, options = {} ) {
 
 	options.useFirstFramePosition = options.useFirstFramePosition !== undefined ? options.useFirstFramePosition : false;
@@ -356,6 +383,14 @@ function retargetClip( target, source, clip, options = {} ) {
 
 }
 
+/**
+ * Clones the given 3D object and its descendants, ensuring that any `SkinnedMesh` instances are
+ * correctly associated with their bones. Bones are also cloned, and must be descendants of the
+ * object passed to this method. Other data, like geometries and materials, are reused by reference.
+ *
+ * @param {Object3D} source - The 3D object to clone.
+ * @return {Object3D} The cloned 3D object.
+ */
 function clone( source ) {
 
 	const sourceLookup = new Map();
@@ -436,6 +471,25 @@ function parallelTraverse( a, b, callback ) {
 	}
 
 }
+
+/**
+ * Retarget options of `SkeletonUtils`.
+ *
+ * @typedef {Object} module:SkeletonUtils~RetargetOptions
+ * @property {boolean} [useFirstFramePosition=false] - Whether to use the position of the first frame or not.
+ * @property {number} [fps] - The FPS of the clip.
+ * @property {Object<string,string>} [names] - A dictionary for mapping target to source bone names.
+ * @property {function(string):string} [getBoneName] - A function for mapping bone names. Alternative to `names`.
+ * @property {Array<number>} [trim] - Whether to trim the clip or not. If set the array should hold two values for the start and end.
+ * @property {boolean} [preserveBoneMatrix=true] - Whether to preserve bone matrices or not.
+ * @property {boolean} [preserveBonePositions=true] - Whether to preserve bone positions or not.
+ * @property {boolean} [useTargetMatrix=false] - Whether to use the target matrix or not.
+ * @property {string} [hip='hip'] - The name of the source's hip bone.
+ * @property {Vector3} [hipInfluence=(1,1,1)] - The hip influence.
+ * @property {number} [scale=1] - The scale.
+ * @property {Object<string,Matrix4>} [localOffsets] - Per-bone local offset matrices, keyed by bone name.
+ * @property {Vector3} [hipPosition] - An additional position offset applied to the hip bone.
+ **/
 
 export {
 	retarget,

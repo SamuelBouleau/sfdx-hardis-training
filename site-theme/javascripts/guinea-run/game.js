@@ -31,8 +31,9 @@ import { createGuineaPig } from "./guinea-pig.js";
 import { createFx } from "./core/fx.js";
 
 // scripts/build/vendor-three.mjs copies the add-ons of this same version
-const THREE_VERSION = "0.170.0";
-const THREE_URL = "https://cdn.jsdelivr.net/npm/three@" + THREE_VERSION + "/build/three.module.min.js";
+const THREE_VERSION = "0.186.1";
+// The WebGPU build: WebGPU where the browser has it, WebGL 2 otherwise
+const THREE_URL = "https://cdn.jsdelivr.net/npm/three@" + THREE_VERSION + "/build/three.webgpu.min.js";
 // Generous on purpose: the worlds teach, they are not meant to stop anyone
 const ATTEMPTS = 5;
 // A slow frame is played as several short steps, so a weak device keeps the
@@ -234,7 +235,20 @@ function createGame(options) {
       return;
     }
     loadLogo(logoUrl);
-    engine = createEngine(THREE, hud.canvas, overlay, frame);
+    try {
+      engine = await createEngine(THREE, hud.canvas, overlay, frame, { forceWebGL: params.get("guinea-gl") === "1", noBloom: params.get("guinea-bloom") === "0" });
+    } catch {
+      if (!stopped) {
+        state = "error";
+        hud.message(shellT("noWebgl"), false);
+      }
+      return;
+    }
+    if (stopped) {
+      engine.dispose();
+      return;
+    }
+    overlay.setAttribute("data-renderer", engine.backend);
     engine.onBigResize(pause);
     pig = createGuineaPig(THREE, { furShells: [2, 4, 6][engine.tier] });
     pig.state = { running: false };
@@ -320,6 +334,11 @@ function createGame(options) {
       console.error(e);
       state = "error";
       hud.message(shellT("loadFailed"), true);
+      return;
+    }
+    // Shaders are built now, behind the loading card, not on the first frames
+    await engine.warm();
+    if (stopped || !current) {
       return;
     }
     state = "intro";
