@@ -27,9 +27,9 @@ export const MODELS = ["platform", "nature", "space"];
 
 // Behind the track: bushes, trees, then the machines of integration, every row on the beat
 const SCENERY = [
-  { names: ["plant_bush", "flower_redA", "flower_yellowA", "plant_bushLarge", "flower_purpleA", "mushroom_red"], z: -2.5, every: 2.4, height: 0.75, bounce: 0.14 },
-  { names: ["tree_default", "tree_oak", "tree_pineRoundA", "tree_fat", "tree_cone"], z: -4.6, depth: 1.6, every: 5.2, height: 3.2, bounce: 0.05 },
-  { names: ["machine_generator", "machine_wireless", "satelliteDish", "machine_generatorLarge", "machine_barrel"], z: -6.9, every: 13, height: 2.3, bounce: 0.03, turn: 0.6 }
+  { names: ["plant_bush", "flower_redA", "mushroom_red"], z: -2.5, every: 2.4, height: 0.75, bounce: 0.14 },
+  { names: ["tree_default", "tree_oak", "tree_pineRoundA"], z: -4.6, depth: 1.6, every: 5.2, height: 3.2, bounce: 0.05 },
+  { names: ["machine_generator", "satelliteDish", "machine_wireless"], z: -6.9, every: 13, height: 2.3, bounce: 0.03, turn: 0.6 }
 ];
 
 const SONG = {

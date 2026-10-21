@@ -502,6 +502,89 @@ export function createMusicalRun(ctx, def) {
       }
     };
   }
+  // Flat coloured models (the nature and space packs) are baked into one geometry
+  // with vertex colours and drawn with this one material: one shader for all of
+  // them, which keeps the warm-up short on a software renderer, and one draw call
+  // per model instead of one per part
+  const bakedMaterial = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }));
+  const bakedGeometries = new Map();
+  function bakedGeometry(name, options) {
+    const key = name + JSON.stringify(options);
+    if (bakedGeometries.has(key)) {
+      return bakedGeometries.get(key);
+    }
+    const copy = models ? models.get(name, options) : null;
+    if (!copy) {
+      return null;
+    }
+    copy.updateMatrixWorld(true);
+    const positions = [];
+    const normals = [];
+    const colors = [];
+    let textured = false;
+    copy.traverse((child) => {
+      if (!child.isMesh) {
+        return;
+      }
+      const material = Array.isArray(child.material) ? child.material[0] : child.material;
+      textured = textured || Boolean(material.map);
+      const geometry = child.geometry.index ? child.geometry.toNonIndexed() : child.geometry.clone();
+      geometry.applyMatrix4(child.matrixWorld);
+      if (!geometry.attributes.normal) {
+        geometry.computeVertexNormals();
+      }
+      const p = geometry.attributes.position;
+      const n = geometry.attributes.normal;
+      const c = material.color || white;
+      for (let i = 0; i < p.count; i++) {
+        positions.push(p.getX(i), p.getY(i), p.getZ(i));
+        normals.push(n.getX(i), n.getY(i), n.getZ(i));
+        colors.push(c.r, c.g, c.b);
+      }
+      geometry.dispose();
+    });
+    if (textured || !positions.length) {
+      bakedGeometries.set(key, null);
+      return null;
+    }
+    const merged = keep(new THREE.BufferGeometry());
+    merged.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    merged.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+    merged.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    merged.computeBoundingSphere();
+    bakedGeometries.set(key, merged);
+    return merged;
+  }
+  /** Many copies of a flat coloured model as one InstancedMesh; falls back on instanced() for a textured one. */
+  function baked(name, options, count) {
+    const geometry = count > 0 ? bakedGeometry(name, options) : null;
+    if (!geometry) {
+      return instanced(name, options, count);
+    }
+    const mesh = keep(new THREE.InstancedMesh(geometry, bakedMaterial, count));
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.castShadow = options.shadows !== false && shadows;
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    return {
+      mesh,
+      dirty: false,
+      set(i, x, y, z, scale, turn, stretch) {
+        holder.position.set(x, y, z);
+        holder.rotation.set(0, turn || 0, 0);
+        holder.scale.set(scale, scale * (stretch || 1), scale);
+        holder.updateMatrix();
+        mesh.setMatrixAt(i, holder.matrix);
+        this.dirty = true;
+      },
+      commit() {
+        if (this.dirty) {
+          this.dirty = false;
+          mesh.instanceMatrix.needsUpdate = true;
+        }
+      }
+    };
+  }
   /** A single copy of a model, or null. */
   function single(name, options) {
     const copy = models ? models.get(name, options) : null;
@@ -541,9 +624,12 @@ export function createMusicalRun(ctx, def) {
       byName.set(name, list);
     }
     for (const [name, list] of byName) {
-      const inst = instanced(name, { height: layer.height, shadows: false }, list.length);
+      const inst = baked(name, { height: layer.height, shadows: false }, list.length);
       if (!inst) {
         continue;
+      }
+      if (inst.mesh) {
+        root.add(inst.mesh);
       }
       list.forEach((item, i) => inst.set(i, item.x, 0, item.z, item.s, item.turn));
       inst.commit();
@@ -838,7 +924,7 @@ export function createMusicalRun(ctx, def) {
   const fogPlane = paint.geometry("mu-fog-plane", () => new THREE.PlaneGeometry(1, 1));
   const fogs = [0, 1, 2].map((i) => {
     const mesh = new THREE.Mesh(fogPlane, fogMaterial);
-    mesh.scale.set(16, 5, 1);
+    mesh.scale.set(34, 7, 1);
     mesh.position.set(0, 1.2 + i * 0.9, 2.2 + i * 0.3);
     mesh.visible = false;
     mesh.renderOrder = 4;
@@ -851,7 +937,16 @@ export function createMusicalRun(ctx, def) {
   finish.position.set(X(endBeat) + 3.6, 0, -1);
   root.add(finish);
   let finishTop = 0;
-  const finishParts = (def.finish || []).map((part) => (models ? models.get(part.name, part.width ? { width: part.width } : { height: part.height }) : null));
+  const finishParts = (def.finish || []).map((part) => {
+    const options = part.width ? { width: part.width } : { height: part.height };
+    const geometry = bakedGeometry(part.name, options);
+    if (geometry) {
+      const mesh = new THREE.Mesh(geometry, bakedMaterial);
+      mesh.castShadow = shadows;
+      return mesh;
+    }
+    return models ? models.get(part.name, options) : null;
+  });
   if (finishParts.length && finishParts.every(Boolean)) {
     def.finish.forEach((part, i) => {
       const model = finishParts[i];
@@ -1240,6 +1335,9 @@ export function createMusicalRun(ctx, def) {
   /** Which option is lit at a beat of the song: one per beat, the disabled ones skipped. */
   function litAt(songBeat) {
     const round = run.stop.event.rounds[run.stop.round];
+    if (!round) {
+      return -1;
+    }
     const open = round.options.map((o, i) => (o.off ? -1 : i)).filter((i) => i >= 0);
     if (songBeat < run.choiceStart || !open.length) {
       return -1;
@@ -1252,6 +1350,10 @@ export function createMusicalRun(ctx, def) {
       return;
     }
     const round = stop.event.rounds[stop.round];
+    // Between two rounds the next one is not on screen yet: a press there does nothing
+    if (!round || !round.buttons || run.lit === -2) {
+      return;
+    }
     const option = round.options[index];
     if (!option || option.off) {
       return;
@@ -1575,7 +1677,7 @@ export function createMusicalRun(ctx, def) {
       camera.updateProjectionMatrix();
     }
     const px = pig.object.position.x;
-    const lead = portrait ? 2.6 : 5;
+    const lead = portrait ? 2.1 : 5;
     const wantX = px + lead;
     camX = run.mode === "rewind" ? camX + (wantX - camX) * Math.min(1, dt * 5) : wantX;
     const wantY = 2 + Math.max(0, pig.object.position.y - 1.6) * 0.65;
@@ -1827,7 +1929,7 @@ export function createMusicalRun(ctx, def) {
       const portrait = engine.portrait;
       if (launchAt !== null) {
         const k = Math.max(0, engine.time - launchAt - 0.6);
-        finish.position.y = 1.4 * k * k;
+        finish.position.y = 0.8 * k * k;
         if (k > 0 && Math.floor(engine.time * 20) % 2 === 0 && finish.position.y < 40) {
           ctx.fx.burst(finish.position.x, finish.position.y, finish.position.z, { count: 4, colors: [0xffb400, 0xff5d2d, 0xffffff], speed: 1.5, up: -3, life: 0.6 });
         }
@@ -1837,7 +1939,7 @@ export function createMusicalRun(ctx, def) {
       const px = pig.object.position.x;
       const sway = Math.sin(time * 0.4) * 0.8;
       // While the finish takes off, the camera looks up after it
-      const up = launchAt === null ? 0 : Math.min(finish.position.y * 0.6, 9);
+      const up = launchAt === null ? 0 : Math.min(finish.position.y * 0.6, 5);
       camera.position.set(px + 2.5 + sway, (portrait ? 3.4 : 2.6) + up * 0.4, portrait ? 13 : 10.5);
       camera.lookAt(px + 2.5, (portrait ? 2.2 : 1.2) + up, 0);
       engine.aimSun(px, 0);

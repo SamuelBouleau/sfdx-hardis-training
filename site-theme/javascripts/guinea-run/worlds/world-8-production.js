@@ -24,9 +24,9 @@ export const PADS = ["jump"];
 export const MODELS = ["platform", "nature", "space"];
 
 const SCENERY = [
-  { names: ["plant_bush", "flower_redA", "flower_yellowA", "plant_bushLarge", "flower_purpleA", "mushroom_red"], z: -2.5, every: 2.4, height: 0.75, bounce: 0.14 },
-  { names: ["tree_default", "tree_oak", "tree_pineRoundA", "tree_fat", "tree_cone"], z: -4.6, depth: 1.6, every: 5.2, height: 3.2, bounce: 0.05 },
-  { names: ["satelliteDish", "machine_generator", "rock_crystals", "satelliteDish_large", "machine_wireless", "barrels"], z: -6.9, every: 12, height: 2.4, bounce: 0.03, turn: 0.6 }
+  { names: ["plant_bush", "flower_redA", "mushroom_red"], z: -2.5, every: 2.4, height: 0.75, bounce: 0.14 },
+  { names: ["tree_default", "tree_oak", "tree_pineRoundA"], z: -4.6, depth: 1.6, every: 5.2, height: 3.2, bounce: 0.05 },
+  { names: ["satelliteDish", "machine_generator", "rock_crystals"], z: -6.9, every: 12, height: 2.4, bounce: 0.03, turn: 0.6 }
 ];
 
 const SONG = {
@@ -464,10 +464,9 @@ export function createWorld(ctx) {
     coinModels: { note: "coin-gold", ok: "star" },
     // The release: a rocket, its parts stacked, that takes off when the world is done
     finish: [
-      { name: "rocket_finsA", height: 1.5, stack: true },
-      { name: "rocket_fuelA", height: 1.3, stack: true },
-      { name: "rocket_baseA", height: 1.0, stack: true },
-      { name: "rocket_topA", height: 1.4, stack: true },
+      { name: "rocket_finsA", width: 1.9, stack: true },
+      { name: "rocket_fuelA", width: 1.5, stack: true },
+      { name: "rocket_topA", width: 1.5, stack: true },
       { name: "machine_generatorLarge", height: 1.6, x: 3.2, z: -1.4 }
     ],
     callbacks: {
