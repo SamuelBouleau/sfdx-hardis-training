@@ -26,6 +26,8 @@
 import { SLDS, rounded, fitText, glyph, font, pictureBox } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump"];
+// Kenney models for the level around the Lightning panels: flags, flowers, floating islands
+export const MODELS = ["platform", "nature"];
 
 export const TEXTS = {
   en: {
@@ -492,7 +494,7 @@ export function createWorld(ctx) {
   // The ring round the part to get next
   const halo = new THREE.Mesh(
     paint.geometry("w1-halo", () => new THREE.TorusGeometry(0.55, 0.06, 8, 40)),
-    paint.plain(0xffd24a, { emissive: 0xffb020, emissiveIntensity: 1.2, roughness: 0.3 })
+    paint.plain(0xffd24a, { emissive: 0xffb020, emissiveIntensity: 2.2, roughness: 0.3 })
   );
   root.add(halo);
 
@@ -582,13 +584,24 @@ export function createWorld(ctx) {
     const flag = new THREE.Mesh(plane, i === 0 ? flagGreen : flagGrey);
     flag.scale.set(0.6, 0.38, 1);
     flag.position.set(0.32, 1.38, 0);
-    if (i > 0) {
+    let star = null;
+    const model = i > 0 ? ctx.models.get("flag", { height: 1.7, shadows: false }) : null;
+    if (model) {
+      group.add(model);
+      // Passed: a star turns above the flag
+      star = ctx.models.get("star", { height: 0.45, shadows: false });
+      if (star) {
+        star.position.y = 1.95;
+        star.visible = false;
+        group.add(star);
+      }
+    } else if (i > 0) {
       const pole = new THREE.Mesh(poleGeometry, poleMaterial);
       pole.position.y = 0.8;
       group.add(pole, flag);
     }
     root.add(group);
-    return { x, y, path, flag };
+    return { x, y, path, flag, star, group };
   });
 
   /* ---------- Signs, screens, decor ---------- */
@@ -619,8 +632,7 @@ export function createWorld(ctx) {
       plane,
       paint.material("w1-screen-" + x0, Math.min(2048, Math.round(w * 64)), Math.round(h * 64), (c, cw, ch) => drawScreen(c, cw, ch, look, eyebrow, title), {
         emissive: look === "vscode" ? 0x000000 : 0x1a1a1a,
-        roughness: 0.9,
-        transparent: true
+        roughness: 0.9
       })
     );
     mesh.scale.set(w, h, 1);
@@ -650,6 +662,52 @@ export function createWorld(ctx) {
     }
   }
   root.add(clouds);
+
+  // A cartoon land around the screens: floating grass islands with trees far
+  // behind, and a few flowers on the back edge of the panels. Decor only: it
+  // never touches the guinea pig
+  const decor = [];
+  {
+    let seed = 5;
+    const rnd = () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+    const TREES = ["tree_oak", "tree_default", "tree_pineRoundA", "tree_fat", "tree_cone"];
+    for (let x = -8; x < 245; x += 11 + rnd() * 5) {
+      const z = -12 - rnd() * 4;
+      const top = -3.2 - rnd() * 1.8;
+      const island = ctx.models.get("block-grass-large", { width: 4 + rnd() * 2, shadows: false });
+      if (!island) {
+        break;
+      }
+      island.position.set(x, top - new THREE.Box3().setFromObject(island).max.y, z);
+      root.add(island);
+      const tree = ctx.models.get(TREES[Math.floor(rnd() * TREES.length)], { height: 3.2 + rnd() * 1.6, shadows: false });
+      if (tree) {
+        tree.position.set(x - 0.6 + rnd() * 1.2, top, z);
+        tree.rotation.y = rnd() * Math.PI * 2;
+        root.add(tree);
+      }
+      const bush = ctx.models.get(rnd() < 0.5 ? "plant_bushLarge" : "plant_bush", { height: 0.8, shadows: false });
+      if (bush) {
+        bush.position.set(x + 1.2, top, z + 0.6);
+        root.add(bush);
+      }
+      decor.push(island);
+    }
+    const FLOWERS = ["flowers", "flowers-tall", "mushrooms", "grass", "plant"];
+    platforms.forEach((p, i) => {
+      if (p.w < 3.4 || i % 2 || p.move || p.trap || p.look === "vscode" || p.look === "record") {
+        return;
+      }
+      const flower = ctx.models.get(FLOWERS[i % FLOWERS.length], { height: 0.3, shadows: false });
+      if (flower) {
+        flower.position.set(p.x0 + 0.45, p.top, -DEPTH / 2 + 0.25);
+        root.add(flower);
+      }
+    });
+  }
 
   // The puff of dust on landing
   const dustMaterial = keep(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
@@ -769,6 +827,9 @@ export function createWorld(ctx) {
   }
   for (let i = 0; i <= checkpoint; i++) {
     checkpoints[i].flag.material = flagGreen;
+    if (checkpoints[i].star) {
+      checkpoints[i].star.visible = true;
+    }
   }
 
   /* ---------- Input: held keys and pads, on top of the shell's actions ---------- */
@@ -878,7 +939,8 @@ export function createWorld(ctx) {
 
   function collectPart(part) {
     // Out of order still counts, for fewer points and a word on the order of the lab
-    const skipped = parts.find((p) => !p.done && p.index < part.index);
+    // (one left far behind is simply missed: the end of the world says so)
+    const skipped = parts.find((p) => !p.done && p.index < part.index && p.x > part.x - 8);
     part.done = true;
     part.flying = 0.01;
     const big = part.event === "save" || part.event === "mgrRead";
@@ -1242,6 +1304,9 @@ export function createWorld(ctx) {
       if (player.x >= checkpoints[i].x && player.grounded) {
         checkpoint = i;
         checkpoints[i].flag.material = flagGreen;
+        if (checkpoints[i].star) {
+          checkpoints[i].star.visible = true;
+        }
         if (i === checkpoints.length - 1) {
           hud.tick("App Launcher > Helios Delivery > Installations");
         }
@@ -1362,6 +1427,11 @@ export function createWorld(ctx) {
       r.group.rotation.y = time * 2;
     }
     note.group.rotation.y = time * 2.5;
+    for (const cp of checkpoints) {
+      if (cp.star && cp.star.visible) {
+        cp.star.rotation.y = time * 2;
+      }
+    }
     decoy.position.y = 6.6 + Math.sin(time * 3) * 0.06;
   }
 
@@ -1745,7 +1815,7 @@ function drawCheckbox(c, x, y, size, ticked) {
 /** The page behind a stretch of the level: a VS Code panel or a Lightning page. */
 function drawScreen(c, w, h, look, eyebrow, title) {
   if (look === "vscode") {
-    c.fillStyle = "rgba(30, 30, 30, 0.92)";
+    c.fillStyle = "#1E1E1E";
     c.fillRect(0, 0, w, h);
     c.fillStyle = "#2D2D2D";
     c.fillRect(0, 0, w, 44);
@@ -1766,7 +1836,7 @@ function drawScreen(c, w, h, look, eyebrow, title) {
     return;
   }
   const accent = look === "ghost" ? SLDS.purple : look === "record" ? SLDS.warningDark : SLDS.brand;
-  c.fillStyle = look === "ghost" ? "rgba(236, 230, 248, 0.88)" : "rgba(243, 243, 243, 0.88)";
+  c.fillStyle = look === "ghost" ? "#ECE6F8" : "#F3F3F3";
   c.fillRect(0, 0, w, h);
   // The global header and the navigation bar
   c.fillStyle = SLDS.white;
