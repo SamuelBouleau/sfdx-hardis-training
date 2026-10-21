@@ -77,6 +77,10 @@ def build(pack, kit, names):
         before = set(bpy.context.scene.objects)
         bpy.ops.import_scene.gltf(filepath=path)
         added = [o for o in bpy.context.scene.objects if o not in before]
+        # The file's own nodes carry its name too: they step aside, so the
+        # holder below gets the plain name the game looks up
+        for i, obj in enumerate(added):
+            obj.name = name + "-part" + str(i)
         # One empty per model holds its parts, named after the file
         holder = bpy.data.objects.new(name, None)
         bpy.context.collection.objects.link(holder)

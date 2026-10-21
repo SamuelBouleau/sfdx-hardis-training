@@ -1,0 +1,10 @@
+Guinea Run models
+
+guinea-pig.glb
+  Built from code in Blender by scripts/blender/guinea-pig.py. Part of this repository.
+
+office.glb, platform.glb, nature.glb, space.glb
+  Models from Kenney's Furniture Kit, Platformer Kit, Nature Kit and Space Kit
+  (https://kenney.nl), released under Creative Commons Zero (CC0), see
+  KENNEY-LICENSE.txt. Merged into one file per theme by
+  scripts/blender/kenney-packs.py.

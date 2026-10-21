@@ -29,6 +29,7 @@ import { seededRandom } from "./core/random.js";
 import { WORLDS, judgePlan } from "./core/story.js";
 import { createGuineaPig } from "./guinea-pig.js";
 import { createFx } from "./core/fx.js";
+import { createModels } from "./core/models.js";
 
 // scripts/build/vendor-three.mjs copies the add-ons of this same version
 const THREE_VERSION = "0.186.1";
@@ -79,6 +80,7 @@ function createGame(options) {
   let state = "loading";
   let engine = null;
   let fx = null;
+  let models = null;
   let THREE = null;
   let pig = null;
   let showroom = null;
@@ -255,6 +257,7 @@ function createGame(options) {
     engine.scene.add(pig.object);
     engine.scene.add(pig.shadow);
     fx = createFx(THREE, engine.scene, hud.reduced);
+    models = createModels(THREE, options.base);
     showroom = createShowroom(THREE);
     engine.scene.add(showroom);
     hud.setBadges(progress.badges);
@@ -327,6 +330,13 @@ function createGame(options) {
       style.id = "guinea-run-world-css";
       style.textContent = module.CSS;
       document.head.appendChild(style);
+    }
+    // The models the world names, loaded behind the loading card
+    if (module.MODELS) {
+      await Promise.race([models.load(module.MODELS), new Promise((resolve) => window.setTimeout(resolve, 15000))]);
+      if (stopped || !current) {
+        return;
+      }
     }
     try {
       createCurrentWorld();
@@ -435,6 +445,8 @@ function createGame(options) {
       pig,
       /** Confetti: fx.burst(x, y, z, { count, colors, speed, up, life }). */
       fx,
+      /** The Kenney models of the packs the world named in MODELS: models.get(name, { height }). */
+      models,
       paint,
       t: current.t,
       lang,
@@ -646,7 +658,8 @@ function createGame(options) {
       finish: () => current && current.world && succeedWorld(0),
       fail: () => current && current.world && failWorld(),
       action: (name) => onAction(name, null),
-      geometries: () => (engine ? engine.renderer.info.memory.geometries : 0),
+      // The models stay loaded for the session: only what a world made itself counts
+      geometries: () => (engine ? engine.renderer.info.memory.geometries - (models ? models.geometryCount : 0) : 0),
       textures: () => (engine ? engine.renderer.info.memory.textures : 0)
     };
   }
@@ -659,6 +672,9 @@ function createGame(options) {
     closeWorld();
     if (fx) {
       fx.dispose();
+    }
+    if (models) {
+      models.dispose();
     }
     if (engine) {
       engine.dispose();
