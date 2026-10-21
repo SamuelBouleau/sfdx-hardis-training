@@ -21,6 +21,13 @@
  *
  * Vegetables are bonus points all along, as in world 0. At the end the
  * account Acme Corp shows Customer Tier: Gold.
+ *
+ * Two mushrooms make the guinea pig giant for a while, for fun and points:
+ * one in a ? block above Object Manager, bumped from below, one floating above
+ * Sales_Rep. A giant smashes the validation rules it touches and eats
+ * vegetables from further away, and a fall only shrinks it back. It never
+ * skips a lesson: the wrong answers still give way under it, and the parts are
+ * still taken one by one.
  */
 import { SLDS, rounded, fitText, glyph, font, pictureBox } from "../core/painter.js";
 
@@ -34,6 +41,23 @@ const VEGETABLES = ["fennel", "carrot", "bellPepper", "cucumber", "romaine", "pa
 const VEGETABLE_MODELS = { fennel: "fennel", carrot: "carrot", bellPepper: "bell-pepper", cucumber: "cucumber", romaine: "romaine", parsley: "parsley" };
 const VEGETABLE_COLORS = { fennel: "#7BC96F", carrot: "#FF8A3D", bellPepper: "#E8473B", cucumber: "#3E9B4F", romaine: "#8CD17D", parsley: "#2E844A" };
 const VEGETABLE_POINTS = 15;
+
+// The power-up: a mushroom makes the guinea pig giant for a while
+const GIANT_SCALE = 2.2;
+const GIANT_S = 10;
+// The last seconds blink: it is about to shrink
+const GIANT_WARN_S = 2;
+const GROW_S = 0.5;
+const MUSHROOM_POINTS = 100;
+const SMASH_POINTS = 100;
+const MUSHROOM_HEIGHT = 0.9;
+const MUSHROOM_RADIUS = 0.8;
+// One in a ? block above Object Manager (bumped from below, it hops out to the
+// left and waits on the floor), one floating above Sales_Rep, a jump up
+const MUSHROOMS = [
+  { block: { x0: 63.5, x1: 64.5, bottom: 3.5 }, landX: 62.5 },
+  { x: 122, y: 5.3 }
+];
 
 // Which item each part shows: what it means in the story
 function partItem(def) {
@@ -65,6 +89,12 @@ export const TEXTS = {
     c_visible: "Visible again! Run to Acme Corp",
     c_lift: "Ride the Edit button up",
     coachVeg: "Yum! Vegetables are bonus points",
+    c_mushroom: "A mushroom! Eat it to grow",
+    giant: "Giant guinea pig!",
+    giantLeft: "Giant {{n}}",
+    giantHit: "Ouch! Back to normal size",
+    smashed: "Validation rule smashed!",
+    info_mushroom: "You missed the mushroom: bump the ? block above Object Manager from below to grow giant.",
     note: "Created a field and cannot see it? Nobody can. Grant it in a permission set, never a profile, then look at a real record before you call it done. - V.",
     path0: "New User Story",
     path1: "Field and layout",
@@ -139,6 +169,12 @@ export const TEXTS = {
     c_visible: "De nouveau visible ! Courez vers Acme Corp",
     c_lift: "Montez sur le bouton Edit",
     coachVeg: "Miam ! Les légumes, ce sont des points bonus",
+    c_mushroom: "Un champignon ! Mangez-le pour grandir",
+    giant: "Cochon d'Inde géant !",
+    giantLeft: "Géant {{n}}",
+    giantHit: "Aïe ! Retour à la taille normale",
+    smashed: "Validation rule écrasée !",
+    info_mushroom: "Vous avez manqué le champignon : tapez par en dessous le bloc ? au-dessus d'Object Manager pour devenir géant.",
     note: "Vous avez créé un champ et vous ne le voyez pas ? Personne ne le voit. Accordez-le dans un permission set, jamais un profil, puis regardez un vrai enregistrement avant de dire que c'est fini. - V.",
     path0: "New User Story",
     path1: "Champ et présentation",
@@ -521,6 +557,37 @@ export function createWorld(ctx) {
   );
   root.add(halo);
 
+  // The mushrooms. A ? block is solid, as a platform is: bumped from below, it
+  // lets its mushroom out
+  const blockFront = paint.material("w1-block", 128, 128, (c, w, h) => drawBlock(c, w, h, false), { emissive: 0x3a2400, roughness: 0.35 });
+  const blockUsed = paint.material("w1-block-used", 128, 128, (c, w, h) => drawBlock(c, w, h, true), { roughness: 0.7 });
+  const blockSide = paint.plain(0xe8a317, { roughness: 0.4, emissive: 0x2a1800 });
+  const blockSideUsed = paint.plain(0x9c6b3a, { roughness: 0.8 });
+  const mushrooms = MUSHROOMS.map((def) => {
+    const group = new THREE.Group();
+    group.add(itemOr("mushroom", MUSHROOM_HEIGHT, () => mushroomShape()));
+    root.add(group);
+    const m = Object.assign({}, def, { group, state: "ready", t: 0, block: null });
+    if (def.block) {
+      const b = def.block;
+      const w = b.x1 - b.x0;
+      const mesh = new THREE.Mesh(unit, [blockSide, blockSide, blockFront, blockSide, blockFront, blockSide]);
+      mesh.scale.set(w, w, w);
+      mesh.position.set(b.x0 + w / 2, b.bottom + w / 2, 0);
+      mesh.castShadow = shadows;
+      root.add(mesh);
+      const block = { x0: b.x0, x1: b.x1, top: b.bottom + w, h: w, w, mesh, look: "block", mushroom: m, used: false, bump: 0, bx0: b.x0, btop: b.bottom + w, dx: 0, dy: 0, gone: false, timer: 0, fallV: 0 };
+      platforms.push(block);
+      m.block = block;
+      m.state = "hidden";
+      m.x = (b.x0 + b.x1) / 2;
+      m.y = b.bottom + w / 2;
+      group.visible = false;
+    }
+    group.position.set(m.x, m.y, 0.2);
+    return m;
+  });
+
   // The bonus vegetables: one InstancedMesh per mesh of each kind's model, the
   // way the runner draws them in world 0. An eaten one shrinks to nothing
   const vegetables = VEGETABLE_SPOTS.map(([x, y], i) => ({ x, y, kind: VEGETABLES[i % VEGETABLES.length], slot: 0, done: false, label: null }));
@@ -596,7 +663,7 @@ export function createWorld(ctx) {
     label.position.y = def.h / 2 + 0.45;
     mesh.add(box, label);
     root.add(mesh);
-    return Object.assign({}, def, { mesh, cx: def.x, bottom: def.y });
+    return Object.assign({}, def, { mesh, cx: def.x, bottom: def.y, smashed: false });
   });
 
   const flagGrey = paint.plain(0xc9c9c9);
@@ -746,7 +813,10 @@ export function createWorld(ctx) {
   ghostNode.className = "gr-w1-ghost";
   ghostNode.textContent = t("invisible");
   ghostNode.hidden = true;
-  bar.append(partsNode, vegNode, ghostNode);
+  const giantNode = document.createElement("span");
+  giantNode.className = "gr-w1-giant";
+  giantNode.hidden = true;
+  bar.append(partsNode, vegNode, ghostNode, giantNode);
   hud.extra.appendChild(bar);
 
   /* ---------- State ---------- */
@@ -774,6 +844,17 @@ export function createWorld(ctx) {
   let lastGoal = "";
   let coachAt = -10;
   const coached = new Set();
+  // The power-up: k goes from 0 (normal) to 1 (giant) over GROW_S, size follows it
+  const giant = { k: 0, size: 1, left: 0, want: 0, eaten: 0, smashed: 0, shrinking: false, on: false };
+  // The shadow is the shell's: it is drawn after the world, so it is scaled up here once it is
+  const shellAnimate = pig.animate;
+  pig.animate = (dt, state) => {
+    shellAnimate.call(pig, dt, state);
+    if (giant.size !== 1) {
+      pig.shadow.scale.x *= giant.size;
+      pig.shadow.scale.y *= giant.size;
+    }
+  };
 
   const decoy = (() => {
     const group = new THREE.Group();
@@ -1077,6 +1158,17 @@ export function createWorld(ctx) {
       // Never twice the same mistake: that answer holds from now on
       trap.learned = true;
     }
+    if (isGiant()) {
+      shrinkNow();
+      if (!trap) {
+        // A giant that falls off a plain edge only shrinks back. A wrong answer
+        // that gives way is the lesson: it counts, giant or not
+        hud.toast(t("giantHit"), "power");
+        coach("c_fall", true);
+        respawn();
+        return;
+      }
+    }
     ctx.loseAttempt(t(trap ? trap.title : "o_fall"), t(trap ? trap.tip : "o_fall_tip"));
     mercy = MERCY_S;
     if (ctx.playing) {
@@ -1139,6 +1231,11 @@ export function createWorld(ctx) {
   }
 
   function stepPlayer(dt) {
+    // The hit box follows the size of the guinea pig
+    const halfW = HALF_W * giant.size;
+    const foot = FOOT * giant.size;
+    const height = HEIGHT * giant.size;
+    const stepUp = STEP_UP * (1 + (giant.size - 1) * 0.5);
     // Carried by the platform it stands on
     if (player.grounded && player.ground && player.ground.move) {
       player.x += player.ground.dx;
@@ -1184,19 +1281,19 @@ export function createWorld(ctx) {
         continue;
       }
       const bottom = p.top - p.h;
-      if (player.y + HEIGHT <= bottom + 0.01 || player.y >= p.top - 0.01) {
+      if (player.y + height <= bottom + 0.01 || player.y >= p.top - 0.01) {
         continue;
       }
-      if (player.x + HALF_W <= p.x0 || player.x - HALF_W >= p.x1) {
+      if (player.x + halfW <= p.x0 || player.x - halfW >= p.x1) {
         continue;
       }
-      if (wasGrounded && p.top - player.y <= STEP_UP && player.vy <= 0.01) {
+      if (wasGrounded && p.top - player.y <= stepUp && player.vy <= 0.01) {
         // A low step: up onto it, feet on it
         player.y = p.top;
-        player.x = Math.min(Math.max(player.x, p.x0 - FOOT + 0.03), p.x1 + FOOT - 0.03);
+        player.x = Math.min(Math.max(player.x, p.x0 - foot + 0.03), p.x1 + foot - 0.03);
         continue;
       }
-      player.x = player.x < (p.x0 + p.x1) / 2 ? p.x0 - HALF_W : p.x1 + HALF_W;
+      player.x = player.x < (p.x0 + p.x1) / 2 ? p.x0 - halfW : p.x1 + halfW;
       player.vx = 0;
     }
 
@@ -1206,7 +1303,7 @@ export function createWorld(ctx) {
     player.y += player.vy * dt;
     let landed = null;
     for (const p of platforms) {
-      if (!solid(p) || player.x + FOOT <= p.x0 || player.x - FOOT >= p.x1) {
+      if (!solid(p) || player.x + foot <= p.x0 || player.x - foot >= p.x1) {
         continue;
       }
       const bottom = p.top - p.h;
@@ -1214,9 +1311,12 @@ export function createWorld(ctx) {
         player.y = p.top;
         player.vy = 0;
         landed = p;
-      } else if (player.vy > 0 && prevY + HEIGHT <= bottom + 0.06 && player.y + HEIGHT > bottom) {
-        player.y = bottom - HEIGHT;
+      } else if (player.vy > 0 && prevY + height <= bottom + 0.06 && player.y + height > bottom) {
+        player.y = bottom - height;
         player.vy = 0;
+        if (p.mushroom && !p.used) {
+          bumpBlock(p);
+        }
       }
     }
     player.grounded = Boolean(landed);
@@ -1279,22 +1379,31 @@ export function createWorld(ctx) {
 
   function touch(time) {
     const cx = player.x;
-    const cy = player.y + 0.45;
+    const cy = player.y + 0.45 * giant.size;
+    // A giant reaches a little further for the parts (its body is bigger), and
+    // much further for the vegetables
+    const reach = PART_RADIUS * (1 + (giant.size - 1) * 0.5);
+    const vegReach = VEGETABLE_RADIUS * (1 + (giant.size - 1) * 1.2);
     for (const part of parts) {
       if (part.done) {
         continue;
       }
-      if ((part.x - cx) ** 2 + (part.y - cy) ** 2 < PART_RADIUS * PART_RADIUS) {
+      if ((part.x - cx) ** 2 + (part.y - cy) ** 2 < reach * reach) {
         collectPart(part);
       }
     }
     for (const v of vegetables) {
-      if (!v.done && (v.x - cx) ** 2 + (v.y - cy) ** 2 < VEGETABLE_RADIUS * VEGETABLE_RADIUS) {
+      if (!v.done && (v.x - cx) ** 2 + (v.y - cy) ** 2 < vegReach * vegReach) {
         eatVegetable(v);
       }
     }
+    for (const m of mushrooms) {
+      if ((m.state === "ready" || (m.state === "popping" && m.t > 0.3)) && (m.x - cx) ** 2 + (m.y - cy) ** 2 < (MUSHROOM_RADIUS + (giant.size - 1) * 0.5) ** 2) {
+        eatMushroom(m);
+      }
+    }
     for (const r of refreshes) {
-      if (!r.done && (r.x - cx) ** 2 + (r.y - cy) ** 2 < PART_RADIUS * PART_RADIUS) {
+      if (!r.done && (r.x - cx) ** 2 + (r.y - cy) ** 2 < reach * reach) {
         r.done = true;
         r.group.visible = false;
         if (!ctx.gainAttempt()) {
@@ -1304,7 +1413,7 @@ export function createWorld(ctx) {
         hud.toast(t("refresh"), "power");
       }
     }
-    if (!note.done && (note.x - cx) ** 2 + (note.y - cy) ** 2 < PART_RADIUS * PART_RADIUS) {
+    if (!note.done && (note.x - cx) ** 2 + (note.y - cy) ** 2 < reach * reach) {
       note.done = true;
       note.group.visible = false;
       ctx.foundNote();
@@ -1319,11 +1428,22 @@ export function createWorld(ctx) {
     }
     for (const h of hazards) {
       const m = HAZARD_MARGIN;
-      if (player.x + HALF_W - m > h.cx - h.w / 2 && player.x - HALF_W + m < h.cx + h.w / 2 && player.y + HEIGHT - m > h.bottom && player.y + m < h.bottom + h.h) {
+      const halfW = HALF_W * giant.size;
+      if (!h.smashed && player.x + halfW - m > h.cx - h.w / 2 && player.x - halfW + m < h.cx + h.w / 2 && player.y + HEIGHT * giant.size - m > h.bottom && player.y + m < h.bottom + h.h) {
+        if (isGiant()) {
+          smash(h);
+          continue;
+        }
         hurt("o_valid", "o_valid_tip", h.cx);
         if (!ctx.playing) {
           return;
         }
+      }
+    }
+    // A floating mushroom is told as it comes into view
+    for (const m of mushrooms) {
+      if (m.state === "ready" && Math.abs(m.x - player.x) < 7) {
+        coachOnce("c_mushroom");
       }
     }
     // Each new mechanic is said once, as it comes into view
@@ -1387,7 +1507,179 @@ export function createWorld(ctx) {
     if (others.length) {
       lines.push(t("info_other", { list: others.slice(0, 4).join(", ") + (others.length > 4 ? ", ..." : "") }));
     }
+    // The mushroom is fun, never a lesson: told, never counted
+    if (!giant.eaten) {
+      lines.push(t("info_mushroom"));
+    }
     return { text: lines.join(" "), count: missed.length };
+  }
+
+  /* ---------- The mushroom and the giant ---------- */
+
+  /** Giant, or growing into it: hazards break, a plain fall only shrinks it back. */
+  function isGiant() {
+    return giant.want === 1 || giant.k > 0.5;
+  }
+
+  /** Bumped from below: the block goes dull, its mushroom hops out. */
+  function bumpBlock(block) {
+    block.used = true;
+    block.bump = 0.001;
+    block.mesh.material = [blockSideUsed, blockSideUsed, blockUsed, blockSideUsed, blockUsed, blockSideUsed];
+    ctx.sound.play("click");
+    ctx.sound.play("power");
+    const m = block.mushroom;
+    m.state = "popping";
+    m.t = 0;
+    m.group.visible = true;
+    // Where it lands: on top of whatever is below its landing spot
+    let floor = null;
+    for (const p of platforms) {
+      if (p !== block && !p.trap && m.landX > p.x0 && m.landX < p.x1 && p.top < block.top - block.h && (!floor || p.top > floor.top)) {
+        floor = p;
+      }
+    }
+    m.fromX = m.x;
+    m.fromY = block.top + MUSHROOM_HEIGHT / 2;
+    m.toY = (floor ? floor.top : block.top - block.h - 2) + MUSHROOM_HEIGHT / 2;
+    coachOnce("c_mushroom");
+  }
+
+  /** The grow: points, a rising sound, a toast, and ten seconds of giant. */
+  function eatMushroom(m) {
+    m.state = "eaten";
+    m.group.visible = false;
+    giant.eaten += 1;
+    giant.left = GIANT_S;
+    giant.want = 1;
+    giant.shrinking = false;
+    ctx.collect(MUSHROOM_POINTS, "");
+    hud.toast(t("giant"), "power");
+    ctx.sound.play("grow");
+    ctx.fx.burst(m.x, m.y, 0.3, { count: 40, colors: [0xe8231a, 0xffffff, 0xffd24a], speed: 4, up: 5 });
+    pig.hop();
+  }
+
+  /** A validation rule under a giant: it breaks, for points. */
+  function smash(h) {
+    h.smashed = true;
+    h.mesh.visible = false;
+    giant.smashed += 1;
+    ctx.fx.burst(h.cx, h.bottom + h.h / 2, 0.2, { count: 50, colors: [0xba0517, 0xfe5c4c, 0xffffff], speed: 6, up: 6 });
+    ctx.collect(SMASH_POINTS, t("smashed"));
+    ctx.sound.play("smash");
+    shake = engine.motion ? 0.3 : 0;
+  }
+
+  /** At once, after a fall: no room to wait for. */
+  function shrinkNow() {
+    giant.k = 0;
+    giant.size = 1;
+    giant.left = 0;
+    giant.want = 0;
+    giant.shrinking = false;
+    ctx.sound.play("shrink");
+  }
+
+  function sizeAt(k) {
+    // Ease out, with a small overshoot: it pops up to its new size
+    const e = 1 - Math.pow(1 - k, 3);
+    return 1 + (GIANT_SCALE - 1) * Math.min(1.04, e + Math.sin(k * Math.PI) * 0.08);
+  }
+
+  /** Room to grow to this size where it stands: no platform inside its box. */
+  function roomFor(size) {
+    const halfW = HALF_W * size;
+    const height = HEIGHT * size;
+    for (const p of platforms) {
+      if (!solid(p)) {
+        continue;
+      }
+      const overlapX = player.x + halfW > p.x0 + 0.01 && player.x - halfW < p.x1 - 0.01;
+      const overlapY = player.y + height > p.top - p.h + 0.01 && player.y < p.top - 0.01;
+      if (overlapX && overlapY) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Shrinking on the ground keeps its feet on it: never off an edge into a pit. */
+  function keepsFooting(size) {
+    if (!player.grounded || !player.ground) {
+      return true;
+    }
+    const foot = FOOT * size;
+    const p = player.ground;
+    return player.x + foot > p.x0 && player.x - foot < p.x1;
+  }
+
+  function updateGiant(dt) {
+    if (giant.left > 0) {
+      giant.left = Math.max(0, giant.left - dt);
+      if (giant.left === 0) {
+        giant.want = 0;
+      }
+    }
+    if (giant.k !== giant.want) {
+      const k = Math.max(0, Math.min(1, giant.k + Math.sign(giant.want - giant.k) * (dt / GROW_S)));
+      const size = k === 0 ? 1 : sizeAt(k);
+      // No room: it waits, at the size it has, until there is
+      const fits = size > giant.size ? roomFor(size) : keepsFooting(size);
+      if (fits) {
+        if (k < giant.k && !giant.shrinking) {
+          giant.shrinking = true;
+          ctx.sound.play("shrink");
+        }
+        giant.k = k;
+        giant.size = size;
+      }
+    }
+    if (giant.k === 0) {
+      giant.shrinking = false;
+    }
+    const on = giant.want === 1 || giant.k > 0;
+    if (on !== giant.on) {
+      giant.on = on;
+      ctx.setData("giant", on ? "on" : "off");
+    }
+    giantNode.hidden = !on;
+    if (on) {
+      giantNode.textContent = t("giantLeft", { n: Math.ceil(giant.left) + " s" });
+      // The last seconds blink
+      giantNode.style.opacity = giant.left > 0 && giant.left < GIANT_WARN_S && Math.floor(engine.time * 6) % 2 === 0 ? "0.35" : "1";
+    }
+  }
+
+  function placeMushrooms(dt, time) {
+    for (const m of mushrooms) {
+      if (m.block && m.block.bump > 0) {
+        // The block jumps up a little as it is hit
+        m.block.bump += dt;
+        const k = m.block.bump / 0.25;
+        m.block.mesh.position.y = m.block.top - m.block.h / 2 + (k < 1 ? Math.sin(k * Math.PI) * 0.25 : 0);
+        if (k >= 1) {
+          m.block.bump = 0;
+        }
+      }
+      if (m.state === "popping") {
+        // Out of the top of the block, then a hop to the floor in front of it
+        m.t += dt;
+        const rise = Math.min(1, m.t / 0.3);
+        const hop = Math.max(0, Math.min(1, (m.t - 0.3) / 0.55));
+        m.x = m.fromX + (m.landX - m.fromX) * hop;
+        m.y = m.fromY - MUSHROOM_HEIGHT * (1 - rise) + (m.toY - m.fromY) * hop + Math.sin(hop * Math.PI) * 1.2;
+        if (hop >= 1) {
+          m.state = "ready";
+          m.restY = m.toY;
+        }
+      } else if (m.state === "ready") {
+        const base = m.restY !== undefined ? m.restY : m.y0 !== undefined ? m.y0 : (m.y0 = m.y);
+        m.y = base + Math.sin(time * 3 + m.x) * 0.06;
+      }
+      m.group.position.set(m.x, m.y, 0.2);
+      m.group.rotation.y = Math.sin(time * 2 + m.x) * 0.5;
+    }
   }
 
   /* ---------- Drawing each step ---------- */
@@ -1498,7 +1790,10 @@ export function createWorld(ctx) {
     // Squash on landing, stretch on take-off
     player.squash += (0 - player.squash) * Math.min(1, dt * 10);
     const s = player.squash;
-    pig.object.scale.set(1 + s * 0.6, 1 - s, 1 + s * 0.6);
+    // Giant: the whole guinea pig, whatever its model; a quick throb when it is about to shrink
+    const warn = giant.left > 0 && giant.left < GIANT_WARN_S ? 1 + Math.sin(time * 28) * 0.05 : 1;
+    const size = giant.size * warn;
+    pig.object.scale.set((1 + s * 0.6) * size, (1 - s) * size, (1 + s * 0.6) * size);
     pig.hitWobble(player.hit);
     pig.object.visible = !(player.inv > 0 && Math.floor(time * 12) % 2 === 0);
     // The shadow on whatever is below
@@ -1534,9 +1829,11 @@ export function createWorld(ctx) {
     const jitter = shake > 0 ? (Math.random() - 0.5) * shake : 0;
     camera.fov = (portrait ? 64 : 46) + (pace - 1) * 10;
     camera.updateProjectionMatrix();
-    const distance = portrait ? 13 : 12.5;
-    camera.position.set(camX + jitter, camY + (portrait ? 2.4 : 1.6), distance);
-    camera.lookAt(camX, camY + (portrait ? 0.8 : 0.4), 0);
+    // A giant guinea pig: the camera steps back and up a little, so it stays on screen
+    const grown = giant.size - 1;
+    const distance = (portrait ? 13 : 12.5) * (1 + grown * 0.32);
+    camera.position.set(camX + jitter, camY + (portrait ? 2.4 : 1.6) + grown * 0.9, distance);
+    camera.lookAt(camX, camY + (portrait ? 0.8 : 0.4) + grown * 0.6, 0);
     engine.aimSun(player.x, 0);
   }
 
@@ -1549,6 +1846,8 @@ export function createWorld(ctx) {
   placeParts(0, 0);
   placePig(0, 0);
   ctx.setData("visible", ghost ? "no" : "yes");
+  ctx.setData("giant", "off");
+  placeMushrooms(0, 0);
   renderBar();
   // Customer Tier on the record, still empty
   recordPlatform.record.draw("");
@@ -1570,6 +1869,7 @@ export function createWorld(ctx) {
       }
       updatePace(dt);
       movePlatforms(dt);
+      updateGiant(dt);
       stepPlayer(dt);
       dropTraps(dt);
       touch(time);
@@ -1593,6 +1893,7 @@ export function createWorld(ctx) {
         }
       }
       placeVegetables(time);
+      placeMushrooms(dt, time);
       placeParts(dt, time);
       placePig(dt, time);
       placeCamera(dt);
@@ -1602,8 +1903,10 @@ export function createWorld(ctx) {
       ctx.setData("xf", player.x.toFixed(2));
       ctx.setData("ground", player.grounded ? 1 : 0);
       ctx.setData("lift", lift.top.toFixed(2));
-      const near = hazards.reduce((best, h) => (Math.abs(h.cx - player.x) < Math.abs(best.cx - player.x) ? h : best), hazards[0]);
-      ctx.setData("hz", near.cx.toFixed(2) + "," + near.bottom.toFixed(2));
+      // A smashed validation rule is gone: the nearest one still standing
+      const near = hazards.filter((h) => !h.smashed).reduce((best, h) => (!best || Math.abs(h.cx - player.x) < Math.abs(best.cx - player.x) ? h : best), null);
+      ctx.setData("hz", near ? near.cx.toFixed(2) + "," + near.bottom.toFixed(2) : "999,0");
+      ctx.setData("smashed", giant.smashed);
       ctx.setData("checkpoint", checkpoint);
       // A happy hop on the record, then the result
       if (ending) {
@@ -1644,6 +1947,7 @@ export function createWorld(ctx) {
       overlay.removeEventListener("pointerdown", onPadDown, true);
       window.removeEventListener("pointerup", onPadUp, true);
       window.removeEventListener("pointercancel", onPadUp, true);
+      pig.animate = shellAnimate;
       pig.object.scale.set(1, 1, 1);
       pig.shadow.rotation.set(-Math.PI / 2, 0, 0);
       pig.shadow.visible = true;
@@ -1661,6 +1965,18 @@ export function createWorld(ctx) {
       hud.setPath([], 0);
     }
   };
+
+  /** The mushroom drawn by the world itself, if the vegetables pack did not load: centred on its middle. */
+  function mushroomShape() {
+    const holder = new THREE.Group();
+    const cap = new THREE.Mesh(paint.geometry("w1-mushroom-cap", () => new THREE.SphereGeometry(0.38, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2)), paint.plain(0xe8231a, { roughness: 0.3 }));
+    cap.scale.y = 0.85;
+    cap.position.y = 0.0;
+    const stalk = new THREE.Mesh(paint.geometry("w1-mushroom-stalk", () => new THREE.CylinderGeometry(0.15, 0.17, 0.36, 14)), paint.plain(0xfaecc8, { roughness: 0.5 }));
+    stalk.position.y = -0.18;
+    holder.add(cap, stalk);
+    return holder;
+  }
 
   /* ---------- Canvas pictures ---------- */
 
@@ -1939,6 +2255,31 @@ function drawScreen(c, w, h, look, eyebrow, title) {
   }
 }
 
+/** The ? block: gold with a big question mark, or dull brown once used. */
+function drawBlock(c, w, h, used) {
+  c.fillStyle = used ? "#9c6b3a" : "#f4b324";
+  c.fillRect(0, 0, w, h);
+  c.strokeStyle = used ? "#6e4522" : "#a86a00";
+  c.lineWidth = 8;
+  c.strokeRect(4, 4, w - 8, h - 8);
+  // The four rivets
+  c.fillStyle = used ? "#6e4522" : "#a86a00";
+  for (const [x, y] of [[18, 18], [w - 18, 18], [18, h - 18], [w - 18, h - 18]]) {
+    c.beginPath();
+    c.arc(x, y, 6, 0, Math.PI * 2);
+    c.fill();
+  }
+  if (!used) {
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    font(c, 92, "800");
+    c.fillStyle = "#a86a00";
+    c.fillText("?", w / 2 + 4, h / 2 + 8);
+    c.fillStyle = "#ffffff";
+    c.fillText("?", w / 2, h / 2 + 4);
+  }
+}
+
 export const CSS = `
 .guinea-run .gr-w1-bar {
   display: flex;
@@ -1977,6 +2318,17 @@ export const CSS = `
   font-weight: 700;
 }
 .guinea-run .gr-w1-ghost[hidden] {
+  display: none;
+}
+.guinea-run .gr-w1-giant {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e8231a;
+  color: #ffffff;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.guinea-run .gr-w1-giant[hidden] {
   display: none;
 }
 `;

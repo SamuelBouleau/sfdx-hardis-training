@@ -6,13 +6,15 @@ code in Blender.
         site-theme/javascripts/guinea-run/models/vegetables.glb [preview.png]
 
 Each one is a top-level node named after it, about one unit tall, standing on
-the floor and centred: fennel, carrot, bell-pepper, cucumber, romaine, parsley.
-Flat glossy colours, no texture, a few hundred triangles each.
+the floor and centred: fennel, carrot, bell-pepper, cucumber, romaine, parsley,
+and the mushroom of world 1 that makes the guinea pig giant. Flat glossy
+colours, no texture, a few hundred triangles each.
 """
 
 import math
 import sys
 
+import bmesh
 import bpy
 from mathutils import Vector
 
@@ -204,14 +206,68 @@ def parsley():
     return group("parsley", parts)
 
 
+def dome(loc, radius, height, material, segments=24, rings=12):
+    """The top half of an ellipsoid, open at the bottom: a mushroom cap."""
+    o = sphere(loc, (radius, radius, height), material, segments, rings)
+    mesh = bmesh.new()
+    mesh.from_mesh(o.data)
+    cut = loc[2] - 0.001
+    bmesh.ops.delete(mesh, geom=[v for v in mesh.verts if (o.matrix_world @ v.co).z < cut], context="VERTS")
+    mesh.to_mesh(o.data)
+    mesh.free()
+    return o
+
+
+def spot(center, radii, theta, phi, size, material):
+    """A flat white spot lying on the cap, turned along the surface."""
+    a, b = radii
+    point = Vector((center[0] + a * math.cos(phi) * math.cos(theta), center[1] + a * math.cos(phi) * math.sin(theta), center[2] + b * math.sin(phi)))
+    normal = Vector((math.cos(phi) * math.cos(theta) / a, math.cos(phi) * math.sin(theta) / a, math.sin(phi) / b)).normalized()
+    # Turned at the origin, then moved onto the cap
+    o = sphere((0, 0, 0), (size, size, size * 0.22), material, 12, 6)
+    o.rotation_mode = "QUATERNION"
+    o.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(normal)
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    o.location = point - normal * 0.01
+    return o
+
+
+def mushroom():
+    """The power-up of world 1: a round red cap with white spots on a cream stalk, a friendly face."""
+    cap = mat("mushroom-cap", (0.9, 0.12, 0.1), 0.25, 0.9)
+    spots = mat("mushroom-spot", (0.99, 0.98, 0.95), 0.3, 0.6)
+    stem = mat("mushroom-stalk", (0.98, 0.92, 0.78), 0.45, 0.3)
+    gills = mat("mushroom-gills", (0.9, 0.8, 0.64), 0.6, 0.1)
+    eye = mat("mushroom-eye", (0.06, 0.05, 0.05), 0.2, 0.8)
+    cheek = mat("mushroom-cheek", (0.98, 0.6, 0.6), 0.5, 0.2)
+    base = 0.5
+    radii = (0.52, 0.44)
+    parts = [dome((0, 0, base), radii[0], radii[1], cap)]
+    # The round rim of the cap, and its pale underside
+    parts.append(sphere((0, 0, base), (radii[0], radii[0], 0.1), cap, 24, 8))
+    parts.append(cyl((0, 0, base - 0.09), 0.44, 0.02, gills, vertices=24))
+    # The stalk: a little barrel, a flat foot
+    parts.append(cyl((0, 0, 0.22), 0.2, 0.44, stem, vertices=16))
+    parts.append(sphere((0, 0, 0.24), (0.235, 0.235, 0.2), stem, 16, 10))
+    # The spots: one on top, a ring round the cap
+    parts.append(spot((0, 0, base), radii, 0, math.radians(90), 0.15, spots))
+    for k in range(5):
+        parts.append(spot((0, 0, base), radii, math.radians(-90 + 72 * k), math.radians(28), 0.12, spots))
+    # The face, on the front of the stalk (-Y faces the camera)
+    for x in (-0.075, 0.075):
+        parts.append(sphere((x, -0.215, 0.27), (0.032, 0.02, 0.06), eye, 10, 6))
+        parts.append(sphere((x * 1.9, -0.2, 0.19), (0.04, 0.012, 0.025), cheek, 10, 6))
+    return group("mushroom", parts)
+
+
 def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    items = [fennel(), carrot(), bell_pepper(), cucumber(), romaine(), parsley()]
+    items = [fennel(), carrot(), bell_pepper(), cucumber(), romaine(), parsley(), mushroom()]
     for i, item in enumerate(items):
         item.location = (i * 1.4, 0, 0)
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.export_scene.gltf(filepath=OUT, export_format="GLB", use_selection=True, export_yup=True, export_apply=True)
-    print("exported", OUT, len(items), "vegetables")
+    print("exported", OUT, len(items), "items")
     if PREVIEW:
         scene = bpy.context.scene
         engines = [e.identifier for e in bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items]
@@ -224,9 +280,9 @@ def main():
         bpy.ops.object.light_add(type="SUN", location=(3, -5, 8))
         active().data.energy = 3.5
         active().rotation_euler = (math.radians(40), math.radians(15), math.radians(25))
-        bpy.ops.object.camera_add(location=(3.5, -9, 2.4))
+        bpy.ops.object.camera_add(location=(4.2, -10, 2.4))
         cam = active()
-        cam.rotation_euler = (Vector((3.5, 0, 0.45)) - cam.location).to_track_quat("-Z", "Y").to_euler()
+        cam.rotation_euler = (Vector((4.2, 0, 0.45)) - cam.location).to_track_quat("-Z", "Y").to_euler()
         cam.data.lens = 30
         scene.camera = cam
         scene.render.filepath = PREVIEW

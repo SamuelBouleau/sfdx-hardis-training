@@ -258,6 +258,25 @@ export function createSound() {
       chord.forEach((frequency, i) => bell(frequency, i * 0.08, 0.2, 1.4, 3));
       chord.forEach((frequency) => bell(frequency * 2, 0.55, 0.08, 1.6, 3));
     },
+    // A mushroom eaten: a quick rising run of notes over a swish, and a happy wheek on top
+    grow() {
+      swish(0, 0.22, 300, 3000);
+      const run = [261.6, 329.6, 392, 523.3, 659.3, 784, 1046.5, 1318.5, 1568];
+      run.forEach((frequency, i) => bell(frequency, i * 0.055, 0.16, 0.35, 3));
+      bell(2093, run.length * 0.055, 0.12, 0.9);
+      clip("happy", 0.4, 0.35, 1.08);
+    },
+    // Back to normal size: the same run, falling
+    shrink() {
+      [1568, 1174.7, 784, 587.3, 392, 293.7].forEach((frequency, i) => bell(frequency, i * 0.06, 0.13, 0.3, 2.5));
+    },
+    // A validation rule broken by a giant: a thump and a bright crack
+    smash() {
+      thump(0, 0.6);
+      swish(0, 0.2, 3000, 500);
+      bell(523.3, 0.02, 0.16, 0.25, 2.5);
+      bell(1046.5, 0.06, 0.14, 0.35, 3);
+    },
     // Victor's note: a little chirp and a chime
     note() {
       clip("chirp", 0.35, 0, 1);
