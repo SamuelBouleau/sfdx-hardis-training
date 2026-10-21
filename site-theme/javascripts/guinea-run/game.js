@@ -331,12 +331,11 @@ function createGame(options) {
       style.textContent = module.CSS;
       document.head.appendChild(style);
     }
-    // The models the world names, loaded behind the loading card
-    if (module.MODELS) {
-      await Promise.race([models.load(module.MODELS), new Promise((resolve) => window.setTimeout(resolve, 15000))]);
-      if (stopped || !current) {
-        return;
-      }
+    // The models the world names, and the Salesforce items every world uses
+    // (its trophy too), loaded behind the loading card
+    await Promise.race([models.load(["salesforce"].concat(module.MODELS || [])), new Promise((resolve) => window.setTimeout(resolve, 15000))]);
+    if (stopped || !current) {
+      return;
     }
     try {
       createCurrentWorld();
@@ -594,7 +593,11 @@ function createGame(options) {
       track("easter_egg_badge", { level: info.badge, trigger: options.trigger });
       state = "celebrating";
       sound.play("fanfare");
-      hud.celebrate(info.badge, show);
+      showTrophy();
+      hud.celebrate(info.badge, () => {
+        hideTrophy();
+        show();
+      });
     } else {
       sound.play("happy");
       show();
@@ -620,6 +623,64 @@ function createGame(options) {
     hud.update({ world: current.info.id + " · " + shellT("w" + current.info.id + "_name"), score: run.score, attempts: run.attempts, maxAttempts: ATTEMPTS });
   }
 
+  /* ---------- The trophy: the badge and the Cloudity logo, in 3D ---------- */
+
+  // They turn beside the celebration card, in front of the camera of the world
+  let trophy = null;
+  function showTrophy() {
+    if (!models || !models.has("sfdx-hardis-badge")) {
+      return;
+    }
+    if (!trophy) {
+      trophy = new THREE.Group();
+      const badge = models.get("sfdx-hardis-badge", { height: 1.3 });
+      const logo = models.get("cloudity-logo", { width: 1.5 });
+      trophy.add(badge, logo);
+      trophy.userData.items = [badge, logo];
+    }
+    trophy.visible = true;
+    trophy.userData.time = 0;
+    engine.scene.add(trophy);
+    fx.burst(engine.camera.position.x, engine.camera.position.y, engine.camera.position.z - 2, { count: 40, speed: 3, up: 3 });
+  }
+
+  function hideTrophy() {
+    if (trophy) {
+      trophy.visible = false;
+      engine.scene.remove(trophy);
+    }
+  }
+
+  // Placed from points of the screen, so a world's camera offset or zoom does
+  // not matter: on each side of the card, or above it on a phone
+  const trophyPoint = { x: 0, y: 0 };
+  function placeTrophy(dt) {
+    if (!trophy || !trophy.visible) {
+      return;
+    }
+    trophy.userData.time += dt;
+    const t = trophy.userData.time;
+    const camera = engine.camera;
+    const portrait = engine.portrait;
+    const distance = 4;
+    const height = 2 * distance * Math.tan((camera.fov * Math.PI) / 360) / (camera.zoom || 1);
+    const pop = Math.min(1, t * 2.5);
+    trophy.position.set(0, 0, 0);
+    trophy.quaternion.identity();
+    trophy.userData.items.forEach((item, i) => {
+      const side = i === 0 ? -1 : 1;
+      trophyPoint.x = portrait ? side * 0.5 : side * 0.62;
+      trophyPoint.y = portrait ? 0.5 : 0.05;
+      const at = new THREE.Vector3(trophyPoint.x, trophyPoint.y, 0.5).unproject(camera).sub(camera.position).normalize();
+      item.position.copy(camera.position).addScaledVector(at, distance);
+      item.quaternion.copy(camera.quaternion);
+      item.rotateY(Math.sin(t * 1.2 + i * 2) * 0.6);
+      item.position.y += Math.sin(t * 2 + i) * height * 0.012;
+      // About a fifth of the screen height, a little smaller on a phone
+      item.scale.setScalar(pop * height * (portrait ? 0.1 : 0.2) / 1.3);
+    });
+  }
+
   /* ---------- The frame ---------- */
 
   function frame(dt, time) {
@@ -637,6 +698,7 @@ function createGame(options) {
     }
     pig.animate(dt, pig.state || { running: false });
     fx.update(dt);
+    placeTrophy(dt);
   }
 
   /** Off the game, the camera turns slowly round the guinea pig. */

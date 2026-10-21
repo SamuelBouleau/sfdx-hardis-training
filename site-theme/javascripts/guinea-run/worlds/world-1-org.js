@@ -26,8 +26,27 @@
 import { SLDS, rounded, fitText, glyph, font, pictureBox } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump"];
-// Kenney models for the level around the Lightning panels: flags, flowers, floating islands
-export const MODELS = ["platform", "nature"];
+// The course's own items for what the guinea pig picks up and dodges; Kenney flags
+// and far-away islands for the scenery
+export const MODELS = ["salesforce", "platform", "nature"];
+
+// Which item each part shows: what it means in the lab
+function partItem(def) {
+  const BY_LABEL = {
+    "New User Story": "ticket",
+    Feature: "ticket",
+    "US-014-panels-required": "ticket",
+    "Reuse scratch org helios-dev": "scratch-cloud",
+    "features/US-014-panels-required": "branch",
+    Open: "scratch-cloud",
+    Installation: "record",
+    Installations: "record",
+    "Installation Layout": "record",
+    Save: "check-pass",
+    Next: "check-pass"
+  };
+  return BY_LABEL[def.label] || (def.kind === "perm" ? "permission-set" : "custom-field");
+}
 
 export const TEXTS = {
   en: {
@@ -40,7 +59,7 @@ export const TEXTS = {
     c_start: "Run right and jump the gaps!",
     c_trap: "Wrong answer: jump back up!",
     c_bump: "Jump into the Visible box from below, twice!",
-    c_hazard: "Wait for the red box to move, then go",
+    c_hazard: "Wait for the red cross to move, then go",
     c_fall: "Back at the last flag: try again",
     c_ghost: "Invisible! Grab Read Access to be seen again",
     c_visible: "Visible again! Run to INST-00001",
@@ -110,7 +129,7 @@ export const TEXTS = {
     c_start: "Courez à droite et sautez les trous !",
     c_trap: "Mauvaise réponse : remontez d'un saut !",
     c_bump: "Sautez sous la case Visible, deux fois !",
-    c_hazard: "Attendez que la boîte rouge bouge, puis passez",
+    c_hazard: "Attendez que la croix rouge bouge, puis passez",
     c_fall: "Retour au dernier drapeau : réessayez",
     c_ghost: "Invisible ! Prenez Read Access pour réapparaître",
     c_visible: "De nouveau visible ! Courez vers INST-00001",
@@ -464,6 +483,32 @@ export function createWorld(ctx) {
   const lift = platforms.find((p) => p.move && p.move.lift);
   const recordPlatform = platforms.find((p) => p.record);
 
+  /** An item of the course, centred on its middle, or the world's own shape if the pack did not load. */
+  function itemOr(name, height, fallback) {
+    const item = ctx.models.get(name, { height, shadows: false });
+    if (!item) {
+      return fallback();
+    }
+    item.position.y = -height / 2;
+    const holder = new THREE.Group();
+    holder.add(item);
+    return holder;
+  }
+
+  // The finish: the Installation record, and the Cloudity mark over the end of the world
+  {
+    const record = ctx.models.get("record", { height: 1.3 });
+    if (record) {
+      record.position.set(229.6, recordPlatform.top, -0.9);
+      root.add(record);
+    }
+    const logo = ctx.models.get("cloudity-logo", { height: 1.8 });
+    if (logo) {
+      logo.position.set(END_X + 3, recordPlatform.top, -0.6);
+      root.add(logo);
+    }
+  }
+
   /* ---------- Parts, panels, hazards, checkpoints ---------- */
 
   const parts = levelParts().map((def, i) => {
@@ -478,7 +523,15 @@ export function createWorld(ctx) {
     const edge = paint.plain(new THREE.Color(def.color).getHex(), { roughness: 0.35 });
     let tile = null;
     if (!def.bump) {
-      tile = pictureBox(THREE, tileGeometry, tileMaterial, edge);
+      tile = ctx.models.get(partItem(def), { height: 0.7, shadows: false });
+      if (tile) {
+        tile.position.y = -0.35;
+        const holder = new THREE.Group();
+        holder.add(tile);
+        tile = holder;
+      } else {
+        tile = pictureBox(THREE, tileGeometry, tileMaterial, edge);
+      }
       group.add(tile);
     }
     // A few words that face the camera; the whole label is in the goal line
@@ -564,9 +617,14 @@ export function createWorld(ctx) {
   const hazardSide = paint.plain(0xba0517, { roughness: 0.5 });
   const hazards = HAZARDS.map((def) => {
     const mesh = new THREE.Group();
-    const box = new THREE.Mesh(unit, [hazardSide, hazardSide, hazardSide, hazardSide, hazardFront, hazardSide]);
-    box.scale.set(def.w, def.h, 1.2);
-    box.castShadow = shadows;
+    let box = ctx.models.get("check-fail", { height: def.h });
+    if (box) {
+      box.position.y = -def.h / 2;
+    } else {
+      box = new THREE.Mesh(unit, [hazardSide, hazardSide, hazardSide, hazardSide, hazardFront, hazardSide]);
+      box.scale.set(def.w, def.h, 1.2);
+      box.castShadow = shadows;
+    }
     const label = paint.sign("w1-hazard", t("v_hazard"), { color: SLDS.error, glyph: "error", height: 0.5 });
     label.position.y = def.h / 2 + 0.45;
     mesh.add(box, label);
@@ -589,7 +647,7 @@ export function createWorld(ctx) {
     if (model) {
       group.add(model);
       // Passed: a star turns above the flag
-      star = ctx.models.get("star", { height: 0.45, shadows: false });
+      star = ctx.models.get("check-pass", { height: 0.5, shadows: false });
       if (star) {
         star.position.y = 1.95;
         star.visible = false;
@@ -696,17 +754,6 @@ export function createWorld(ctx) {
       }
       decor.push(island);
     }
-    const FLOWERS = ["flowers", "flowers-tall", "mushrooms", "grass", "plant"];
-    platforms.forEach((p, i) => {
-      if (p.w < 3.4 || i % 2 || p.move || p.trap || p.look === "vscode" || p.look === "record") {
-        return;
-      }
-      const flower = ctx.models.get(FLOWERS[i % FLOWERS.length], { height: 0.3, shadows: false });
-      if (flower) {
-        flower.position.set(p.x0 + 0.45, p.top, -DEPTH / 2 + 0.25);
-        root.add(flower);
-      }
-    });
   }
 
   // The puff of dust on landing
@@ -755,7 +802,7 @@ export function createWorld(ctx) {
   const decoy = (() => {
     const group = new THREE.Group();
     group.position.set(201.7, 6.6, 0.2);
-    const tile = pictureBox(THREE, tileGeometry, paint.tile("w1-decoy", SLDS.success, "code"), paint.plain(0x2e844a));
+    const tile = itemOr("permission-set", 0.7, () => pictureBox(THREE, tileGeometry, paint.tile("w1-decoy", SLDS.success, "code"), paint.plain(0x2e844a)));
     group.add(tile);
     const label = paint.sign("w1-decoy", "Edit Access", { color: SLDS.success, height: 0.55 });
     label.position.y = 0.8;
@@ -770,7 +817,8 @@ export function createWorld(ctx) {
   ].map(([x, y]) => {
     const group = new THREE.Group();
     group.position.set(x, y, 0.2);
-    group.add(pictureBox(THREE, tileGeometry, paint.tile("w1-refresh", SLDS.brand, "loop"), paint.plain(0x0176d3)));
+    // Refresh: an org that answers again, one more attempt
+    group.add(itemOr("org-cloud", 0.7, () => pictureBox(THREE, tileGeometry, paint.tile("w1-refresh", SLDS.brand, "loop"), paint.plain(0x0176d3))));
     const label = paint.sign("w1-refresh", "Refresh", { color: SLDS.brand, glyph: "loop", height: 0.55 });
     label.position.y = 0.8;
     group.add(label);
@@ -782,7 +830,7 @@ export function createWorld(ctx) {
   {
     const group = new THREE.Group();
     group.position.set(141.1, 7.25, 0.2);
-    group.add(pictureBox(THREE, tileGeometry, paint.tile("w1-note", "#F2C94C", "note"), paint.plain(0xf2c94c)));
+    group.add(itemOr("note", 0.75, () => pictureBox(THREE, tileGeometry, paint.tile("w1-note", "#F2C94C", "note"), paint.plain(0xf2c94c))));
     root.add(group);
     note = { x: 141.1, y: 7.25, group, done: false };
   }
@@ -906,19 +954,16 @@ export function createWorld(ctx) {
 
   // The part to point at: the first one not taken yet, ahead of the guinea pig
   function updateNext() {
-    let first = -1;
     for (const part of parts) {
       if (!part.done) {
-        if (first < 0) {
-          first = part.index;
-        }
         if (part.x >= player.x - 1.5) {
           nextPart = part.index;
           return;
         }
       }
     }
-    nextPart = first < 0 ? totalParts : first;
+    // Nothing left ahead: what was missed behind is told at the end, the goal is the record
+    nextPart = totalParts;
   }
 
   function renderBar() {
@@ -1408,6 +1453,7 @@ export function createWorld(ctx) {
       part.labelMaterial.opacity = glow;
       part.tileMaterial.opacity = glow;
       if (part.tile) {
+        part.tile.scale.setScalar(next ? 1.15 : 0.8);
         part.tile.rotation.y = next ? Math.sin(time * 2.4) * 0.5 : 0;
         part.group.position.y = part.y + (next ? Math.sin(time * 4) * 0.08 : 0);
       }
