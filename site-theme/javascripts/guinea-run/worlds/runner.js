@@ -17,6 +17,11 @@
  * "Why?" box, and the doors of a gate are repeated as big chips in the HUD
  * while the gate comes closer, with the question above them.
  *
+ * The Kenney models of the platform and nature packs give the world its
+ * shapes (crates, fences, spikes, coins, hearts, islands with trees), drawn
+ * with instancing where they repeat. When a pack did not load, the runner
+ * falls back on the shapes it builds itself.
+ *
  * The guinea pig stays at z = 0 and the world comes to it: an object placed at
  * distance `at` is drawn at z = -(at - distance).
  *
@@ -47,8 +52,8 @@ const TEACH_AT = 30;
 const STREAK_STEP = 10;
 // Signs and badges further than this are too small to read: not drawn.
 // Small objects further than DRAW_SMALL are deep in the fog: not drawn either
-const LABEL_DISTANCE = 50;
-const DRAW_SMALL = 78;
+const LABEL_DISTANCE = 46;
+const DRAW_SMALL = 66;
 
 const THEMES = {
   error: { color: SLDS.error, dark: 0xba0517, glyph: "error" },
@@ -142,6 +147,90 @@ export function createRunner(ctx, config) {
   const player = { lane: 1, x: 0, y: 0, vy: 0, duck: 0, invulnerable: 0, quick: 0, hit: 0, buffer: [] };
   // Materials the runner makes itself (the painter frees its own)
   const own = [];
+
+  /* ---------- Models ---------- */
+
+  const models = ctx.models || null;
+  const modelSizes = new Map();
+  const work = new THREE.Matrix4();
+
+  /**
+   * A copy of a Kenney model fitted to a box: give w, h and/or d, the missing
+   * ones follow the others. null when its pack did not load.
+   */
+  function fitModel(name, box) {
+    const copy = models ? models.get(name, { shadows: false }) : null;
+    if (!copy) {
+      return null;
+    }
+    let size = modelSizes.get(name);
+    if (!size) {
+      size = new THREE.Box3().setFromObject(copy).getSize(new THREE.Vector3());
+      modelSizes.set(name, size);
+    }
+    const fx = box.w ? box.w / Math.max(size.x, 1e-3) : 0;
+    const fy = box.h ? box.h / Math.max(size.y, 1e-3) : 0;
+    const fz = box.d ? box.d / Math.max(size.z, 1e-3) : 0;
+    const given = [fx, fy, fz].filter(Boolean);
+    const mean = given.reduce((a, b) => a + b, 0) / Math.max(given.length, 1) || 1;
+    copy.scale.multiply(new THREE.Vector3(fx || mean, fy || mean, fz || mean));
+    return copy;
+  }
+
+  /**
+   * One InstancedMesh per mesh of a model, for the things that repeat. Each
+   * part keeps the mesh's place inside the model. null when the pack is missing.
+   */
+  function instancedModel(name, count, height) {
+    const copy = models ? models.get(name, { height, shadows: false }) : null;
+    if (!copy) {
+      return null;
+    }
+    copy.updateMatrixWorld(true);
+    const parts = [];
+    copy.traverse((child) => {
+      if (child.isMesh) {
+        const mesh = new THREE.InstancedMesh(child.geometry, child.material, count);
+        // The instances move every frame: a bounding sphere computed once would cull them wrongly
+        mesh.frustumCulled = false;
+        root.add(mesh);
+        parts.push({ mesh, local: child.matrixWorld.clone() });
+      }
+    });
+    return parts;
+  }
+
+  function setInstance(parts, i, m) {
+    for (const part of parts) {
+      work.multiplyMatrices(m, part.local);
+      part.mesh.setMatrixAt(i, work);
+    }
+  }
+
+  function instancesDone(parts) {
+    for (const part of parts) {
+      part.mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+
+  /** The materials of a model, glowing: cloned once per look, freed by the runner. */
+  function glow(model, color, intensity) {
+    model.traverse((child) => {
+      if (child.isMesh) {
+        const key = "glow:" + child.material.uuid + color + intensity;
+        let found = own.find((m) => m.userData.key === key);
+        if (!found) {
+          found = child.material.clone();
+          found.emissive = new THREE.Color(color);
+          found.emissiveIntensity = intensity;
+          found.userData.key = key;
+          own.push(found);
+        }
+        child.material = found;
+      }
+    });
+    return model;
+  }
 
   /* ---------- Scenery ---------- */
 
@@ -274,27 +363,51 @@ export function createRunner(ctx, config) {
       const side = i % 2 === 0 ? 1 : -1;
       islands.push({ x: side * (13 + sceneRandom() * 14), y: -3 + sceneRandom() * 5, offset: (i / 10) * 240, s: 1.6 + sceneRandom() * 1.8 });
     }
-    const rocks = new THREE.InstancedMesh(
-      paint.geometry("island-rock", () => new THREE.ConeGeometry(1, 1.6, 7).rotateX(Math.PI).translate(0, -0.8, 0)),
-      paint.plain(0xd99a6c, { roughness: 0.9, flatShading: true }),
-      islands.length
-    );
-    const lawns = new THREE.InstancedMesh(
-      paint.geometry("island-lawn", () => new THREE.CylinderGeometry(1.08, 1.0, 0.3, 10).translate(0, 0.12, 0)),
-      paint.plain(0x7ed957, { roughness: 0.8 }),
-      islands.length
-    );
-    const treeMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, flatShading: true });
-    const trees = new THREE.InstancedMesh(
-      paint.geometry("island-tree", () => new THREE.IcosahedronGeometry(0.42, 0).translate(0, 0.62, 0)),
-      treeMaterial,
-      islands.length * 2
-    );
-    const treeColors = [0x2e844a, 0x06a59a, 0xff7eb6, 0xffb400, 0x45c65a];
-    for (let i = 0; i < islands.length * 2; i++) {
-      trees.setColorAt(i, color.setHex(treeColors[i % treeColors.length]));
+    for (const island of islands) {
+      island.turn = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), sceneRandom() * Math.PI * 2);
     }
-    root.add(rocks, lawns, trees);
+    // The Kenney grass block with a tree, a bush and flowers on top; the
+    // code-built cone, lawn and round trees when the packs are missing
+    const kenney = {
+      block: instancedModel("block-grass-large", islands.length, 1),
+      tree: instancedModel("tree", Math.ceil(islands.length / 2), 1.7),
+      pine: instancedModel("tree-pine", Math.floor(islands.length / 2), 1.9),
+      bush: instancedModel("plant_bush", islands.length, 0.55),
+      flowers: instancedModel("flowers", islands.length, 0.26)
+    };
+    const withModels = Boolean(kenney.block && kenney.tree && kenney.pine && kenney.bush && kenney.flowers);
+    let rocks = null;
+    let lawns = null;
+    let trees = null;
+    const treeMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, flatShading: true });
+    if (!withModels) {
+      for (const parts of Object.values(kenney)) {
+        for (const part of parts || []) {
+          root.remove(part.mesh);
+          part.mesh.dispose();
+        }
+      }
+      rocks = new THREE.InstancedMesh(
+        paint.geometry("island-rock", () => new THREE.ConeGeometry(1, 1.6, 7).rotateX(Math.PI).translate(0, -0.8, 0)),
+        paint.plain(0xd99a6c, { roughness: 0.9, flatShading: true }),
+        islands.length
+      );
+      lawns = new THREE.InstancedMesh(
+        paint.geometry("island-lawn", () => new THREE.CylinderGeometry(1.08, 1.0, 0.3, 10).translate(0, 0.12, 0)),
+        paint.plain(0x7ed957, { roughness: 0.8 }),
+        islands.length
+      );
+      trees = new THREE.InstancedMesh(
+        paint.geometry("island-tree", () => new THREE.IcosahedronGeometry(0.42, 0).translate(0, 0.62, 0)),
+        treeMaterial,
+        islands.length * 2
+      );
+      const treeColors = [0x2e844a, 0x06a59a, 0xff7eb6, 0xffb400, 0x45c65a];
+      for (let i = 0; i < islands.length * 2; i++) {
+        trees.setColorAt(i, color.setHex(treeColors[i % treeColors.length]));
+      }
+      root.add(rocks, lawns, trees);
+    }
     // Balloons drifting up beside the track
     const balloonList = [];
     for (let i = 0; i < 14; i++) {
@@ -311,7 +424,14 @@ export function createRunner(ctx, config) {
       balloons.setColorAt(i, color.setHex(HAPPY[(i * 3) % HAPPY.length]));
     }
     root.add(balloons);
-    const instanced = [nodes, poles, flags, clouds, rocks, lawns, trees, balloons];
+    const instanced = [nodes, poles, flags, clouds, balloons].concat(withModels ? [] : [rocks, lawns, trees]);
+    if (withModels) {
+      for (const parts of Object.values(kenney)) {
+        for (const part of parts) {
+          instanced.push(part.mesh);
+        }
+      }
+    }
     return {
       segments,
       edge,
@@ -322,6 +442,8 @@ export function createRunner(ctx, config) {
       clouds,
       puffs,
       islands,
+      withModels,
+      kenney,
       rocks,
       lawns,
       trees,
@@ -374,6 +496,62 @@ export function createRunner(ctx, config) {
       scenery.clouds.setMatrixAt(i, matrix);
     });
     scenery.clouds.instanceMatrix.needsUpdate = true;
+    if (scenery.withModels) {
+      placeIslands(time);
+    } else {
+      placeShapeIslands(time);
+    }
+    scenery.balloonList.forEach((b, i) => {
+      const z = 10 - ((b.offset + 160 - (distance % 160)) % 160);
+      position.set(b.x + Math.sin(time * 0.7 + b.phase) * 0.3, b.y + Math.sin(time * 1.3 + b.phase) * 0.35, z);
+      scale.set(1, 1, 1);
+      matrix.compose(position, identity, scale);
+      scenery.balloons.setMatrixAt(i, matrix);
+    });
+    scenery.balloons.instanceMatrix.needsUpdate = true;
+    const target = sectionColors[sectionIndex];
+    scenery.edge.color.lerp(target, 0.05);
+    scenery.rail.color.lerp(target, 0.05);
+    scenery.nodes.material.color.lerp(target, 0.05);
+  }
+
+  /** The floating Kenney islands: the grass block, then what grows on it, all turning with it. */
+  function placeIslands(time) {
+    const k = scenery.kenney;
+    scenery.islands.forEach((island, i) => {
+      const z = -4 - ((island.offset + 240 - ((distance * 0.5) % 240)) % 240);
+      const bob = Math.sin(time * 0.8 + i) * 0.25;
+      const s = island.s * 1.1;
+      // The block hangs under the lawn line at island.y
+      position.set(island.x, island.y + bob - s, z);
+      scale.set(s, s, s);
+      matrix.compose(position, island.turn, scale);
+      setInstance(k.block, i, matrix);
+      // What grows on it, placed on the lawn in the island's own frame
+      const tree = i % 2 === 0 ? k.tree : k.pine;
+      placeOn(island, bob, -0.4, 0.1, s);
+      setInstance(tree, Math.floor(i / 2), matrix);
+      placeOn(island, bob, 0.5, 0.35, s);
+      setInstance(k.bush, i, matrix);
+      placeOn(island, bob, 0.3, -0.5, s);
+      setInstance(k.flowers, i, matrix);
+    });
+    for (const parts of Object.values(k)) {
+      instancesDone(parts);
+    }
+  }
+
+  /** Sets `matrix` to a spot (dx, dz in island widths) on an island's lawn. */
+  function placeOn(island, bob, dx, dz, s) {
+    position.set(dx * s, 0, dz * s).applyQuaternion(island.turn);
+    position.x += island.x;
+    position.y = island.y + bob;
+    position.z += -4 - ((island.offset + 240 - ((distance * 0.5) % 240)) % 240);
+    scale.set(s, s, s);
+    matrix.compose(position, island.turn, scale);
+  }
+
+  function placeShapeIslands(time) {
     scenery.islands.forEach((island, i) => {
       const z = -4 - ((island.offset + 240 - ((distance * 0.5) % 240)) % 240);
       const bob = Math.sin(time * 0.8 + i) * 0.25;
@@ -393,18 +571,6 @@ export function createRunner(ctx, config) {
     scenery.rocks.instanceMatrix.needsUpdate = true;
     scenery.lawns.instanceMatrix.needsUpdate = true;
     scenery.trees.instanceMatrix.needsUpdate = true;
-    scenery.balloonList.forEach((b, i) => {
-      const z = 10 - ((b.offset + 160 - (distance % 160)) % 160);
-      position.set(b.x + Math.sin(time * 0.7 + b.phase) * 0.3, b.y + Math.sin(time * 1.3 + b.phase) * 0.35, z);
-      scale.set(1, 1, 1);
-      matrix.compose(position, identity, scale);
-      scenery.balloons.setMatrixAt(i, matrix);
-    });
-    scenery.balloons.instanceMatrix.needsUpdate = true;
-    const target = sectionColors[sectionIndex];
-    scenery.edge.color.lerp(target, 0.05);
-    scenery.rail.color.lerp(target, 0.05);
-    scenery.nodes.material.color.lerp(target, 0.05);
   }
 
   /* ---------- Objects of the track ---------- */
@@ -414,6 +580,9 @@ export function createRunner(ctx, config) {
     wallFace: paint.geometry("r-wall-face", () => new THREE.PlaneGeometry(1.8, 1.5)),
     low: paint.geometry("r-low", () => new THREE.BoxGeometry(1.9, 0.55, 0.3)),
     lowFace: paint.geometry("r-low-face", () => new THREE.PlaneGeometry(1.84, 0.5)),
+    // On a Kenney body the face is a plaque that leaves the model visible around it
+    wallPlaque: paint.geometry("r-wall-plaque", () => new THREE.PlaneGeometry(1.5, 1.25)),
+    lowPlaque: paint.geometry("r-low-plaque", () => new THREE.PlaneGeometry(1.4, 0.38)),
     bar: paint.geometry("r-bar", () => new THREE.BoxGeometry(2.05, 0.5, 0.14)),
     barFace: paint.geometry("r-bar-face", () => new THREE.PlaneGeometry(2.0, 0.46)),
     post: paint.geometry("post", () => new THREE.BoxGeometry(0.12, 1.3, 0.12)),
@@ -580,10 +749,17 @@ export function createRunner(ctx, config) {
     });
   }
 
-  /** Only the big body of an obstacle casts a shadow: every caster is drawn twice. */
-  function shadows(group) {
-    if (engine.settings.shadows && group.children[0] && group.children[0].isMesh) {
-      group.children[0].castShadow = true;
+  /**
+   * Only the walls cast a shadow: every caster is drawn twice, and the shadow
+   * of a low hurdle or a coin is barely seen on the light track.
+   */
+  function shadows(group, cast) {
+    if (cast && engine.settings.shadows && group.children[0]) {
+      group.children[0].traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+        }
+      });
     }
     return group;
   }
@@ -604,10 +780,12 @@ export function createRunner(ctx, config) {
     const group = new THREE.Group();
     switch (def.move) {
       case "jump": {
-        const block = new THREE.Mesh(shapes.low, body);
-        block.position.y = 0.28;
-        const face = new THREE.Mesh(shapes.lowFace, obstacleFace(kind, theme, text, "low"));
-        face.position.set(0, 0.28, 0.152);
+        // A low wooden fence, the same height as the hurdle it stands for
+        const fence = fitModel("fence-low-straight", { w: 1.95, h: 0.55, d: 0.3 });
+        const block = fence || new THREE.Mesh(shapes.low, body);
+        block.position.y = fence ? 0 : 0.28;
+        const face = new THREE.Mesh(fence ? shapes.lowPlaque : shapes.lowFace, obstacleFace(kind, theme, text, "low"));
+        face.position.set(0, fence ? 0.3 : 0.28, fence ? 0.17 : 0.152);
         const hint = badge("jump");
         hint.position.y = 0.98;
         group.add(block, face, hint);
@@ -633,6 +811,11 @@ export function createRunner(ctx, config) {
         const hole = new THREE.Mesh(shapes.hole, holeMaterial);
         hole.position.y = 0.01;
         group.add(hole);
+        // Spikes at the bottom of the hole: nobody wants to land there
+        const spikes = fitModel("trap-spikes", { w: 1.5, h: 0.28, d: 1.8 });
+        if (spikes) {
+          group.add(spikes);
+        }
         for (const z of [-1.1, 1.1]) {
           const edge = new THREE.Mesh(shapes.stripe, stripes);
           edge.position.set(0, 0.04, z);
@@ -646,16 +829,18 @@ export function createRunner(ctx, config) {
         break;
       }
       default: {
-        const block = new THREE.Mesh(shapes.wall, body);
-        block.position.y = 0.82;
-        const face = new THREE.Mesh(shapes.wallFace, obstacleFace(kind, theme, text, "wall"));
-        face.position.set(0, 0.82, 0.202);
+        // A big iron-bound crate blocks the lane
+        const crate = fitModel("crate-strong", { w: 1.9, h: 1.64, d: 0.8 });
+        const block = crate || new THREE.Mesh(shapes.wall, body);
+        block.position.y = crate ? 0 : 0.82;
+        const face = new THREE.Mesh(crate ? shapes.wallPlaque : shapes.wallFace, obstacleFace(kind, theme, text, "wall"));
+        face.position.set(0, 0.82, crate ? 0.42 : 0.202);
         const hint = badge("lane");
         hint.position.y = 2.02;
         group.add(block, face, hint);
       }
     }
-    return shadows(group);
+    return shadows(group, def.move === "lane");
   }
 
   function itemMesh(kind, withLabel) {
@@ -664,7 +849,7 @@ export function createRunner(ctx, config) {
     const tile = new THREE.Mesh(def.big ? shapes.bigTile : shapes.tile, paint.tile(kind, def.color, def.glyph));
     group.add(tile);
     if (def.big) {
-      const halo = new THREE.Mesh(shapes.halo, paint.plain(0xffd84d, { emissive: 0xffb400, emissiveIntensity: 0.9 }));
+      const halo = new THREE.Mesh(shapes.halo, paint.plain(0xffd84d, { emissive: 0xffb400, emissiveIntensity: 1.5 }));
       group.add(halo);
     }
     if (def.label && withLabel !== false) {
@@ -675,16 +860,35 @@ export function createRunner(ctx, config) {
     return group;
   }
 
+  // What each power-up looks like: a heart gives an attempt back, a star
+  // protects, a bomb is the trap; the rest are gold coins or a jewel
+  const POWER_MODELS = {
+    attempt: ["heart", 0xff3355, 1.4],
+    shield: ["star", 0xffb400, 1.4],
+    trap: ["bomb", 0x000000, 0],
+    magnet: ["jewel", 0x4f7dff, 1.3],
+    custom: ["jewel", 0x4f7dff, 1.3]
+  };
+
   function powerMesh(kind) {
     const def = config.powers[kind];
     const group = new THREE.Group();
-    const face = paint.coin(kind, def.color, def.glyph, "");
-    const disc = new THREE.Mesh(shapes.coin, [paint.plain(0xffb020, { metalness: 0.6, roughness: 0.3, emissive: 0x3a2400 }), face, face]);
-    disc.rotation.x = Math.PI / 2;
-    const ring = new THREE.Mesh(shapes.ring, paint.plain(new THREE.Color(def.color).getHex(), { emissive: new THREE.Color(def.color).getHex(), emissiveIntensity: 0.8 }));
-    // The coin and its ring turn together; the sign stays still
+    const look = POWER_MODELS[def.effect] || ["coin-gold", 0xffb400, 1.3];
+    let body = fitModel(look[0], { h: 0.8 });
+    if (body) {
+      body.position.y = -0.4;
+      if (look[2]) {
+        glow(body, look[1], look[2]);
+      }
+    } else {
+      const face = paint.coin(kind, def.color, def.glyph, "");
+      body = new THREE.Mesh(shapes.coin, [paint.plain(0xffb020, { metalness: 0.6, roughness: 0.3, emissive: 0x3a2400 }), face, face]);
+      body.rotation.x = Math.PI / 2;
+    }
+    const ring = new THREE.Mesh(shapes.ring, paint.plain(new THREE.Color(def.color).getHex(), { emissive: new THREE.Color(def.color).getHex(), emissiveIntensity: 1.4 }));
+    // The body and its ring turn together; the sign stays still
     const spin = new THREE.Group();
-    spin.add(disc, ring);
+    spin.add(body, ring);
     group.add(spin);
     const label = def.short ? t(def.short) : def.label;
     if (label) {
@@ -753,7 +957,7 @@ export function createRunner(ctx, config) {
         arrow.position.set(x, 0.02, 3);
         group.add(arrow);
         // A glowing green ring: the way through
-        const ring = new THREE.Mesh(shapes.portal, paint.plain(0x45c65a, { emissive: 0x2e844a, emissiveIntensity: 1.1, roughness: 0.3 }));
+        const ring = new THREE.Mesh(shapes.portal, paint.plain(0x45c65a, { emissive: 0x45c65a, emissiveIntensity: 1.6, roughness: 0.3 }));
         ring.position.set(x, 1.3, 0);
         const glow = new THREE.Mesh(shapes.portalGlow, paint.plain(0xb6f5c2, { emissive: 0x45c65a, emissiveIntensity: 0.8, transparent: true, opacity: 0.45, depthWrite: false }));
         glow.position.set(x, 1.3, -0.02);
@@ -1027,7 +1231,7 @@ export function createRunner(ctx, config) {
           object.mesh.visible = !on;
         }
       }
-      scene().fog.near = on ? 8 : 35;
+      scene().fog.near = on ? 8 : clearFogNear();
       scene().fog.far = on ? 40 : engine.settings.drawDistance;
     },
     setQuick(seconds) {
@@ -1070,6 +1274,10 @@ export function createRunner(ctx, config) {
       coachUntil = clock + length / 1000 + 0.6;
       return true;
     },
+    /** A Kenney model fitted to { w, h, d }, or null: see fitModel. */
+    model(name, box) {
+      return fitModel(name, box);
+    },
     /** A small happy hop, for a good move. */
     hop() {
       if (player.y <= 0.001) {
@@ -1082,6 +1290,9 @@ export function createRunner(ctx, config) {
       ctx.fx.burst(x, 1.6, -0.5, { count: 46, speed: 5, up: 6, life: 1.4 });
       ctx.sound.play("gate");
       runner.hop();
+      if (pig.hop) {
+        pig.hop();
+      }
       if (points) {
         ctx.points(points);
       }
@@ -1213,6 +1424,10 @@ export function createRunner(ctx, config) {
 
   function scene() {
     return ctx.scene;
+  }
+
+  function clearFogNear() {
+    return Math.max(35, engine.settings.drawDistance * 0.6);
   }
 
   /** A word of the runner, or nothing when the world did not take RUNNER_TEXTS. */
@@ -1605,6 +1820,12 @@ export function createRunner(ctx, config) {
     camera.position.set(eye.x + jitter, eye.y, eye.z);
     camera.lookAt(focus);
     engine.aimSun(focus.x, 0);
+  }
+
+  // The fog starts half way to the horizon: on a short low tier horizon the
+  // default start leaves the next obstacles washed out
+  if (ctx.scene.fog) {
+    ctx.scene.fog.near = clearFogNear();
   }
 
   // Ready for the intro card: the track is drawn before the first step

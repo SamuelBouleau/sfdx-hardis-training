@@ -18,6 +18,8 @@
 import { createRunner, RUNNER_TEXTS, RUNNER_CSS } from "./runner.js";
 
 export const PADS = ["left", "right", "jump", "duck"];
+// The Kenney packs the runner draws the track with
+export const MODELS = ["platform", "nature"];
 
 // What VS Code only sees after a restart
 const NEEDS_RESTART = ["git", "node", "cli"];

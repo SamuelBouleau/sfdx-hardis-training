@@ -16,6 +16,8 @@
 import { createRunner, RUNNER_TEXTS, RUNNER_CSS } from "./runner.js";
 
 export const PADS = ["left", "right", "jump", "duck", "confirm"];
+// The Kenney packs the runner draws the track with
+export const MODELS = ["platform", "nature"];
 
 const UAT_LENGTH = 400;
 const PREPROD_LENGTH = 420;
@@ -38,7 +40,7 @@ export const TEXTS = {
     s0: "uat",
     s1: "preprod",
     notes: "Promotion Notes - uat: Pull Requests {{prs}}, Tickets {{tickets}}",
-    goalNotes: "Fill the Promotion Notes: {{n}} / 20 Pull Requests and tickets",
+    goalNotes: "Fill the Promotion Notes: {{n}} / 20",
     goalNotesFull: "Promotion Notes full: keep running to preprod",
     goalDoor: "Read the question, steer into the right door",
     goalStop: "Press Enter: mark the manual step as done",
@@ -127,7 +129,7 @@ export const TEXTS = {
     s0: "uat",
     s1: "preprod",
     notes: "Promotion Notes - uat : Pull Requests {{prs}}, Tickets {{tickets}}",
-    goalNotes: "Remplissez les Promotion Notes : {{n}} / 20 Pull Requests et tickets",
+    goalNotes: "Remplissez les Promotion Notes : {{n}} / 20",
     goalNotesFull: "Promotion Notes pleines : continuez vers preprod",
     goalDoor: "Lisez la question, prenez la bonne porte",
     goalStop: "Appuyez sur Entrée : marquez l'étape manuelle comme faite",
@@ -359,14 +361,16 @@ export function createWorld(ctx) {
 
   function addWagon(id) {
     const group = new THREE.Group();
-    const body = new THREE.Mesh(wagonBody, wagonMaterial);
-    body.position.y = 0.2;
+    // A small crate when the platform pack is there, a green box otherwise
+    const crate = runner.model("crate", { w: 0.5, h: 0.45, d: 0.5 });
+    const body = crate || new THREE.Mesh(wagonBody, wagonMaterial);
+    body.position.y = crate ? 0 : 0.2;
     group.add(body);
-    const sign = ctx.paint.sign("wagon", STORY_LABELS[id], { color: "#2E844A", glyph: "check", height: 0.26 });
-    sign.position.y = 0.6;
+    const sign = ctx.paint.sign("wagon", STORY_LABELS[id], { color: "#2E844A", glyph: "check", height: 0.24 });
+    sign.position.y = 0.52;
     group.add(sign);
     const pig = ctx.pig.object.position;
-    group.position.set(pig.x, 0, 0.75 + 0.8 * wagons.length);
+    group.position.set(pig.x, 0, 1.25 + 0.85 * wagons.length);
     ctx.root.add(group);
     wagons.push(group);
     ctx.fx.burst(pig.x, 0.8, group.position.z, { count: 24, colors: [0x2e844a, 0x45c65a, 0xffb400], speed: 3, up: 4 });

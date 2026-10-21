@@ -22,6 +22,15 @@ import { melody } from "../core/music.js";
 import { SLDS } from "../core/painter.js";
 
 export const PADS = ["jump"];
+// Kenney packs: coins, springs, flags and spikes; trees and bushes; the machines of the org
+export const MODELS = ["platform", "nature", "space"];
+
+// Behind the track: bushes, trees, then the machines of integration, every row on the beat
+const SCENERY = [
+  { names: ["plant_bush", "flower_redA", "flower_yellowA", "plant_bushLarge", "flower_purpleA", "mushroom_red"], z: -2.5, every: 2.4, height: 0.75, bounce: 0.14 },
+  { names: ["tree_default", "tree_oak", "tree_pineRoundA", "tree_fat", "tree_cone"], z: -4.6, depth: 1.6, every: 5.2, height: 3.2, bounce: 0.05 },
+  { names: ["machine_generator", "machine_wireless", "satelliteDish", "machine_generatorLarge", "machine_barrel"], z: -6.9, every: 13, height: 2.3, bounce: 0.03, turn: 0.6 }
+];
 
 const SONG = {
   bpm: 108,
@@ -529,6 +538,14 @@ export function createWorld(ctx) {
     song: SONG,
     level: L,
     palette: [0x06a59a, 0x9050e9, 0x2e844a, 0xfe9339, 0x1b96ff, 0xe3066a],
+    scenery: SCENERY,
+    // The notes are gold coins, the components of the package jewels, what the backfill and Quick Deploy free stars
+    coinModels: { note: "coin-gold", comp: "jewel", ok: "star" },
+    // helios-integration: a glass hangar and its big dish
+    finish: [
+      { name: "hangar_roundGlass", width: 3.2 },
+      { name: "satelliteDish_large", height: 2.4, x: 3.2, z: -1 }
+    ],
     callbacks: {
       onCoin(coin) {
         if (coin.id === "comp") {

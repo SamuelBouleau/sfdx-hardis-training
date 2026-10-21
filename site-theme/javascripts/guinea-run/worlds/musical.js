@@ -46,6 +46,10 @@ const PERFECT_BEAT = 0.1;
 const GAP_FROM = 0.2;
 const GAP_TO = 0.8;
 const STREAK_STEP = 8;
+// The run clip of the guinea pig model lasts this long, and plays at
+// 0.7 + speed * 0.06 (guinea-pig.js): the speed passed makes two strides a beat
+const RUN_CLIP_S = 0.333;
+const STRIDES_PER_BEAT = 2;
 
 export const MUSICAL_TEXTS = {
   en: {
@@ -441,6 +445,112 @@ export function createMusicalRun(ctx, def) {
   }
   root.add(eq);
 
+  /* ---------- Kenney models: one InstancedMesh per mesh of a model ---------- */
+
+  const models = ctx.models || null;
+  const matrix = new THREE.Matrix4();
+  const scratch = new THREE.Vector3();
+  const holder = new THREE.Object3D();
+  /** Many copies of a model, drawn as one InstancedMesh per mesh of it; null without the model. */
+  function instanced(name, options, count, tune) {
+    const copy = models && count > 0 ? models.get(name, options) : null;
+    if (!copy) {
+      return null;
+    }
+    copy.updateMatrixWorld(true);
+    const parts = [];
+    copy.traverse((child) => {
+      if (!child.isMesh) {
+        return;
+      }
+      let material = child.material;
+      if (tune) {
+        material = keep(material.clone());
+        tune(material);
+      }
+      const mesh = keep(new THREE.InstancedMesh(child.geometry, material, count));
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.castShadow = options.shadows !== false && shadows;
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = false;
+      root.add(mesh);
+      parts.push({ mesh, local: child.matrixWorld.clone() });
+    });
+    if (!parts.length) {
+      return null;
+    }
+    return {
+      dirty: false,
+      set(i, x, y, z, scale, turn, stretch) {
+        holder.position.set(x, y, z);
+        holder.rotation.set(0, turn || 0, 0);
+        holder.scale.set(scale, scale * (stretch || 1), scale);
+        holder.updateMatrix();
+        for (const part of parts) {
+          matrix.multiplyMatrices(holder.matrix, part.local);
+          part.mesh.setMatrixAt(i, matrix);
+        }
+        this.dirty = true;
+      },
+      commit() {
+        if (this.dirty) {
+          this.dirty = false;
+          for (const part of parts) {
+            part.mesh.instanceMatrix.needsUpdate = true;
+          }
+        }
+      }
+    };
+  }
+  /** A single copy of a model, or null. */
+  function single(name, options) {
+    const copy = models ? models.get(name, options) : null;
+    if (copy) {
+      root.add(copy);
+    }
+    return copy;
+  }
+  // What glows: emissive above 1, so the bloom of the high tier catches it
+  const glow = (material) => {
+    if (material.emissive) {
+      // Lit colour plus this crosses 1 only on the bright faces: they glow, the colour stays
+      material.emissive.set(material.map ? 0xffffff : material.color);
+      if (material.map) {
+        material.emissiveMap = material.map;
+      }
+      material.emissiveIntensity = 0.55;
+    }
+  };
+
+  // A lawn behind the track, for the trees and the props to stand on
+  const lawn = new THREE.Mesh(box, paint.plain(def.lawn || 0xbdeccb, { roughness: 1 }));
+  lawn.scale.set(length + 60, 0.2, 13);
+  lawn.position.set(length / 2 - 60, -0.12, -8.2);
+  lawn.receiveShadow = true;
+  root.add(lawn);
+
+  // The scenery: rows of trees, bushes and props behind the track, bouncing on the beat
+  const scenery = [];
+  (def.scenery || []).forEach((layer, l) => {
+    const byName = new Map();
+    for (let x = -40, i = 0; x < length; x += layer.every, i++) {
+      const name = layer.names[(i * 7 + l) % layer.names.length];
+      const jitter = ((i * 53 + l * 17) % 10) / 10;
+      const list = byName.get(name) || [];
+      list.push({ x: x + jitter * layer.every * 0.4, z: layer.z - jitter * (layer.depth || 0), s: 1 - jitter * 0.25, turn: (jitter - 0.5) * (layer.turn === undefined ? 1.2 : layer.turn) });
+      byName.set(name, list);
+    }
+    for (const [name, list] of byName) {
+      const inst = instanced(name, { height: layer.height, shadows: false }, list.length);
+      if (!inst) {
+        continue;
+      }
+      list.forEach((item, i) => inst.set(i, item.x, 0, item.z, item.s, item.turn));
+      inst.commit();
+      scenery.push({ inst, list, bounce: layer.bounce === undefined ? 0.06 : layer.bounce });
+    }
+  });
+
   /* ---------- What is on the track ---------- */
 
   const blocks = [];
@@ -479,16 +589,51 @@ export function createMusicalRun(ctx, def) {
   }
 
   function addCoin(beat, y, coin, hidden) {
-    const face = paint.coin("mu-coin-" + coin.id, coin.color, coin.glyph || "star", "");
-    const mesh = new THREE.Mesh(coinGeometry, [gold, face, face]);
-    mesh.rotation.order = "YXZ";
-    mesh.rotation.x = Math.PI / 2;
-    mesh.position.set(X(beat), y, 0);
-    mesh.visible = !hidden;
-    root.add(mesh);
-    const entry = { beat, y, x: X(beat), coin, mesh, got: false, missed: false, hidden: Boolean(hidden), order: coinOrder++ };
+    // Its mesh comes later (buildCoins), once every coin of the level is known
+    const entry = { beat, y, x: X(beat), coin, mesh: null, slot: null, got: false, missed: false, hidden: Boolean(hidden), order: coinOrder++ };
     coins.push(entry);
     return entry;
+  }
+
+  /** The coins of a kind as one instanced Kenney model that glows, or the painted coins without the pack. */
+  function buildCoins() {
+    const kinds = new Map();
+    for (const c of coins) {
+      const list = kinds.get(c.coin.id) || [];
+      list.push(c);
+      kinds.set(c.coin.id, list);
+    }
+    for (const [id, list] of kinds) {
+      const name = (def.coinModels && def.coinModels[id]) || "coin-gold";
+      const inst = instanced(name, { height: 0.62, shadows: false }, list.length, glow);
+      list.forEach((c, i) => {
+        if (inst) {
+          c.slot = { inst, i };
+        } else {
+          const face = paint.coin("mu-coin-" + c.coin.id, c.coin.color, c.coin.glyph || "star", "");
+          c.mesh = new THREE.Mesh(coinGeometry, [gold, face, face]);
+          c.mesh.rotation.order = "YXZ";
+          c.mesh.rotation.x = Math.PI / 2;
+          c.mesh.position.set(c.x, c.y, 0);
+          root.add(c.mesh);
+        }
+        showCoin(c, !c.hidden, 0, 0);
+      });
+      if (inst) {
+        inst.commit();
+      }
+    }
+  }
+
+  function showCoin(c, on, time, pulse) {
+    const turn = Math.sin(time * 3 + c.order) * 0.6;
+    if (c.mesh) {
+      c.mesh.visible = on;
+      c.mesh.rotation.y = turn;
+      c.mesh.scale.setScalar(1 + pulse * 0.18);
+    } else if (c.slot) {
+      c.slot.inst.set(c.slot.i, c.x, c.y - 0.31 + pulse * 0.05, 0, on ? 1 + pulse * 0.18 : 0, turn);
+    }
   }
 
   for (const e of events) {
@@ -560,10 +705,15 @@ export function createMusicalRun(ctx, def) {
         break;
       }
       case "spring": {
-        const mesh = new THREE.Mesh(springGeometry, paint.plain(0xe3066a, { roughness: 0.3, emissive: 0x330018 }));
-        mesh.position.set(X(e.at), 0.09, 0);
-        root.add(mesh);
-        springs.push({ at: e.at, mesh });
+        let mesh = single("spring", { width: 1.2 });
+        if (mesh) {
+          mesh.position.set(X(e.at), 0, 0);
+        } else {
+          mesh = new THREE.Mesh(springGeometry, paint.plain(0xe3066a, { roughness: 0.3, emissive: 0x330018 }));
+          mesh.position.set(X(e.at), 0.09, 0);
+          root.add(mesh);
+        }
+        springs.push({ at: e.at, mesh, base: mesh.scale.clone() });
         addTarget(e.at, true, null);
         break;
       }
@@ -586,6 +736,12 @@ export function createMusicalRun(ctx, def) {
         break;
       }
       case "checkpoint": {
+        const model = single("flag", { height: 1.9 });
+        if (model) {
+          model.position.set(X(e.at), 0, -1.3);
+          checkpoints.push({ at: e.at, flag: model, base: model.scale.clone(), passed: false, wave: 0 });
+          break;
+        }
         const flag = new THREE.Mesh(postGeometry, paint.plain(0xffffff));
         flag.scale.set(0.6, 1.6, 0.6);
         flag.position.set(X(e.at), 0.8, -1.3);
@@ -621,6 +777,13 @@ export function createMusicalRun(ctx, def) {
     cp.section = section;
   }
   targets.sort((a, b) => a.at - b.at);
+  buildCoins();
+  // Spikes at the bottom of every gap: what a fall lands on
+  const spikes = instanced("trap-spikes", { width: (GAP_TO - GAP_FROM) * U * 0.9, shadows: false }, gaps.length);
+  if (spikes) {
+    gaps.forEach((g, i) => spikes.set(i, X((g.from + g.to) / 2), -1.05, 0, 1, 0));
+    spikes.commit();
+  }
 
   /** A barrier across the track, and what opens it. */
   function buildStop(e) {
@@ -671,7 +834,7 @@ export function createMusicalRun(ctx, def) {
       c.fillRect(0, 0, w, h);
     }
   });
-  const fogMaterial = keep(new THREE.MeshBasicMaterial({ map: fogTexture, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+  const fogMaterial = keep(new THREE.MeshBasicMaterial({ map: fogTexture, color: 0xc9bfe8, transparent: true, opacity: 0, depthWrite: false }));
   const fogPlane = paint.geometry("mu-fog-plane", () => new THREE.PlaneGeometry(1, 1));
   const fogs = [0, 1, 2].map((i) => {
     const mesh = new THREE.Mesh(fogPlane, fogMaterial);
@@ -683,14 +846,32 @@ export function createMusicalRun(ctx, def) {
     return mesh;
   });
 
-  if (endEvent) {
+  // The finish: models stacked (a rocket, a hangar...), or a white block without the pack
+  const finish = new THREE.Group();
+  finish.position.set(X(endBeat) + 3.6, 0, -1);
+  root.add(finish);
+  let finishTop = 0;
+  const finishParts = (def.finish || []).map((part) => (models ? models.get(part.name, part.width ? { width: part.width } : { height: part.height }) : null));
+  if (finishParts.length && finishParts.every(Boolean)) {
+    def.finish.forEach((part, i) => {
+      const model = finishParts[i];
+      model.position.set(part.x || 0, part.stack ? finishTop : 0, part.z || 0);
+      if (part.stack) {
+        finishTop += new THREE.Box3().setFromObject(model).getSize(scratch).y;
+      }
+      finish.add(model);
+    });
+  } else if (endEvent) {
+    finishTop = 3.4;
     const home = new THREE.Mesh(box, [paint.plain(0xffffff), paint.plain(0xffffff), paint.plain(0x1b96ff), paint.plain(0xffffff), faceMaterial("end", endEvent.color || SLDS.brand, endEvent.glyph || "cloud"), paint.plain(0xffffff)]);
     home.scale.set(3.4, 3.4, 3);
-    home.position.set(X(endEvent.at) + 3.2, 1.7, -0.4);
+    home.position.set(0, 1.7, 0);
     home.castShadow = shadows;
-    root.add(home);
+    finish.add(home);
+  }
+  if (endEvent) {
     if (endEvent.text) {
-      addSign(endEvent.text, X(endEvent.at) + 3.2, 4.2, { color: endEvent.color || SLDS.brand, glyph: endEvent.glyph || "cloud", height: 0.75, z: 1.4, name: "mu-end" });
+      addSign(endEvent.text, X(endEvent.at) + 3.6, Math.max(4.2, finishTop + 0.9), { color: endEvent.color || SLDS.brand, glyph: endEvent.glyph || "cloud", height: 0.75, z: 1.4, name: "mu-end" });
     }
   }
 
@@ -702,6 +883,12 @@ export function createMusicalRun(ctx, def) {
   let camX = 0;
   let camY = 2;
   let shake = 0;
+  let launchAt = null;
+  let frames = 0;
+  const frustum = new THREE.Frustum();
+  const viewProjection = new THREE.Matrix4();
+  const sphere3 = new THREE.Sphere();
+  const runAnimSpeed = Math.max(0, ((STRIDES_PER_BEAT * RUN_CLIP_S) / spb - 0.7) / 0.06);
   let lookUp = 0;
   let lastCoach = -10;
   let lastPortrait = null;
@@ -877,7 +1064,7 @@ export function createMusicalRun(ctx, def) {
 
   function collectCoin(c) {
     c.got = true;
-    c.mesh.visible = false;
+    showCoin(c, false, 0, 0);
     stats.got += 1;
     stats.streak += 1;
     stats.best = Math.max(stats.best, stats.streak);
@@ -990,6 +1177,9 @@ export function createMusicalRun(ctx, def) {
     stop.button.squash = 1;
     sound.play("gate");
     ctx.fx.burst(stop.button.mesh.position.x, stop.button.mesh.position.y, 0, { count: 30, colors: [0x0176d3, 0x1b96ff, 0xffffff, 0x2e844a], speed: 4, up: 4, life: 1 });
+    if (pig.hop) {
+      pig.hop();
+    }
     if (calls.onManual) {
       calls.onManual(stop, onTheWay);
     }
@@ -1068,6 +1258,9 @@ export function createMusicalRun(ctx, def) {
     }
     if (option.ok) {
       round.buttons[index].classList.add("is-right");
+      if (pig.hop) {
+        pig.hop();
+      }
       ctx.collect(150, round.lesson || option.label);
       sound.play("wheek");
       if (calls.onChoice) {
@@ -1146,6 +1339,8 @@ export function createMusicalRun(ctx, def) {
         if (cp.cloth) {
           cp.cloth.material = paint.plain(0x2e844a, { emissive: 0x0a2a12 });
         }
+        cp.wave = 1;
+        ctx.fx.burst(X(cp.at), 1.8, -1.3, { count: 16, speed: 3, up: 3, life: 0.8 });
         sound.play("click");
       }
     }
@@ -1243,13 +1438,29 @@ export function createMusicalRun(ctx, def) {
       }
     }
     for (const c of coins) {
-      if (c.got || c.hidden || !near(c.x)) {
-        c.mesh.visible = false;
-        continue;
+      if (!c.got && !c.hidden && near(c.x)) {
+        showCoin(c, true, time, pulse);
       }
-      c.mesh.visible = true;
-      c.mesh.rotation.y = Math.sin(time * 3 + c.order) * 0.6;
-      c.mesh.scale.setScalar(1 + pulse * 0.18);
+    }
+    for (const c of coins) {
+      if (c.slot) {
+        c.slot.inst.commit();
+      }
+    }
+    // The scenery near the camera bounces on the beat
+    for (const layer of scenery) {
+      layer.list.forEach((item, i) => {
+        if (Math.abs(item.x - camX) < 34) {
+          layer.inst.set(i, item.x, 0, item.z, item.s, item.turn, 1 + pulse * layer.bounce);
+        }
+      });
+      layer.inst.commit();
+    }
+    for (const cp of checkpoints) {
+      if (cp.flag && near(X(cp.at))) {
+        cp.wave = Math.max(0, cp.wave - dt * 1.5);
+        cp.flag.scale.copy(cp.base).multiplyScalar(1 + pulse * 0.05 + Math.sin(cp.wave * 12) * cp.wave * 0.15);
+      }
     }
     for (const p of powers) {
       if (p.got) {
@@ -1259,7 +1470,7 @@ export function createMusicalRun(ctx, def) {
       p.mesh.position.y = p.y + Math.sin(time * 3) * 0.1;
     }
     for (const s of springs) {
-      s.mesh.scale.set(1 + pulse * 0.12, 1 - pulse * 0.3, 1 + pulse * 0.12);
+      s.mesh.scale.copy(s.base).multiply(scratch.set(1 + pulse * 0.12, 1 - pulse * 0.3, 1 + pulse * 0.12));
     }
     for (const s of stops) {
       if (s.done && s.open < 1) {
@@ -1312,7 +1523,7 @@ export function createMusicalRun(ctx, def) {
       const into = Math.min(run.beat - z.from, z.to - run.beat);
       fog = Math.max(fog, Math.max(0, Math.min(1, (into + 2) / 3)));
     }
-    fogMaterial.opacity = fog * 0.45;
+    fogMaterial.opacity = fog * 0.32;
     fogs.forEach((mesh, i) => {
       mesh.visible = fog > 0.01;
       mesh.position.x = camX + Math.sin(time * 0.3 + i * 2) * 2 + (i - 1) * 6;
@@ -1351,7 +1562,7 @@ export function createMusicalRun(ctx, def) {
     pig.shadow.visible = overGround;
     pig.shadow.position.set(x, 0.012, 0.05);
     const running = run.mode === "run" && player.grounded;
-    pig.state = { running, airborne: !player.grounded || run.mode === "rewind", ducking: false, speed: running ? U / spb : 0, height: Math.max(0, y) };
+    pig.state = { running, airborne: !player.grounded || run.mode === "rewind", ducking: false, speed: running ? runAnimSpeed : 0, height: Math.max(0, y) };
     // Blink while it cannot be hurt
     pig.object.visible = run.inv <= 0 || Math.floor(time * 12) % 2 === 0;
   }
@@ -1380,6 +1591,36 @@ export function createMusicalRun(ctx, def) {
     engine.aimSun(px, 0);
   }
 
+  /** About how many draw calls a frame makes: the meshes and sprites in view, one per material. */
+  function countDraws() {
+    camera.updateMatrixWorld();
+    viewProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(viewProjection);
+    let n = 0;
+    engine.scene.traverseVisible((o) => {
+      if (!o.isMesh && !o.isSprite) {
+        return;
+      }
+      if (o.isInstancedMesh || !o.frustumCulled) {
+        n += o.isInstancedMesh && o.count === 0 ? 0 : 1;
+        return;
+      }
+      if (o.isSprite) {
+        sphere3.center.setFromMatrixPosition(o.matrixWorld);
+        sphere3.radius = o.scale.x;
+      } else {
+        if (!o.geometry.boundingSphere) {
+          o.geometry.computeBoundingSphere();
+        }
+        sphere3.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
+      }
+      if (frustum.intersectsSphere(sphere3)) {
+        n += Array.isArray(o.material) ? new Set(o.material).size : 1;
+      }
+    });
+    return n;
+  }
+
   function writeData() {
     setData("mode", run.mode);
     setData("beat", run.beat.toFixed(2));
@@ -1388,6 +1629,10 @@ export function createMusicalRun(ctx, def) {
     setData("jumpat", next ? next.at : "none");
     setData("stopped", run.mode === "stop" ? "yes" : "no");
     setData("stopkind", run.mode === "stop" && run.stop ? run.stop.type : "");
+    frames += 1;
+    if (frames % 60 === 0) {
+      setData("calls", countDraws());
+    }
   }
 
   /* ---------- What a world can use ---------- */
@@ -1429,7 +1674,7 @@ export function createMusicalRun(ctx, def) {
           ctx.fx.burst(b.x, b.h, 0, { count: 10, colors: [0x2e844a, 0x45c65a, 0xffffff], speed: 3, up: 4, life: 0.8 });
           if (b.convert) {
             b.convert.hidden = false;
-            b.convert.mesh.visible = true;
+            showCoin(b.convert, true, 0, 0);
             stats.coins += 1;
           }
         }
@@ -1574,14 +1819,27 @@ export function createMusicalRun(ctx, def) {
     finale() {
       music.finale();
     },
+    /** The finish takes off (a rocket): played on the result screen, in idleCamera. */
+    launch() {
+      launchAt = engine.time;
+    },
     idleCamera(time) {
       const portrait = engine.portrait;
+      if (launchAt !== null) {
+        const k = Math.max(0, engine.time - launchAt - 0.6);
+        finish.position.y = 1.4 * k * k;
+        if (k > 0 && Math.floor(engine.time * 20) % 2 === 0 && finish.position.y < 40) {
+          ctx.fx.burst(finish.position.x, finish.position.y, finish.position.z, { count: 4, colors: [0xffb400, 0xff5d2d, 0xffffff], speed: 1.5, up: -3, life: 0.6 });
+        }
+      }
       camera.fov = portrait ? 62 : 44;
       camera.updateProjectionMatrix();
       const px = pig.object.position.x;
       const sway = Math.sin(time * 0.4) * 0.8;
-      camera.position.set(px + 2.5 + sway, portrait ? 3.4 : 2.6, portrait ? 13 : 10.5);
-      camera.lookAt(px + 2.5, portrait ? 2.2 : 1.2, 0);
+      // While the finish takes off, the camera looks up after it
+      const up = launchAt === null ? 0 : Math.min(finish.position.y * 0.6, 9);
+      camera.position.set(px + 2.5 + sway, (portrait ? 3.4 : 2.6) + up * 0.4, portrait ? 13 : 10.5);
+      camera.lookAt(px + 2.5, (portrait ? 2.2 : 1.2) + up, 0);
       engine.aimSun(px, 0);
     },
     dispose() {

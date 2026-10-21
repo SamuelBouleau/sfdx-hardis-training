@@ -20,6 +20,14 @@ import { melody } from "../core/music.js";
 import { SLDS } from "../core/painter.js";
 
 export const PADS = ["jump"];
+// Kenney packs: coins, springs, flags and spikes; trees and bushes; production is a launch site
+export const MODELS = ["platform", "nature", "space"];
+
+const SCENERY = [
+  { names: ["plant_bush", "flower_redA", "flower_yellowA", "plant_bushLarge", "flower_purpleA", "mushroom_red"], z: -2.5, every: 2.4, height: 0.75, bounce: 0.14 },
+  { names: ["tree_default", "tree_oak", "tree_pineRoundA", "tree_fat", "tree_cone"], z: -4.6, depth: 1.6, every: 5.2, height: 3.2, bounce: 0.05 },
+  { names: ["satelliteDish", "machine_generator", "rock_crystals", "satelliteDish_large", "machine_wireless", "barrels"], z: -6.9, every: 12, height: 2.4, bounce: 0.03, turn: 0.6 }
+];
 
 const SONG = {
   bpm: 116,
@@ -452,6 +460,16 @@ export function createWorld(ctx) {
     song: SONG,
     level: L,
     palette: [0x9050e9, 0xe3066a, 0xffb400, 0x06a59a, 0x1b96ff, 0x2e844a],
+    scenery: SCENERY,
+    coinModels: { note: "coin-gold", ok: "star" },
+    // The release: a rocket, its parts stacked, that takes off when the world is done
+    finish: [
+      { name: "rocket_finsA", height: 1.5, stack: true },
+      { name: "rocket_fuelA", height: 1.3, stack: true },
+      { name: "rocket_baseA", height: 1.0, stack: true },
+      { name: "rocket_topA", height: 1.4, stack: true },
+      { name: "machine_generatorLarge", height: 1.6, x: 3.2, z: -1.4 }
+    ],
     callbacks: {
       onPower(power) {
         const toast = { check1: "p_check1", check2: "p_check2", check3: "p_check3", jwt: "p_jwt", jwt2: "p_jwt2", quick: "p_quick", v1: "p_v1", v2: "p_v2", v3: "p_v3" }[power.id];
@@ -555,11 +573,8 @@ export function createWorld(ctx) {
         finished = true;
         hud.toast(t("shipped"), "good");
         run.finale();
-        // After the last world the shell shows the credits, not a result: say what was missed here too
+        run.launch();
         const info = missedInfo();
-        if (info) {
-          hud.tip(info, 8000);
-        }
         ctx.setData("missed", info ? "yes" : "no");
         ctx.finish(bonus(), info);
       }
