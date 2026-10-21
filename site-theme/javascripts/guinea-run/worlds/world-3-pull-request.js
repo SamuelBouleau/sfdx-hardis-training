@@ -12,7 +12,8 @@
 import { DEPLOYMENT_ACTIONS } from "../core/story.js";
 import { SLDS, fitText, glyph } from "../core/painter.js";
 
-export const PADS = ["left", "right", "jump", "duck", "confirm"];
+// Everything here is touched or dragged: no pads (the keys still work)
+export const PADS = [];
 
 /** The Kenney office pack (desk, chair, plant, rug, bookcase); the Salesforce items always load. */
 export const MODELS = ["office"];
@@ -70,8 +71,8 @@ export const TEXTS = {
     q3cTip: "A new Pull Request runs the same checks from the start. Wait for them, or fix and push.",
     q3Ok: "There is no way around it, and there is not meant to be.",
     actionsTitle: "Deployment Actions",
-    actionsHint: "Place each action before or after the metadata deployment, in the order it must run. One card is not a deployment action: throw it away.",
-    actionsKeys: "Keys: left / right pick a card, up = Before, down = After, Enter = not an action. Touch: tap a card, then a column.",
+    actionsHint: "Drag each action before or after the metadata deployment, in the order it must run. One card is not a deployment action: drop it in the bin.",
+    actionsKeys: "Drag and drop the cards, or tap a card then a column. Keys: left / right pick a card, up = Before, down = After, Enter = not an action.",
     before: "Before Metadata Deployment",
     after: "After Metadata Deployment",
     bin: "Not a deployment action",
@@ -147,8 +148,8 @@ export const TEXTS = {
     q3cTip: "Une nouvelle Pull Request relance les mêmes contrôles depuis le début. Attendez-les, ou corrigez et poussez.",
     q3Ok: "Il n'y a pas de contournement, et il n'est pas censé y en avoir.",
     actionsTitle: "Deployment Actions",
-    actionsHint: "Placez chaque action avant ou après le déploiement des metadata, dans l'ordre où elle doit s'exécuter. Une carte n'est pas une action de déploiement : jetez-la.",
-    actionsKeys: "Clavier : gauche / droite choisissent une carte, haut = Before, bas = After, Entrée = pas une action. Tactile : touchez une carte, puis une colonne.",
+    actionsHint: "Glissez chaque action avant ou après le déploiement des metadata, dans l'ordre où elle doit s'exécuter. Une carte n'est pas une action de déploiement : déposez-la dans la corbeille.",
+    actionsKeys: "Glissez-déposez les cartes, ou touchez une carte puis une colonne. Clavier : gauche / droite choisissent une carte, haut = Before, bas = After, Entrée = pas une action.",
     before: "Before Metadata Deployment",
     after: "After Metadata Deployment",
     bin: "Pas une action de déploiement",
@@ -599,6 +600,18 @@ export function createWorld(ctx) {
   function cardNode(action, parent, index, where) {
     const card = el("button", "gr-w3-card", parent);
     card.type = "button";
+    card.addEventListener("pointerdown", (event) => startDrag(event, action, card));
+    card.addEventListener(
+      "click",
+      (event) => {
+        // The click that ends a drag is not a tap
+        if (dragJustEnded) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      },
+      true
+    );
     card.style.setProperty("--gr-w3-type", TYPE_COLORS[action.type]);
     el("span", "gr-w3-type", card, action.type === "decoy" ? "?" : action.type);
     el("span", "gr-w3-label", card, action.label);
@@ -629,10 +642,12 @@ export function createWorld(ctx) {
     el("p", "gr-w3-hint", body, t("actionsHint"));
     el("p", "gr-w3-keys", body, t("actionsKeys"));
     const handRow = el("div", "gr-w3-hand", body);
+    handRow.setAttribute("data-drop", "hand");
     hand.forEach((action, i) => cardNode(action, handRow, i, "hand"));
     const board = el("div", "gr-w3-board", body);
     const column = (title, list, where) => {
       const col = el("div", "gr-w3-col gr-w3-col--" + where, board);
+      col.setAttribute("data-drop", where);
       const head = el("button", "gr-w3-col-head", col, title);
       head.type = "button";
       head.addEventListener("click", () => place(where));
@@ -672,6 +687,159 @@ export function createWorld(ctx) {
         }
       }
     };
+  }
+
+  /* ---------- Drag and drop, with a mouse or a finger ---------- */
+
+  const DRAG_START_PX = 6;
+  let drag = null;
+  let dragJustEnded = false;
+
+  function listOf(where) {
+    return where === "before" ? before : where === "after" ? after : where === "bin" ? binned : hand;
+  }
+
+  function startDrag(event, action, card) {
+    if (finished || event.button > 0) {
+      return;
+    }
+    drag = { action, card, x: event.clientX, y: event.clientY, id: event.pointerId, ghost: null, zone: null };
+    card.setPointerCapture(event.pointerId);
+    card.addEventListener("pointermove", moveDrag);
+    card.addEventListener("pointerup", endDrag);
+    card.addEventListener("pointercancel", cancelDrag);
+  }
+
+  function moveDrag(event) {
+    if (!drag || event.pointerId !== drag.id) {
+      return;
+    }
+    if (!drag.ghost) {
+      if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < DRAG_START_PX) {
+        return;
+      }
+      // A copy of the card follows the pointer; the card itself fades in place
+      const box = drag.card.getBoundingClientRect();
+      drag.ghost = drag.card.cloneNode(true);
+      drag.ghost.classList.add("gr-w3-ghost");
+      drag.ghost.style.width = box.width + "px";
+      drag.dx = drag.x - box.left;
+      drag.dy = drag.y - box.top;
+      (drag.card.closest(".guinea-run") || document.body).appendChild(drag.ghost);
+      drag.card.classList.add("is-dragging");
+      ctx.sound.play("click");
+    }
+    event.preventDefault();
+    drag.lastX = event.clientX;
+    drag.lastY = event.clientY;
+    drag.ghost.style.transform = "translate(" + (event.clientX - drag.dx) + "px, " + (event.clientY - drag.dy) + "px) rotate(-2deg)";
+    if (!drag.scrolling) {
+      drag.scrolling = true;
+      window.requestAnimationFrame(autoScroll);
+    }
+    refreshZone(event.clientX, event.clientY);
+  }
+
+  /** Near the top or the bottom edge of the panel, it scrolls: on a phone the columns are below the hand. */
+  function autoScroll() {
+    if (!drag || !drag.ghost) {
+      return;
+    }
+    const box = page.getBoundingClientRect();
+    const edge = 40;
+    let step = 0;
+    if (drag.lastY > box.bottom - edge) {
+      step = Math.min(12, (drag.lastY - (box.bottom - edge)) / 3);
+    } else if (drag.lastY < box.top + edge) {
+      step = -Math.min(12, (box.top + edge - drag.lastY) / 3);
+    }
+    if (step) {
+      page.scrollTop += step;
+      refreshZone(drag.lastX, drag.lastY);
+    }
+    window.requestAnimationFrame(autoScroll);
+  }
+
+  function refreshZone(x, y) {
+    const under = document.elementFromPoint(x, y);
+    const zone = under && under.closest ? under.closest("[data-drop]") : null;
+    if (zone !== drag.zone) {
+      if (drag.zone) {
+        drag.zone.classList.remove("is-over");
+      }
+      drag.zone = zone;
+      if (zone) {
+        zone.classList.add("is-over");
+      }
+    }
+  }
+
+  /** Where in a column the card lands: before the first slot whose middle is below the pointer. */
+  function dropIndex(zone, y) {
+    const slots = Array.from(zone.querySelectorAll(".gr-w3-slot, .gr-w3-hand > .gr-w3-card"));
+    const index = slots.findIndex((slot) => {
+      const box = slot.getBoundingClientRect();
+      return y < box.top + box.height / 2;
+    });
+    return index < 0 ? slots.length : index;
+  }
+
+  function endDrag(event) {
+    if (!drag || event.pointerId !== drag.id) {
+      return;
+    }
+    const { action, ghost, zone } = drag;
+    finishDrag();
+    if (!ghost) {
+      // No movement: a tap, handled by the click as before
+      return;
+    }
+    dragJustEnded = true;
+    window.setTimeout(() => {
+      dragJustEnded = false;
+    }, 0);
+    if (!zone) {
+      renderBoard();
+      return;
+    }
+    const where = zone.getAttribute("data-drop");
+    let index = dropIndex(zone, event.clientY);
+    // Out of its list first; a move down the same list shifts the target by one
+    for (const name of ["hand", "before", "after", "bin"]) {
+      const list = listOf(name);
+      const at = list.indexOf(action);
+      if (at >= 0) {
+        list.splice(at, 1);
+        if (name === where && at < index) {
+          index -= 1;
+        }
+      }
+    }
+    listOf(where).splice(index, 0, action);
+    selected = Math.min(selected, Math.max(0, hand.length - 1));
+    ctx.sound.play("pickup");
+    renderBoard();
+  }
+
+  function cancelDrag() {
+    finishDrag();
+    renderBoard();
+  }
+
+  function finishDrag() {
+    if (!drag) {
+      return;
+    }
+    drag.card.removeEventListener("pointermove", moveDrag);
+    drag.card.removeEventListener("pointerup", endDrag);
+    drag.card.removeEventListener("pointercancel", cancelDrag);
+    if (drag.ghost) {
+      drag.ghost.remove();
+    }
+    if (drag.zone) {
+      drag.zone.classList.remove("is-over");
+    }
+    drag = null;
   }
 
   function place(where) {
@@ -801,6 +969,32 @@ export function createWorld(ctx) {
 }
 
 export const CSS = `
+.guinea-run .gr-w3-card {
+  touch-action: none;
+  cursor: grab;
+}
+
+.guinea-run .gr-w3-card.is-dragging {
+  opacity: 0.35;
+}
+
+.guinea-run .gr-w3-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2147483647;
+  margin: 0;
+  box-shadow: 0 12px 28px rgba(3, 45, 96, 0.35);
+  cursor: grabbing;
+  pointer-events: none;
+}
+
+.guinea-run [data-drop].is-over {
+  outline: 3px dashed #0176d3;
+  outline-offset: 2px;
+  background: #eef4ff;
+}
+
 .guinea-run .gr-w3 {
   position: absolute;
   top: calc(env(safe-area-inset-top, 0px) + 96px);
@@ -1076,6 +1270,24 @@ export const CSS = `
   .guinea-run .gr-w3-deploy {
     writing-mode: horizontal-tb;
     transform: none;
+  }
+  /* The board takes the whole height: hand, Before | After, then the bin */
+  .guinea-run[data-phase="actions"] .gr-w3 {
+    top: calc(var(--gr-top-end, 120px) + 6px);
+  }
+  .guinea-run[data-phase="actions"] .gr-w3-hint,
+  .guinea-run[data-phase="actions"] .gr-w3-keys {
+    display: none;
+  }
+  .guinea-run[data-phase="actions"] .gr-w3-board {
+    grid-template-columns: 1fr 1fr;
+  }
+  .guinea-run[data-phase="actions"] .gr-w3-deploy {
+    display: none;
+  }
+  .guinea-run[data-phase="actions"] .gr-w3-card {
+    padding: 6px 8px;
+    font-size: 13px;
   }
 }
 `;
