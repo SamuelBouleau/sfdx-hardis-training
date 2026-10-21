@@ -50,6 +50,10 @@ const STREAK_STEP = 8;
 // 0.7 + speed * 0.06 (guinea-pig.js): the speed passed makes two strides a beat
 const RUN_CLIP_S = 0.333;
 const STRIDES_PER_BEAT = 2;
+// Scenery and coins are drawn this far from the camera, and no further
+const SCENERY_RANGE = 34;
+// The salesforce items already face this camera (it looks from +Z): no turn
+const ITEM_FACE = 0;
 
 export const MUSICAL_TEXTS = {
   en: {
@@ -506,7 +510,18 @@ export function createMusicalRun(ctx, def) {
   // with vertex colours and drawn with this one material: one shader for all of
   // them, which keeps the warm-up short on a software renderer, and one draw call
   // per model instead of one per part
-  const bakedMaterial = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }));
+  const bakedMaterial = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 }));
+  const black = new THREE.Color(0x000000);
+  // Pickups glow: their own colour, pushed above 1 so the bloom of the high tier catches it
+  const glowMaterial = (() => {
+    const TSL = THREE.TSL;
+    if (THREE.MeshStandardNodeMaterial && TSL && TSL.vertexColor) {
+      const m = new THREE.MeshStandardNodeMaterial({ vertexColors: true, roughness: 0.35 });
+      m.emissiveNode = TSL.vertexColor().mul(0.65);
+      return keep(m);
+    }
+    return keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, emissive: 0x333333 }));
+  })();
   const bakedGeometries = new Map();
   function bakedGeometry(name, options) {
     const key = name + JSON.stringify(options);
@@ -536,10 +551,14 @@ export function createMusicalRun(ctx, def) {
       const p = geometry.attributes.position;
       const n = geometry.attributes.normal;
       const c = material.color || white;
+      const e = material.emissive || black;
+      const r = Math.min(1, c.r + e.r);
+      const g = Math.min(1, c.g + e.g);
+      const b = Math.min(1, c.b + e.b);
       for (let i = 0; i < p.count; i++) {
         positions.push(p.getX(i), p.getY(i), p.getZ(i));
         normals.push(n.getX(i), n.getY(i), n.getZ(i));
-        colors.push(c.r, c.g, c.b);
+        colors.push(r, g, b);
       }
       geometry.dispose();
     });
@@ -556,12 +575,12 @@ export function createMusicalRun(ctx, def) {
     return merged;
   }
   /** Many copies of a flat coloured model as one InstancedMesh; falls back on instanced() for a textured one. */
-  function baked(name, options, count) {
+  function baked(name, options, count, material) {
     const geometry = count > 0 ? bakedGeometry(name, options) : null;
     if (!geometry) {
       return instanced(name, options, count);
     }
-    const mesh = keep(new THREE.InstancedMesh(geometry, bakedMaterial, count));
+    const mesh = keep(new THREE.InstancedMesh(geometry, material || bakedMaterial, count));
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.castShadow = options.shadows !== false && shadows;
     mesh.receiveShadow = true;
@@ -585,6 +604,46 @@ export function createMusicalRun(ctx, def) {
       }
     };
   }
+  /**
+   * A pool of copies of a flat coloured model, as one InstancedMesh that only
+   * holds the copies near the camera: begin(), add() each copy in view, end().
+   * The track is long; drawing only what is near keeps a software renderer fast.
+   */
+  function pool(name, options, capacity, material) {
+    const geometry = capacity > 0 ? bakedGeometry(name, options) : null;
+    if (!geometry) {
+      return null;
+    }
+    const mesh = keep(new THREE.InstancedMesh(geometry, material || bakedMaterial, capacity));
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    mesh.count = 0;
+    root.add(mesh);
+    let used = 0;
+    return {
+      mesh,
+      begin() {
+        used = 0;
+      },
+      add(x, y, z, scale, turn, stretch) {
+        if (used >= capacity) {
+          return;
+        }
+        holder.position.set(x, y, z);
+        holder.rotation.set(0, turn || 0, 0);
+        holder.scale.set(scale, scale * (stretch || 1), scale);
+        holder.updateMatrix();
+        mesh.setMatrixAt(used, holder.matrix);
+        used += 1;
+      },
+      end() {
+        mesh.count = used;
+        mesh.instanceMatrix.needsUpdate = true;
+      }
+    };
+  }
   /** A single copy of a model, or null. */
   function single(name, options) {
     const copy = models ? models.get(name, options) : null;
@@ -593,17 +652,6 @@ export function createMusicalRun(ctx, def) {
     }
     return copy;
   }
-  // What glows: emissive above 1, so the bloom of the high tier catches it
-  const glow = (material) => {
-    if (material.emissive) {
-      // Lit colour plus this crosses 1 only on the bright faces: they glow, the colour stays
-      material.emissive.set(material.map ? 0xffffff : material.color);
-      if (material.map) {
-        material.emissiveMap = material.map;
-      }
-      material.emissiveIntensity = 0.55;
-    }
-  };
 
   // A lawn behind the track, for the trees and the props to stand on
   const lawn = new THREE.Mesh(box, paint.plain(def.lawn || 0xbdeccb, { roughness: 1 }));
@@ -614,26 +662,30 @@ export function createMusicalRun(ctx, def) {
 
   // The scenery: rows of trees, bushes and props behind the track, bouncing on the beat
   const scenery = [];
+  // One glowing pool per model, shared by the coins and the power-ups that use it
+  const glowPools = new Map();
+  const COIN_H = 0.62;
+  function glowPool(name) {
+    if (!glowPools.has(name)) {
+      glowPools.set(name, pool(name, { height: COIN_H, shadows: false }, 44, glowMaterial));
+    }
+    return glowPools.get(name);
+  }
   (def.scenery || []).forEach((layer, l) => {
     const byName = new Map();
     for (let x = -40, i = 0; x < length; x += layer.every, i++) {
       const name = layer.names[(i * 7 + l) % layer.names.length];
       const jitter = ((i * 53 + l * 17) % 10) / 10;
       const list = byName.get(name) || [];
-      list.push({ x: x + jitter * layer.every * 0.4, z: layer.z - jitter * (layer.depth || 0), s: 1 - jitter * 0.25, turn: (jitter - 0.5) * (layer.turn === undefined ? 1.2 : layer.turn) });
+      list.push({ x: x + jitter * layer.every * 0.4, y: (layer.y || 0) + jitter * (layer.rise || 0), z: layer.z - jitter * (layer.depth || 0), s: 1 - jitter * 0.25, turn: (layer.face || 0) + (jitter - 0.5) * (layer.turn === undefined ? 1.2 : layer.turn) });
       byName.set(name, list);
     }
     for (const [name, list] of byName) {
-      const inst = baked(name, { height: layer.height, shadows: false }, list.length);
-      if (!inst) {
-        continue;
+      const capacity = Math.ceil((2 * SCENERY_RANGE) / (layer.every * layer.names.length)) + 3;
+      const copies = pool(name, { height: layer.height, shadows: false }, capacity);
+      if (copies) {
+        scenery.push({ copies, list, bounce: layer.bounce === undefined ? 0.06 : layer.bounce, float: Boolean(layer.y) });
       }
-      if (inst.mesh) {
-        root.add(inst.mesh);
-      }
-      list.forEach((item, i) => inst.set(i, item.x, 0, item.z, item.s, item.turn));
-      inst.commit();
-      scenery.push({ inst, list, bounce: layer.bounce === undefined ? 0.06 : layer.bounce });
     }
   });
 
@@ -681,20 +733,30 @@ export function createMusicalRun(ctx, def) {
     return entry;
   }
 
-  /** The coins of a kind as one instanced Kenney model that glows, or the painted coins without the pack. */
+  /**
+   * The coins as instanced models, one InstancedMesh per model whatever kind of
+   * coin uses it; a kind can take a list of models in turn (the components of a
+   * package). Without the pack, the painted coins.
+   */
   function buildCoins() {
-    const kinds = new Map();
+    const counters = new Map();
+    const byModel = new Map();
     for (const c of coins) {
-      const list = kinds.get(c.coin.id) || [];
+      const wanted = (def.coinModels && def.coinModels[c.coin.id]) || "coin-gold";
+      const names = Array.isArray(wanted) ? wanted : [wanted];
+      const n = counters.get(c.coin.id) || 0;
+      counters.set(c.coin.id, n + 1);
+      const name = names[n % names.length];
+      const list = byModel.get(name) || [];
       list.push(c);
-      kinds.set(c.coin.id, list);
+      byModel.set(name, list);
     }
-    for (const [id, list] of kinds) {
-      const name = (def.coinModels && def.coinModels[id]) || "coin-gold";
-      const inst = instanced(name, { height: 0.62, shadows: false }, list.length, glow);
-      list.forEach((c, i) => {
-        if (inst) {
-          c.slot = { inst, i };
+    for (const [name, list] of byModel) {
+      // At most this many of one model are ever near the camera at once
+      const copies = glowPool(name);
+      for (const c of list) {
+        if (copies) {
+          c.pool = copies;
         } else {
           const face = paint.coin("mu-coin-" + c.coin.id, c.coin.color, c.coin.glyph || "star", "");
           c.mesh = new THREE.Mesh(coinGeometry, [gold, face, face]);
@@ -702,11 +764,8 @@ export function createMusicalRun(ctx, def) {
           c.mesh.rotation.x = Math.PI / 2;
           c.mesh.position.set(c.x, c.y, 0);
           root.add(c.mesh);
+          showCoin(c, !c.hidden, 0, 0);
         }
-        showCoin(c, !c.hidden, 0, 0);
-      });
-      if (inst) {
-        inst.commit();
       }
     }
   }
@@ -717,8 +776,8 @@ export function createMusicalRun(ctx, def) {
       c.mesh.visible = on;
       c.mesh.rotation.y = turn;
       c.mesh.scale.setScalar(1 + pulse * 0.18);
-    } else if (c.slot) {
-      c.slot.inst.set(c.slot.i, c.x, c.y - 0.31 + pulse * 0.05, 0, on ? 1 + pulse * 0.18 : 0, turn);
+    } else if (c.pool && on) {
+      c.pool.add(c.x, c.y - 0.31 + pulse * 0.05, 0, 1 + pulse * 0.18, ITEM_FACE + turn);
     }
   }
 
@@ -727,9 +786,8 @@ export function createMusicalRun(ctx, def) {
       case "block": {
         const look = e.look;
         const h = look.h || 0.95;
-        const side = paint.plain(hexOf(look.color), { roughness: 0.5 });
-        const face = faceMaterial(look.id, look.color, look.glyph);
-        const normal = [side, side, side, side, face, side];
+        // One material, the glyph tile on every face: one render object per block, not six
+        const normal = faceMaterial(look.id, look.color, look.glyph);
         const mesh = new THREE.Mesh(box, look.hidden ? ghostMaterial : normal);
         mesh.scale.set(BLOCK_W, h, 1.1);
         mesh.position.set(X(e.at + 0.5), h / 2, 0);
@@ -768,14 +826,18 @@ export function createMusicalRun(ctx, def) {
         break;
       case "power": {
         const p = e.power;
-        const face = paint.coin("mu-power-" + p.id, p.color, p.glyph || "bolt", "");
-        const mesh = new THREE.Mesh(coinGeometry, [gold, face, face]);
-        mesh.rotation.order = "YXZ";
-        mesh.rotation.x = Math.PI / 2;
-        mesh.scale.setScalar(1.7);
-        mesh.position.set(X(e.beat), e.y, 0);
-        root.add(mesh);
-        const entry = { beat: e.beat, x: X(e.beat), y: e.y, power: p, mesh, got: false, sign: null };
+        const copies = p.model ? glowPool(p.model) : null;
+        let mesh = null;
+        if (!copies) {
+          const face = paint.coin("mu-power-" + p.id, p.color, p.glyph || "bolt", "");
+          mesh = new THREE.Mesh(coinGeometry, [gold, face, face]);
+          mesh.rotation.order = "YXZ";
+          mesh.rotation.x = Math.PI / 2;
+          mesh.scale.setScalar(1.7);
+          mesh.position.set(X(e.beat), e.y, 0);
+          root.add(mesh);
+        }
+        const entry = { beat: e.beat, x: X(e.beat), y: e.y, power: p, mesh, pool: copies, size: 1.05, got: false, sign: null };
         if (p.sign) {
           entry.sign = addSign(p.sign, X(e.beat), e.y + 1.05, { color: p.color, glyph: p.glyph, name: "mu-power" });
         }
@@ -783,6 +845,11 @@ export function createMusicalRun(ctx, def) {
         break;
       }
       case "note": {
+        const copies = glowPool("note");
+        if (copies) {
+          powers.push({ beat: e.beat, x: X(e.beat), y: e.y, power: { id: "note", note: true }, mesh: null, pool: copies, size: 0.9, got: false, sign: null });
+          break;
+        }
         const mesh = new THREE.Mesh(box, [paint.plain(0xf2c94c), paint.plain(0xf2c94c), paint.plain(0xf2c94c), paint.plain(0xf2c94c), faceMaterial("note", "#F2C94C", "note"), paint.plain(0xf2c94c)]);
         mesh.scale.set(0.7, 0.7, 0.08);
         mesh.position.set(X(e.beat), e.y, 0);
@@ -822,6 +889,11 @@ export function createMusicalRun(ctx, def) {
         break;
       }
       case "checkpoint": {
+        // With a model of the world's choice, every checkpoint is drawn by one InstancedMesh (buildCheckpoints)
+        if (def.checkpointModel && bakedGeometry(def.checkpointModel, { height: 1.1 })) {
+          checkpoints.push({ at: e.at, passed: false, wave: 0, slot: true });
+          break;
+        }
         const model = single("flag", { height: 1.9 });
         if (model) {
           model.position.set(X(e.at), 0, -1.3);
@@ -864,18 +936,35 @@ export function createMusicalRun(ctx, def) {
   }
   targets.sort((a, b) => a.at - b.at);
   buildCoins();
+  const marks = checkpoints.filter((cp) => cp.slot);
+  const checkMarks = marks.length ? baked(def.checkpointModel, { height: 1.1, shadows: false }, marks.length) : null;
+  if (checkMarks && checkMarks.mesh) {
+    root.add(checkMarks.mesh);
+  }
+  marks.forEach((cp, i) => {
+    cp.slot = checkMarks ? i : null;
+    if (checkMarks) {
+      checkMarks.set(i, X(cp.at), 0.9, -1.3, 1, ITEM_FACE);
+    }
+  });
+  if (checkMarks) {
+    checkMarks.commit();
+  }
   // Spikes at the bottom of every gap: what a fall lands on
-  const spikes = instanced("trap-spikes", { width: (GAP_TO - GAP_FROM) * U * 0.9, shadows: false }, gaps.length);
-  if (spikes) {
-    gaps.forEach((g, i) => spikes.set(i, X((g.from + g.to) / 2), -1.05, 0, 1, 0));
-    spikes.commit();
+  const pits = def.pitModel ? baked(def.pitModel, { height: 0.8, shadows: false }, gaps.length) : null;
+  if (pits) {
+    if (pits.mesh) {
+      root.add(pits.mesh);
+    }
+    gaps.forEach((g, i) => pits.set(i, X((g.from + g.to) / 2), -1.05, 0, 1, ITEM_FACE));
+    pits.commit();
   }
 
   /** A barrier across the track, and what opens it. */
   function buildStop(e) {
     const isManual = e.type === "manual";
     const wallColor = isManual ? "#FE9339" : "#EA001E";
-    const wall = new THREE.Mesh(box, [paint.plain(hexOf(wallColor)), paint.plain(hexOf(wallColor)), paint.plain(hexOf(wallColor)), paint.plain(hexOf(wallColor)), faceMaterial(isManual ? "wall-manual" : "wall-choice", wallColor, isManual ? "warning" : "error"), paint.plain(hexOf(wallColor))]);
+    const wall = new THREE.Mesh(box, faceMaterial(isManual ? "wall-manual" : "wall-choice", wallColor, isManual ? "warning" : "error"));
     wall.scale.set(0.5, 2.6, 2.6);
     wall.position.set(X(e.at) + 0.9, 1.3, 0);
     wall.castShadow = shadows;
@@ -885,7 +974,7 @@ export function createMusicalRun(ctx, def) {
     if (isManual) {
       // The button hangs over the track before the barrier: bump it on the way
       const bx = X(e.at - 1.5);
-      const button = new THREE.Mesh(box, [paint.plain(0x014486), paint.plain(0x014486), paint.plain(0x1b96ff), paint.plain(0x014486), faceMaterial("button", "#0176D3", "check"), paint.plain(0x014486)]);
+      const button = new THREE.Mesh(box, faceMaterial("button", "#0176D3", "check"));
       button.scale.set(2.2, 0.55, 1.3);
       button.position.set(bx, 1.75, 0);
       button.castShadow = shadows;
@@ -950,7 +1039,12 @@ export function createMusicalRun(ctx, def) {
   if (finishParts.length && finishParts.every(Boolean)) {
     def.finish.forEach((part, i) => {
       const model = finishParts[i];
-      model.position.set(part.x || 0, part.stack ? finishTop : 0, part.z || 0);
+      model.position.set(part.x || 0, part.stack ? finishTop : part.y || 0, part.z || 0);
+      if (part.turn !== undefined) {
+        model.rotation.y = part.turn;
+      } else if (model.isMesh) {
+        model.rotation.y = ITEM_FACE;
+      }
       if (part.stack) {
         finishTop += new THREE.Box3().setFromObject(model).getSize(scratch).y;
       }
@@ -963,6 +1057,41 @@ export function createMusicalRun(ctx, def) {
     home.position.set(0, 1.7, 0);
     home.castShadow = shadows;
     finish.add(home);
+  }
+  // The finish line: an item that stays when the finish takes off (the Cloudity logo)
+  if (def.finishLine) {
+    const geometry = bakedGeometry(def.finishLine.name, { height: def.finishLine.height || 1.4 });
+    if (geometry) {
+      // An arch over the finish line, the logo standing on it
+      const at = X(endBeat) - 2.2;
+      const archMaterial = paint.plain(0x032d60, { roughness: 0.4 });
+      for (const z of [-1.55, 1.55]) {
+        const post = new THREE.Mesh(postGeometry, archMaterial);
+        post.scale.y = 3.6;
+        post.position.set(at, 1.8, z);
+        root.add(post);
+      }
+      const bar = new THREE.Mesh(box, archMaterial);
+      bar.scale.set(0.3, 0.3, 3.4);
+      bar.position.set(at, 3.6, 0);
+      root.add(bar);
+      const line = new THREE.Mesh(geometry, glowMaterial);
+      line.rotation.y = ITEM_FACE;
+      line.position.set(at, 3.75, 0);
+      root.add(line);
+    }
+  }
+  // The reward of a badge world, hidden until the world is done (celebrate())
+  let reward = null;
+  if (def.reward) {
+    const geometry = bakedGeometry(def.reward.name, { height: def.reward.height || 1.6 });
+    if (geometry) {
+      reward = new THREE.Mesh(geometry, glowMaterial);
+      reward.rotation.y = ITEM_FACE;
+      reward.position.set(X(endBeat) + (def.reward.x || 0), def.reward.y || 2.6, def.reward.z || 0.6);
+      reward.scale.setScalar(0.001);
+      root.add(reward);
+    }
   }
   if (endEvent) {
     if (endEvent.text) {
@@ -979,6 +1108,7 @@ export function createMusicalRun(ctx, def) {
   let camY = 2;
   let shake = 0;
   let launchAt = null;
+  let rewardAt = null;
   let frames = 0;
   const frustum = new THREE.Frustum();
   const viewProjection = new THREE.Matrix4();
@@ -1124,7 +1254,9 @@ export function createMusicalRun(ctx, def) {
     for (const p of powers) {
       if (!p.got && Math.abs(p.x - x) < 0.8 && Math.abs(p.y - (y + 0.45)) < 1.0) {
         p.got = true;
-        p.mesh.visible = false;
+        if (p.mesh) {
+          p.mesh.visible = false;
+        }
         if (p.sign) {
           p.sign.sprite.visible = false;
         }
@@ -1539,26 +1671,35 @@ export function createMusicalRun(ctx, def) {
         }
       }
     }
-    for (const c of coins) {
-      if (!c.got && !c.hidden && near(c.x)) {
-        showCoin(c, true, time, pulse);
+    for (const copies of glowPools.values()) {
+      if (copies) {
+        copies.begin();
       }
     }
     for (const c of coins) {
-      if (c.slot) {
-        c.slot.inst.commit();
+      if (!c.got && !c.hidden && Math.abs(c.x - camX) < SCENERY_RANGE) {
+        showCoin(c, true, time, pulse);
       }
     }
     // The scenery near the camera bounces on the beat
     for (const layer of scenery) {
-      layer.list.forEach((item, i) => {
-        if (Math.abs(item.x - camX) < 34) {
-          layer.inst.set(i, item.x, 0, item.z, item.s, item.turn, 1 + pulse * layer.bounce);
+      layer.copies.begin();
+      for (let i = 0; i < layer.list.length; i++) {
+        const item = layer.list[i];
+        if (item.x > camX + SCENERY_RANGE) {
+          break;
         }
-      });
-      layer.inst.commit();
+        if (item.x > camX - SCENERY_RANGE) {
+          layer.copies.add(item.x, item.y + (layer.float ? Math.sin(time + i) * 0.15 : 0), item.z, item.s, item.turn, 1 + pulse * layer.bounce);
+        }
+      }
+      layer.copies.end();
     }
     for (const cp of checkpoints) {
+      if (checkMarks && cp.slot !== null && cp.slot !== undefined && cp.slot !== true && near(X(cp.at))) {
+        cp.wave = Math.max(0, cp.wave - dt * 1.5);
+        checkMarks.set(cp.slot, X(cp.at), 0.9 + Math.sin(cp.wave * 10) * cp.wave * 0.4, -1.3, 1 + pulse * 0.06 + cp.wave * 0.3, ITEM_FACE + cp.wave * 6);
+      }
       if (cp.flag && near(X(cp.at))) {
         cp.wave = Math.max(0, cp.wave - dt * 1.5);
         cp.flag.scale.copy(cp.base).multiplyScalar(1 + pulse * 0.05 + Math.sin(cp.wave * 12) * cp.wave * 0.15);
@@ -1568,8 +1709,19 @@ export function createMusicalRun(ctx, def) {
       if (p.got) {
         continue;
       }
-      p.mesh.rotation.y = time * 2;
-      p.mesh.position.y = p.y + Math.sin(time * 3) * 0.1;
+      if (p.pool) {
+        if (Math.abs(p.x - camX) < SCENERY_RANGE) {
+          p.pool.add(p.x, p.y - p.size / 2 + Math.sin(time * 3) * 0.1, 0, (p.size / COIN_H) * (1 + pulse * 0.12), ITEM_FACE + Math.sin(time * 2) * 0.7);
+        }
+      } else {
+        p.mesh.rotation.y = time * 2;
+        p.mesh.position.y = p.y + Math.sin(time * 3) * 0.1;
+      }
+    }
+    for (const copies of glowPools.values()) {
+      if (copies) {
+        copies.end();
+      }
     }
     for (const s of springs) {
       s.mesh.scale.copy(s.base).multiply(scratch.set(1 + pulse * 0.12, 1 - pulse * 0.3, 1 + pulse * 0.12));
@@ -1593,7 +1745,9 @@ export function createMusicalRun(ctx, def) {
         b.squash = Math.max(0, b.squash - dt * 3);
         b.mesh.position.set(b.x, b.y + Math.sin(time * 4) * 0.04, 0);
         b.mesh.scale.set(2.2 * (1 + b.squash * 0.2), 0.55 * (1 - b.squash * 0.45), 1.3);
-        b.mesh.material[4] = s.done ? faceMaterial("button-done", "#2E844A", "check") : b.mesh.material[4];
+        if (s.done) {
+          b.mesh.material = faceMaterial("button-done", "#2E844A", "check");
+        }
         s.buttonSign.sprite.position.set(b.x, b.y + 0.9, 0.9);
         s.buttonSign.sprite.visible = !s.done;
         if (waiting && player.y + PIG_TALL > b.y - 0.35 && player.vy > 0) {
@@ -1618,6 +1772,9 @@ export function createMusicalRun(ctx, def) {
       }
     }
     eq.instanceMatrix.needsUpdate = true;
+    if (checkMarks) {
+      checkMarks.commit();
+    }
     trackMaterial.emissiveIntensity = engine.motion ? music.pulse * 0.08 : 0;
     // The fog of a zone, around the guinea pig while it is in it
     let fog = 0;
@@ -1925,8 +2082,17 @@ export function createMusicalRun(ctx, def) {
     launch() {
       launchAt = engine.time;
     },
+    /** The reward (the course badge) grows in over the finish. */
+    celebrate() {
+      rewardAt = engine.time;
+    },
     idleCamera(time) {
       const portrait = engine.portrait;
+      if (reward && rewardAt !== null) {
+        const k = Math.min(1, (engine.time - rewardAt) / 0.8);
+        reward.scale.setScalar(Math.max(0.001, k * (1 + Math.sin(engine.time * 4) * 0.04)));
+        reward.rotation.y = ITEM_FACE + Math.sin(engine.time * 1.5) * 0.5;
+      }
       if (launchAt !== null) {
         const k = Math.max(0, engine.time - launchAt - 0.6);
         finish.position.y = 0.8 * k * k;

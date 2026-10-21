@@ -20,13 +20,15 @@ import { melody } from "../core/music.js";
 import { SLDS } from "../core/painter.js";
 
 export const PADS = ["jump"];
-// Kenney packs: coins, springs, flags and spikes; trees and bushes; production is a launch site
-export const MODELS = ["platform", "nature", "space"];
+// The salesforce items (components, checks, runners, orgs, the rocket, the Cloudity logo and the
+// course badge), the Kenney springs, and trees and bushes far behind
+export const MODELS = ["salesforce", "platform", "nature"];
 
 const SCENERY = [
-  { names: ["plant_bush", "flower_redA", "mushroom_red"], z: -2.5, every: 2.4, height: 0.75, bounce: 0.14 },
   { names: ["tree_default", "tree_oak", "tree_pineRoundA"], z: -4.6, depth: 1.6, every: 5.2, height: 3.2, bounce: 0.05 },
-  { names: ["satelliteDish", "machine_generator", "rock_crystals"], z: -6.9, every: 12, height: 2.4, bounce: 0.03, turn: 0.6 }
+  // The CI runners of the pipeline, along the track, and the orgs in the sky
+  { names: ["ci-runner"], z: -6.9, every: 9, height: 2.3, bounce: 0.04, turn: 0.4 },
+  { names: ["org-cloud"], y: 7.5, rise: 2.5, z: -15, every: 19, height: 2.6, bounce: 0.02, turn: 0.3 }
 ];
 
 const SONG = {
@@ -328,7 +330,9 @@ export function createWorld(ctx) {
     L.zone(bar * BAR, color);
     L.arch(bar * BAR + 0.6, t(archKey), { color: "#" + color.toString(16).padStart(6, "0") });
   };
-  const POWER = (id, color, glyph) => ({ id, color, glyph, sign: t("s_" + id) });
+  // Each check, key and component is the salesforce item of what it means
+  const ITEM = { check1: "check-pass", check2: "check-warn", check3: "org-cloud", jwt: "permission-set", quick: "lwc", v1: "custom-field", v2: "lwc", v3: "record" };
+  const POWER = (id, color, glyph) => ({ id, model: ITEM[id], color, glyph, sign: t("s_" + id) });
 
   // Part 1: the three checks worth checking
   part(0, 0xffb400, "arch0");
@@ -364,7 +368,7 @@ export function createWorld(ctx) {
   part(18, 0x032d60, "arch2");
   const p3 = { block: LOOKS.prod, coin: COIN };
   L.riff(18, "--..", p3);
-  L.power(18 * BAR + 2, { id: "jwt2", color: SLDS.navy, glyph: "lock", sign: "helios-prod" }, true);
+  L.power(18 * BAR + 2, { id: "jwt2", model: "permission-set", color: SLDS.navy, glyph: "lock", sign: "helios-prod" }, true);
   L.riff(19, "-...", p3);
   if (manualOk) {
     L.manual(20 * BAR, { header: t("stopHeader"), button: t("stopButton"), id: "prod" });
@@ -461,14 +465,13 @@ export function createWorld(ctx) {
     level: L,
     palette: [0x9050e9, 0xe3066a, 0xffb400, 0x06a59a, 0x1b96ff, 0x2e844a],
     scenery: SCENERY,
-    coinModels: { note: "coin-gold", ok: "star" },
-    // The release: a rocket, its parts stacked, that takes off when the world is done
-    finish: [
-      { name: "rocket_finsA", width: 1.9, stack: true },
-      { name: "rocket_fuelA", width: 1.5, stack: true },
-      { name: "rocket_topA", width: 1.5, stack: true },
-      { name: "machine_generatorLarge", height: 1.6, x: 3.2, z: -1.4 }
-    ],
+    coinModels: { note: ["custom-field", "apex", "flow", "permission-set", "lwc"], ok: "check-pass" },
+    pitModel: "check-fail",
+    checkpointModel: "check-pass",
+    // The release: the rocket takes off when the world is done, past the Cloudity logo
+    // (the shell shows the course badge itself, beside its celebration card)
+    finish: [{ name: "rocket", height: 3.6 }],
+    finishLine: { name: "cloudity-logo", height: 1.3 },
     callbacks: {
       onPower(power) {
         const toast = { check1: "p_check1", check2: "p_check2", check3: "p_check3", jwt: "p_jwt", jwt2: "p_jwt2", quick: "p_quick", v1: "p_v1", v2: "p_v2", v3: "p_v3" }[power.id];

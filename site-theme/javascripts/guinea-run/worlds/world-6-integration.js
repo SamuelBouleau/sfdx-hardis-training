@@ -22,14 +22,16 @@ import { melody } from "../core/music.js";
 import { SLDS } from "../core/painter.js";
 
 export const PADS = ["jump"];
-// Kenney packs: coins, springs, flags and spikes; trees and bushes; the machines of the org
-export const MODELS = ["platform", "nature", "space"];
+// The salesforce items (components, checks, runners, orgs, the Cloudity logo), the Kenney
+// springs, and trees and bushes far behind
+export const MODELS = ["salesforce", "platform", "nature"];
 
-// Behind the track: bushes, trees, then the machines of integration, every row on the beat
+// Behind the track: trees, then the CI runners and the orgs, every row on the beat
 const SCENERY = [
-  { names: ["plant_bush", "flower_redA", "mushroom_red"], z: -2.5, every: 2.4, height: 0.75, bounce: 0.14 },
   { names: ["tree_default", "tree_oak", "tree_pineRoundA"], z: -4.6, depth: 1.6, every: 5.2, height: 3.2, bounce: 0.05 },
-  { names: ["machine_generator", "satelliteDish", "machine_wireless"], z: -6.9, every: 13, height: 2.3, bounce: 0.03, turn: 0.6 }
+  // The CI runners of the pipeline, along the track, and the orgs in the sky
+  { names: ["ci-runner"], z: -6.9, every: 9, height: 2.3, bounce: 0.04, turn: 0.4 },
+  { names: ["org-cloud"], y: 7.5, rise: 2.5, z: -15, every: 19, height: 2.6, bounce: 0.02, turn: 0.3 }
 ];
 
 const SONG = {
@@ -341,7 +343,7 @@ export function createWorld(ctx) {
   L.music(2 * BAR, "verse");
   const p1 = { block: LOOKS.auth, coin: COIN };
   ["..--", "----", "x.--", "x.x.", "X.--", "x-.."].forEach((p, i) => L.riff(i, p, p1));
-  L.power(5 * BAR + 3, { id: "authurl", color: SLDS.navy, glyph: "lock", sign: t("s_authurl") }, true);
+  L.power(5 * BAR + 3, { id: "authurl", model: "permission-set", color: SLDS.navy, glyph: "lock", sign: t("s_authurl") }, true);
 
   // Part 2: the package, about sixty components for one file
   L.checkpoint(6 * BAR);
@@ -381,7 +383,7 @@ export function createWorld(ctx) {
   L.music(22 * BAR, "chorus");
   const p4 = { block: LOOKS.tests, coin: COIN };
   L.riff(22, "-.--", p4);
-  L.power(22 * BAR + 1, { id: "quick", color: SLDS.purple, glyph: "bolt", sign: t("s_quick") });
+  L.power(22 * BAR + 1, { id: "quick", model: "rocket", color: SLDS.purple, glyph: "bolt", sign: t("s_quick") });
   for (const bar of [23, 24]) {
     for (const beat of [0, 2]) {
       L.block(bar * BAR + beat, LOOKS.tests, { convert: OK });
@@ -392,7 +394,7 @@ export function createWorld(ctx) {
   L.riff(25, "----", p4);
   L.checkpoint(26 * BAR);
   L.riff(26, "..--", p4);
-  L.power(26 * BAR + 1, { id: "log", color: SLDS.navy, glyph: "log", sign: t("s_log") });
+  L.power(26 * BAR + 1, { id: "log", model: "record", color: SLDS.navy, glyph: "log", sign: t("s_log") });
   L.fog(26 * BAR + 2, 33 * BAR);
   L.music(27 * BAR, "verse");
   const pf = { block: LOOKS.fog, coin: COIN };
@@ -539,13 +541,14 @@ export function createWorld(ctx) {
     level: L,
     palette: [0x06a59a, 0x9050e9, 0x2e844a, 0xfe9339, 0x1b96ff, 0xe3066a],
     scenery: SCENERY,
-    // The notes are gold coins, the components of the package jewels, what the backfill and Quick Deploy free stars
-    coinModels: { note: "coin-gold", comp: "jewel", ok: "star" },
-    // helios-integration: a glass hangar and its big dish
-    finish: [
-      { name: "hangar_roundGlass", width: 3.2 },
-      { name: "satelliteDish_large", height: 2.4, x: 3.2, z: -1 }
-    ],
+    // The notes and the package are its components, in turn; what the backfill and Quick Deploy free passes
+    coinModels: { note: ["custom-field", "apex", "flow", "permission-set", "lwc"], comp: ["custom-field", "apex", "flow", "permission-set", "lwc"], ok: "check-pass" },
+    // A gap is a failed check to fall in; a checkpoint is a check that passed
+    pitModel: "check-fail",
+    checkpointModel: "check-pass",
+    // helios-integration: the org the deployment reaches, and the Cloudity logo on the finish line
+    finish: [{ name: "org-cloud", height: 3 }],
+    finishLine: { name: "cloudity-logo", height: 1.3 },
     callbacks: {
       onCoin(coin) {
         if (coin.id === "comp") {
