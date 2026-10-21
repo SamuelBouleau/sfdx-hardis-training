@@ -44,13 +44,21 @@ const GRAVITY = 20;
 const FLIGHT_S = 0.55;
 const SORT_S = 14;
 const PILE_MAX = 96;
+// The belt speeds up with progress, never with time spent: each US-014 file
+// staged or left out, and the reset, is one step of PACE_STEPS. The pace eases
+// in from 1 to 1 + PACE_GAIN, and a mistake slows it a notch for a while.
+const BASE_SPEED = 2.7;
+const PACE_GAIN = 0.38;
+const PACE_STEPS = 7;
+const MERCY_S = 5;
+const MERCY_DROP = 0.15;
 
 // The four components of US-014, in Lab 1.5's words
 const STORY = [
-  { id: "field", type: "CustomField", name: "Installation__c.Panels_Required__c", min: 7 },
-  { id: "layout", type: "Layout", name: "Installation__c-Installation Layout", min: 6 },
-  { id: "crew", type: "PermissionSet", name: "Helios_Delivery_Crew", min: 5 },
-  { id: "manager", type: "PermissionSet", name: "Helios_Delivery_Manager", min: 5 }
+  { id: "field", type: "CustomField", name: "Installation__c.Panels_Required__c", sign: "Panels_Required__c", min: 7 },
+  { id: "layout", type: "Layout", name: "Installation__c-Installation Layout", sign: "Installation Layout", min: 6 },
+  { id: "crew", type: "PermissionSet", name: "Helios_Delivery_Crew", sign: "Crew", min: 5 },
+  { id: "manager", type: "PermissionSet", name: "Helios_Delivery_Manager", sign: "Manager", min: 5 }
 ];
 
 // Everything else in Recent Changes: the Helios app Lab 1.2 deployed under
@@ -111,6 +119,8 @@ export const TEXTS = {
     coachFlood: "Catch Reset, the purple branch!",
     coachBack: "Your files are back: stage them again",
     lensHint: "In your lane",
+    faster: "Faster!",
+    notUs: "not US-014",
     itemBranch: "US-014 branch",
     itemPr: "Pull Request next",
     selectAllShort: "Select all",
@@ -183,6 +193,8 @@ export const TEXTS = {
     coachFlood: "Attrapez Reset, la branche violette !",
     coachBack: "Vos fichiers reviennent : stagez-les à nouveau",
     lensHint: "Dans votre couloir",
+    faster: "Plus vite !",
+    notUs: "pas US-014",
     itemBranch: "Branche US-014",
     itemPr: "Pull Request ensuite",
     selectAllShort: "Tout sélectionner",
@@ -535,7 +547,7 @@ export function createWorld(ctx) {
   function cardMaterial(def) {
     if (!cardMaterials.has(def.id)) {
       const when = def.min ? t("ago", { n: def.min }) : t("lab12");
-      const material = paint.material("w2-card:" + def.id, 512, 288, (c, w, h) => drawCrateCard(c, w, h, def, owner + " · " + when, Boolean(def.min)), { emissive: 0x1a1a1a });
+      const material = paint.material("w2-card:" + def.id, 512, 288, (c, w, h) => drawCrateCard(c, w, h, def, owner + " · " + when, Boolean(def.min), STORY.includes(def), t("notUs")), { emissive: 0x1a1a1a });
       cardMaterials.set(def.id, material);
     }
     return cardMaterials.get(def.id);
@@ -575,9 +587,31 @@ export function createWorld(ctx) {
     }
   }
 
+  // What to take must show from far away, even on a phone without bloom: a
+  // bright shell around the US-014 crates (green, gold for the one in your lane,
+  // above 1 so the bloom catches it) and a sign with the short name above them.
+  // The noise is grey, with a small "not US-014" stamp.
+  const haloGeometry = paint.geometry("w2-halo", () => new THREE.BoxGeometry(CRATE.w * 1.24, CRATE.h * 1.3, CRATE.d * 1.3));
+  const storyHalo = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.25, 1.6, 0.55), side: THREE.BackSide, toneMapped: false });
+  const laneHalo = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.8, 1.45, 0.2), side: THREE.BackSide, toneMapped: false });
+  disposables.push(storyHalo, laneHalo);
+  const noiseSide = paint.plain(0x9aa1ab, { roughness: 0.7 });
+  const storySigns = {};
+  for (const def of STORY) {
+    const type = TYPES[def.type];
+    storySigns[def.id] = paint.sign("w2-take-" + def.id, def.sign, { color: type.color, glyph: "check", height: engine.portrait ? 0.05 : 0.045, screen: true });
+  }
+
   const pool = [];
   for (let i = 0; i < POOL; i++) {
     const group = new THREE.Group();
+    const halo = new THREE.Mesh(haloGeometry, storyHalo);
+    halo.visible = false;
+    group.add(halo);
+    const sign = new THREE.Sprite(storySigns.field.material);
+    sign.position.y = CRATE.h / 2 + 0.5;
+    sign.visible = false;
+    group.add(sign);
     const box = crateParts.length
       ? new THREE.Mesh(labelGeometry, crateSide)
       : new THREE.Mesh(crateGeometry, [crateSide, crateSide, crateSide, crateBottom, crateSide, crateSide]);
@@ -589,7 +623,7 @@ export function createWorld(ctx) {
     group.add(tick);
     group.visible = false;
     root.add(group);
-    pool.push({ group, box, tick, state: "free" });
+    pool.push({ group, box, tick, halo, sign, state: "free" });
   }
 
   // The special ones, built once each: the note, two power-ups, the header row
@@ -691,6 +725,9 @@ export function createWorld(ctx) {
   let endTimer = 0;
   let shake = 0;
   let hit = 0;
+  let steps = 0;
+  let pace = 1;
+  let mercy = 0;
   let pop = 0;
   let turn = 0;
   let crates = [];
@@ -703,6 +740,7 @@ export function createWorld(ctx) {
     ctx.setData("staged", staged.length);
     ctx.setData("flood", flood);
     ctx.setData("phase", phase);
+    ctx.setData("pace", pace.toFixed(2));
   }
 
   /* ---------- HTML: the Staged Changes panel and the end cards ---------- */
@@ -753,6 +791,7 @@ export function createWorld(ctx) {
   lensHint.setAttribute("aria-hidden", "true");
   hud.layer.appendChild(lens);
   let lensFor = null;
+  let tipBar = null;
 
   // Where a jump stages: a bright zone at the end of the guinea pig's lane
   const zone = new THREE.Mesh(
@@ -780,11 +819,10 @@ export function createWorld(ctx) {
     lensName.textContent = entry.def.name;
     lensWhen.textContent = owner + " · " + (entry.def.min ? t("ago", { n: entry.def.min }) : t("lab12"));
     lensWhen.classList.toggle("is-recent", Boolean(entry.def.min));
-    // On a phone it sits under the goal line, clear of the guinea pig
-    const goalLine = hud.layer.parentElement && hud.layer.parentElement.querySelector(".gr-goal");
-    const top = window.innerWidth <= 600 && goalLine && !goalLine.hidden ? goalLine.getBoundingClientRect().bottom + 14 : 0;
-    lens.style.top = top ? top + "px" : "";
-    lens.style.bottom = top ? "auto" : "";
+    // On a phone it is one line, between the guinea pig and the Staged Changes
+    // panel: the far end of the belt, where the crates come from, stays clear
+    const narrow = window.innerWidth <= 600 && !panel.hidden && !panel.classList.contains("is-done");
+    lens.style.bottom = narrow ? panel.offsetHeight + parseFloat(window.getComputedStyle(panel).bottom || "0") + 14 + "px" : "";
     lens.hidden = false;
   }
   let cardStep = null;
@@ -793,10 +831,33 @@ export function createWorld(ctx) {
 
   /** A mistake. On the last attempt the result card comes up: the world's own cards step aside. */
   function lose(title, tip) {
+    mercy = MERCY_S;
     if (ctx.loseAttempt(title, tip) <= 0) {
       card.hidden = true;
       panel.hidden = true;
     }
+  }
+
+  /** One step of progress: the target pace climbs, with a word when it does. */
+  function progressed() {
+    steps = Math.min(PACE_STEPS, steps + 1);
+    if (steps > 1 && steps < PACE_STEPS + 1 && phase === "sort") {
+      // After the toast of the move that earned it
+      window.setTimeout(() => ctx.playing && phase === "sort" && hud.toast(t("faster"), "power"), 1300);
+    }
+  }
+
+  function stepPace(dt) {
+    const p = steps / PACE_STEPS;
+    // Ease in: gentle early, livelier in the last stretch
+    let target = 1 + PACE_GAIN * p * p * (3 - 2 * p);
+    mercy = Math.max(0, mercy - dt);
+    if (mercy > 0) {
+      target = Math.max(1, target - MERCY_DROP);
+    }
+    // Never a jump: the belt eases toward its pace
+    pace += (target - pace) * Math.min(1, dt * 0.8);
+    ctx.setData("pace", pace.toFixed(2));
   }
 
   function renderPanel() {
@@ -826,7 +887,16 @@ export function createWorld(ctx) {
       return null;
     }
     const face = cardMaterial(def);
-    const side = typeSides[def.type] || crateSide;
+    const story = role === "story";
+    const side = story ? typeSides[def.type] || crateSide : noiseSide;
+    entry.halo.visible = story;
+    entry.halo.material = storyHalo;
+    entry.sign.visible = story;
+    if (story) {
+      const template = storySigns[def.id];
+      entry.sign.material = template.material;
+      entry.sign.scale.copy(template.scale);
+    }
     entry.box.material = crateParts.length ? face : [side, side, face, crateBottom, face, side];
     entry.tick.visible = role === "flood";
     entry.group.visible = true;
@@ -941,6 +1011,7 @@ export function createWorld(ctx) {
     if (entry.role === "story") {
       staged.push(entry.def.id);
       committed += 1;
+      progressed();
       setPile(staged.map((id) => (STORY.some((s) => s.id === id) ? "story" : "flood")));
       ctx.collect(100, t("staged", { name: entry.def.name }));
       if (pig.hop) {
@@ -979,6 +1050,7 @@ export function createWorld(ctx) {
       ctx.points(-50);
       if (passes[entry.def.id] >= 2) {
         skipped.push(entry.def);
+        progressed();
         hud.toast(t("leftOut", { name: entry.def.name }), "bad");
       } else {
         storyQueue.push(entry.def);
@@ -1082,6 +1154,7 @@ export function createWorld(ctx) {
     staged = [];
     committed = 0;
     flood = "done";
+    progressed();
     floodLeft = 0;
     storyTimer = 1.2;
     sortAt = elapsed + 3;
@@ -1267,7 +1340,8 @@ export function createWorld(ctx) {
     }
     if (phase !== "end") {
       elapsed += dt;
-      speed = Math.min(2.7 + elapsed * 0.022, 4.8);
+      stepPace(dt);
+      speed = BASE_SPEED * pace;
     } else {
       speed = Math.max(0, speed - dt * 5);
       endTimer -= dt;
@@ -1282,7 +1356,8 @@ export function createWorld(ctx) {
         rowTimer -= dt;
         if (rowTimer <= 0) {
           spawnRow();
-          rowTimer = Math.max(0.95, 1.7 - elapsed * 0.008);
+          // The gap between rows grows with the speed: a crate still gives you well over half a second
+          rowTimer = Math.max(1.2, 1.7 / Math.sqrt(pace));
         }
       } else {
         stepFlood(dt);
@@ -1379,7 +1454,7 @@ export function createWorld(ctx) {
     const pulse = 0.5 + 0.5 * Math.sin(time * 6);
     for (const [id, material] of cardMaterials) {
       const def = STORY.find((s) => s.id === id) || NOISE.find((n) => n.id === id);
-      if (lit && def.min) {
+      if (lit && STORY.includes(def)) {
         material.emissive.setRGB(0.02, 0.1 + 0.1 * pulse, 0.03);
         material.color.setRGB(1, 1, 1);
       } else if (lit) {
@@ -1444,6 +1519,18 @@ export function createWorld(ctx) {
     }
     const near = crates.filter((c) => c.state === "belt" && c.lane === lane && c.def && c.z > -9).sort((a, b) => b.z - a.z)[0];
     showLens(near || null);
+    // The shell's Why? box sits where the lens is: the lens steps aside while it shows
+    tipBar = tipBar || (hud.layer.parentElement && hud.layer.parentElement.querySelector(".gr-tipbar"));
+    lens.classList.toggle("is-hushed", Boolean(tipBar && tipBar.classList.contains("is-shown")));
+    for (const entry of crates) {
+      if (entry.state !== "belt" || !entry.def) {
+        continue;
+      }
+      const inLane = entry === near;
+      entry.halo.visible = inLane || entry.role === "story";
+      entry.halo.material = inLane ? laneHalo : storyHalo;
+      entry.group.scale.setScalar(inLane ? 1.06 + 0.04 * Math.sin(time * 8) : 1);
+    }
     pop = Math.max(0, pop - 0.016);
     basket.scale.set(1 + pop * 0.4, 1 - pop * 0.3, 1 + pop * 0.4);
   }
@@ -1560,7 +1647,8 @@ export function createWorld(ctx) {
     eye.lerp(wantedEye, ease);
     focus.lerp(wantedFocus, ease);
     const jitter = shake > 0 && engine.motion ? (Math.random() - 0.5) * shake : 0;
-    camera.fov = portrait ? 70 : 58;
+    // A few degrees wider as the belt speeds up: the speed is felt
+    camera.fov = (portrait ? 70 : 58) + (phase === "sort" ? (pace - 1) * 10 : 0);
     camera.updateProjectionMatrix();
     camera.position.set(eye.x + jitter, eye.y, eye.z);
     camera.lookAt(focus);
@@ -1650,31 +1738,58 @@ export function createWorld(ctx) {
 
 /* ---------- Drawing ---------- */
 
-/** A crate's label: a coloured band with the type, the API name big, who changed it and when. */
-function drawCrateCard(c, w, h, def, footer, recent) {
+/**
+ * A crate's label. A US-014 crate: its type colour, the same letter tile as the
+ * Staged Changes list, big, and the name. Any other crate: grey, smaller, with
+ * a red "not US-014" stamp.
+ */
+function drawCrateCard(c, w, h, def, footer, recent, story, notUs) {
   const type = TYPES[def.type];
-  rounded(c, 4, 4, w - 8, h - 8, 22);
-  c.fillStyle = SLDS.white;
-  c.fill();
-  c.save();
-  rounded(c, 4, 4, w - 8, h - 8, 22);
-  c.clip();
-  c.fillStyle = type.color;
-  c.fillRect(0, 0, w, 92);
-  c.restore();
-  glyph(c, type.glyph, 54, 48, 74, SLDS.white);
-  c.textAlign = "left";
-  c.textBaseline = "middle";
-  c.fillStyle = SLDS.white;
-  fitText(c, def.type, 100, 50, w - 124, 44, "800");
   const main = splitName(def.name)[1];
-  c.fillStyle = SLDS.navy;
+  rounded(c, 4, 4, w - 8, h - 8, 22);
+  c.fillStyle = story ? SLDS.white : "#E4E6EA";
+  c.fill();
+  c.textBaseline = "middle";
+  if (story) {
+    rounded(c, 18, 18, 150, 150, 22);
+    c.fillStyle = type.color;
+    c.fill();
+    c.fillStyle = SLDS.white;
+    c.textAlign = "center";
+    fitText(c, type.abbr, 93, 98, 130, 104, "800");
+    c.fillStyle = type.color;
+    c.textAlign = "left";
+    fitText(c, def.type, 186, 56, w - 206, 40, "800");
+    c.fillStyle = SLDS.navy;
+    fitText(c, main, 186, 124, w - 206, 56, "800");
+    c.fillStyle = SLDS.success;
+    c.textAlign = "center";
+    fitText(c, "US-014 · " + footer, w / 2, h - 52, w - 40, 40, "800");
+    c.lineWidth = 12;
+    c.strokeStyle = type.color;
+    rounded(c, 6, 6, w - 12, h - 12, 22);
+    c.stroke();
+    return;
+  }
+  c.fillStyle = "#7B828C";
+  c.textAlign = "left";
+  fitText(c, def.type, 28, 52, w - 56, 32, "700");
+  fitText(c, main, 28, 112, w - 56, 40, "700");
+  fitText(c, footer, 28, 166, w - 56, 28, "600");
+  // The stamp: what this crate is not
+  c.save();
+  c.translate(w - 150, h - 58);
+  c.rotate(-0.12);
+  rounded(c, -120, -32, 240, 64, 14);
+  c.lineWidth = 6;
+  c.strokeStyle = SLDS.error;
+  c.stroke();
+  c.fillStyle = SLDS.error;
   c.textAlign = "center";
-  fitText(c, main, w / 2, 160, w - 40, 64, "800");
-  c.fillStyle = recent ? SLDS.success : "#5C5C5C";
-  fitText(c, footer, w / 2, h - 42, w - 40, 38, "800");
-  c.lineWidth = 8;
-  c.strokeStyle = type.color;
+  fitText(c, notUs, 0, 2, 220, 36, "800");
+  c.restore();
+  c.lineWidth = 6;
+  c.strokeStyle = "#A9AFB8";
   rounded(c, 4, 4, w - 8, h - 8, 22);
   c.stroke();
 }
@@ -1877,6 +1992,9 @@ export const CSS = `
   transform: translateX(-50%);
   pointer-events: none;
 }
+.guinea-run .gr-w2-lens.is-hushed {
+  visibility: hidden;
+}
 .guinea-run .gr-w2-lens[hidden] {
   display: none;
 }
@@ -2078,12 +2196,25 @@ export const CSS = `
   .guinea-run .gr-w2-lens {
     left: 16px;
     right: 16px;
+    gap: 8px;
     max-width: none;
+    padding: 6px 10px 4px 8px;
     transform: none;
   }
+  .guinea-run .gr-w2-lens i {
+    min-width: 32px;
+    padding: 4px 3px;
+    font-size: 13px;
+  }
+  .guinea-run .gr-w2-lens b,
+  .guinea-run .gr-w2-lens em {
+    display: none;
+  }
   .guinea-run .gr-w2-lens-name {
-    overflow-wrap: break-word;
-    font-size: 16px;
+    overflow: hidden;
+    font-size: 15px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .guinea-run .gr-w2-staged li {
     font-size: 13px;
