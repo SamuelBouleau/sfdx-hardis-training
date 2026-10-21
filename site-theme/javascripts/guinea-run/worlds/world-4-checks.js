@@ -20,6 +20,8 @@
 import { SLDS, pictureBox, rounded, font, fitText, glyph } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump", "confirm"];
+// The Kenney packs: the CI machines behind the Pull Request, the yard along the lanes
+export const MODELS = ["space", "platform"];
 
 const LANES = [-2.2, 0, 2.2];
 const SPAWN_Z = -22;
@@ -398,9 +400,50 @@ export function createWorld(ctx) {
     [-3.3, 0xffb400],
     [3.3, 0x9050e9]
   ]) {
-    const post = new THREE.Mesh(sourcePosts, paint.plain(colour));
-    post.position.set(x, 1.4, SPAWN_Z - 1.5);
-    root.add(post);
+    const gate = model("gate_simple", { height: 2.9 }, x, SPAWN_Z - 1.6, 0);
+    if (!gate) {
+      const post = new THREE.Mesh(sourcePosts, paint.plain(colour));
+      post.position.set(x, 1.4, SPAWN_Z - 1.5);
+      root.add(post);
+    }
+  }
+  buildYard();
+
+  /** A Kenney model placed in the world, or null when the pack did not load. */
+  function model(name, size, x, z, turn, shadows) {
+    const copy = ctx.models && ctx.models.get(name, Object.assign({ shadows: Boolean(shadows) }, size));
+    if (!copy) {
+      return null;
+    }
+    copy.position.set(x, 0, z);
+    copy.rotation.y = turn || 0;
+    root.add(copy);
+    return copy;
+  }
+
+  // Off the lanes only: nothing here is in the way of a finding or a fix
+  function buildYard() {
+    // The CI servers the two checks run on, behind the Pull Request
+    model("machine_generator", { height: 1.0 }, -5.2, 2.4, 0.6, true);
+    model("machine_wireless", { height: 1.2 }, 5.1, 2.6, -0.6, true);
+    model("satelliteDish_large", { height: 1.8 }, -5.4, -1.2, 0.8);
+    model("satelliteDish", { height: 1.2 }, 5.3, -0.6, -0.9);
+    model("structure", { height: 2.4 }, 5.6, -8, -0.3);
+    model("machine_barrel", { height: 0.9 }, -5.0, -5, 0.4);
+    model("pipe_straight", { height: 0.5 }, -4.6, -12, Math.PI / 2);
+    model("barrels", { height: 0.9 }, 5.1, -15, 0.3);
+    // A friendly yard along the edges
+    [
+      ["crate", -4.4, -2.5, 0.2],
+      ["barrel", 4.4, -4, 0],
+      ["crate-strong", 4.5, -11, 0.5],
+      ["crate", -4.5, -17, 0.9],
+      ["barrel", -4.4, -9, 0]
+    ].forEach(([name, x, z, turn]) => model(name, { height: 0.75 }, x, z, turn));
+    for (const z of [-6, -14]) {
+      model("fence-straight", { width: 2.2 }, -4.1, z, Math.PI / 2);
+      model("fence-straight", { width: 2.2 }, 4.1, z + 2, Math.PI / 2);
+    }
   }
   // Lane markers on the ground, lit under the guinea pig
   const markerGeometry = paint.geometry("w4-marker", () => new THREE.PlaneGeometry(1.9, 1.2));
@@ -620,6 +663,14 @@ export function createWorld(ctx) {
     if (engine.settings.shadows) {
       card.castShadow = true;
     }
+    let coin = null;
+    if (def.tone === "golden") {
+      coin = ctx.models && ctx.models.get("coin-gold", { height: 0.5, shadows: false });
+      if (coin) {
+        coin.position.y = 1.9;
+        group.add(coin);
+      }
+    }
     // Three words at most, readable at any distance; it shows as the card comes near
     const chip = chipOf(kind);
     chip.position.y = 1.35;
@@ -628,7 +679,7 @@ export function createWorld(ctx) {
     const z = o.z !== undefined ? o.z : SPAWN_Z;
     group.position.set(LANES[lane], 0, z);
     root.add(group);
-    const object = { kind, def, lane, z, hp: def.hp || 1, age: 0, cloned: Boolean(o.clone), label: o.label, title: def.title || t("chip_" + kind), mesh: group, card, chip, feet, dying: 0, dead: false, flash: 0, phase: random() * 6 };
+    const object = { kind, def, lane, z, hp: def.hp || 1, age: 0, cloned: Boolean(o.clone), label: o.label, title: def.title || t("chip_" + kind), mesh: group, card, chip, coin, feet, dying: 0, dead: false, flash: 0, phase: random() * 6 };
     objects.push(object);
     return object;
   }
@@ -990,6 +1041,9 @@ export function createWorld(ctx) {
     }
     kill(o, true);
     player.hop = 0.22;
+    if (pig.hop) {
+      pig.hop();
+    }
     ctx.collect(o.def.points || 50, t(o.def.fix));
     // The full message of a finding, once, the first time one is stopped
     if (!seenDetail[o.kind]) {
@@ -1083,6 +1137,9 @@ export function createWorld(ctx) {
       o.feet[1].position.z = -step * 0.12;
       if (o.def.tone === "golden") {
         o.card.rotation.y = Math.sin(clock * 5) * 0.4;
+        if (o.coin) {
+          o.coin.rotation.y = clock * 4;
+        }
       }
       // A query in a loop runs again behind itself, while it lives
       if (o.def.clones && !o.cloned && o.age > CLONE_AFTER && o.z < -4) {
@@ -1424,7 +1481,7 @@ export function createWorld(ctx) {
     pig.object.position.set(player.x, height, PIG_Z);
     // A bit bigger and turned three quarters, so the star is not only a back
     pig.object.scale.setScalar(1.35);
-    pig.object.rotation.set(0, 0.55 - player.x * 0.08, 0);
+    pig.object.rotation.set(0, 0.35 - player.x * 0.06, 0);
     pig.shadow.position.set(player.x, 0.012, PIG_Z + 0.05);
     pig.state = { running: Math.abs(dx) > 0.05, airborne: height > 0.01, ducking: player.stun > 0, speed: 4, height };
     markers.forEach((marker, i) => {
