@@ -153,7 +153,7 @@ export const TEXTS = {
     goldenTitle: "Hardcoded Id",
     goldenDetail: "100% coverage, deploys fine",
     checksGreen: "Both checks green",
-    ownMerged: "Squash and merge: US-027 merged into integration",
+    ownMerged: "Squash and merge: US-027 merged into the integration branch",
     prInto: "into integration from US-027-schedule-by-availability",
     mariiaInto: "Mariia Pyvovarchuk wants to merge into integration",
     running: "running",
@@ -187,16 +187,16 @@ export const TEXTS = {
     comment: "Total_Capacity_kW__c comes off the layout with this change, and the description does not say so. I think it went missing with the move: can you put it back in the second column, under the cap, read only?",
     mergeTitle: "Merged too early",
     mergeTip: "Green checks mean this will deploy, not this is right. Read the diff, comment on the removed line and ask for the change. If you merged too early: Restore branch, and review the fix in a new Pull Request.",
-    mergedBody: "Total_Capacity_kW__c is off the layout in integration, and the merge deleted Mariia's branch, which her fix starts from.",
+    mergedBody: "Total_Capacity_kW__c is off the layout in the helios-integration org, and the merge deleted Mariia's branch, which her fix starts from.",
     mariia_open: "US-052 is open, and its checks are green: it waits for you.",
     mariia_fix: "Good catch, it went missing with the move. Total_Capacity_kW__c is back in the second column, under the cap, read only.",
     mariia_merged: "You merged it? Planners will look for the capacity on Monday morning.",
-    fixMerged: "Squash and merge: US-052 merged into integration",
+    fixMerged: "Squash and merge: US-052 merged into the integration branch",
     rerun: "Her new commit: the checks run again",
     faster: "Faster!",
     coverageShort: "Coverage still under 80%: in a real project the check would refuse it",
     missedCoverage: "The coverage stayed at {{coverage}}%: in Lab 2.5 the deployment check refuses anything under 80%, and the two tests of schedulableOn are what lets it through.",
-    missedMerge: "You merged US-052 before the fix: in Lab 3.2 that takes Total_Capacity_kW__c off the layout in integration, and Restore branch is the way back."
+    missedMerge: "You merged US-052 before the fix: in Lab 3.2 that takes Total_Capacity_kW__c off the layout in the helios-integration org, and Restore branch is the way back."
   },
   fr: {
     intro: "Les trouvailles des contrôles de votre Pull Request marchent sur elle par trois couloirs. Arrêtez les erreurs, gardez la couverture au-dessus de 80 %, puis relisez la Pull Request de Mariia avant de la merger.",
@@ -282,7 +282,7 @@ export const TEXTS = {
     goldenTitle: "Id en dur",
     goldenDetail: "100 % de couverture, se déploie bien",
     checksGreen: "Les deux contrôles au vert",
-    ownMerged: "Squash and merge : US-027 mergée dans integration",
+    ownMerged: "Squash and merge : US-027 mergée dans la branch integration",
     prInto: "vers integration depuis US-027-schedule-by-availability",
     mariiaInto: "Mariia Pyvovarchuk veut merger dans integration",
     running: "en cours",
@@ -316,16 +316,16 @@ export const TEXTS = {
     comment: "Total_Capacity_kW__c comes off the layout with this change, and the description does not say so. I think it went missing with the move: can you put it back in the second column, under the cap, read only?",
     mergeTitle: "Mergée trop tôt",
     mergeTip: "Des contrôles verts veulent dire que ça se déploiera, pas que c'est juste. Lisez le diff, commentez la ligne supprimée et demandez la correction. Mergé trop tôt : Restore branch, puis relisez la correction dans une nouvelle Pull Request.",
-    mergedBody: "Total_Capacity_kW__c n'est plus sur la présentation de page dans integration, et le merge a supprimé la branche de Mariia, d'où part sa correction.",
+    mergedBody: "Total_Capacity_kW__c n'est plus sur la présentation de page dans l'org helios-integration, et le merge a supprimé la branch de Mariia, d'où part sa correction.",
     mariia_open: "US-052 est ouverte, et ses contrôles sont verts : elle vous attend.",
     mariia_fix: "Bien vu, il s'est perdu dans le déplacement. Total_Capacity_kW__c est revenu dans la deuxième colonne, sous le plafond, en lecture seule.",
     mariia_merged: "Tu l'as mergée ? Les planificateurs chercheront la capacité lundi matin.",
-    fixMerged: "Squash and merge : US-052 mergée dans integration",
+    fixMerged: "Squash and merge : US-052 mergée dans la branch integration",
     rerun: "Son nouveau commit : les contrôles repartent",
     faster: "Plus vite !",
     coverageShort: "Couverture toujours sous 80 % : sur un vrai projet, le contrôle la refuserait",
     missedCoverage: "La couverture est restée à {{coverage}} % : au Lab 2.5, le contrôle de déploiement refuse tout ce qui est sous 80 %, et ce sont les deux tests de schedulableOn qui la font passer.",
-    missedMerge: "Vous avez mergé US-052 avant la correction : au Lab 3.2, cela retire Total_Capacity_kW__c de la présentation de page dans integration, et Restore branch est le chemin du retour."
+    missedMerge: "Vous avez mergé US-052 avant la correction : au Lab 3.2, cela retire Total_Capacity_kW__c de la présentation de page dans l'org helios-integration, et Restore branch est le chemin du retour."
   }
 };
 

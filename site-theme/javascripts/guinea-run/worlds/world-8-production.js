@@ -21,8 +21,8 @@ import { SLDS } from "../core/painter.js";
 
 export const PADS = ["jump"];
 // The salesforce items (components, checks, runners, orgs, the rocket, the Cloudity logo and the
-// course badge), the Kenney springs, and trees and bushes far behind
-export const MODELS = ["salesforce", "platform", "nature"];
+// course badge), the Kenney springs, trees and bushes far behind, and the bonus vegetables
+export const MODELS = ["salesforce", "platform", "nature", "vegetables"];
 
 const SCENERY = [
   { names: ["tree_default", "tree_oak", "tree_pineRoundA"], z: -4.6, depth: 1.6, every: 5.2, height: 3.2, bounce: 0.05 },
@@ -67,7 +67,7 @@ export const TEXTS = {
     goal0: "Jump for the three checks worth checking",
     goal1: "Rehearse in preprod: learn the riff, mistakes are free",
     goal1manual: "The first check stops red, on purpose: press Mark as done",
-    goal2: "The production Pull Request: read the check like it matters",
+    goal2: "The Pull Request to the main branch: read the check like it matters",
     goal3: "The same riff, for real. Watch for drift",
     goal4: "Verify in production: the new story, and an old one",
     coachRehearse: "preprod: the same riff as production, for free",
@@ -78,6 +78,7 @@ export const TEXTS = {
     s_check2: "Manual steps",
     s_check3: "Look at prod",
     s_jwt: "sf org login jwt",
+    s_jwt2: "helios-prod org",
     s_quick: "Quick Deploy",
     s_v1: "Panels Required",
     s_v2: "Timeline",
@@ -92,9 +93,9 @@ export const TEXTS = {
     s_dora: "DORA metrics",
     p_check1: "UAT signed off: somebody tested it and said yes",
     p_check2: "The manual steps of the release, known before you create anything",
-    p_check3: "helios-prod carries what the course seeded, nothing else yet",
+    p_check3: "The helios-prod org carries what the course seeded, nothing else yet",
     p_jwt: "sf org login jwt: the key of Lab 3.1 works",
-    p_jwt2: "sf org login jwt: the first JWT login into helios-prod",
+    p_jwt2: "sf org login jwt: the first JWT login into the helios-prod org",
     p_quick: "Quick Deploy. Apex tests: Already run during the validation",
     p_v1: "Panels Required: the crew sees how many panels a job needs",
     p_v2: "The timeline component still works",
@@ -128,7 +129,7 @@ export const TEXTS = {
     q0Ok: "Stopping on an unexpected deletion is the job",
     q0bTip: "A deletion in production is permanent and takes data with it. Stop, and find out what goes and who intended it.",
     q0cTip: "A re-run shows the same figure. The comment will not tell you what goes: destructiveChanges.xml and the diff will.",
-    mainGreen: "Process Deployment (sfdx-hardis) on main: green",
+    mainGreen: "Process Deployment (sfdx-hardis) on the main branch: green",
     doraTitle: "DORA metrics",
     doraPeriod: "main, Last 90 days",
     q1: "Your manager asks for your lead time. You quote:",
@@ -150,7 +151,7 @@ export const TEXTS = {
     info_checks: "You skipped {{n}} of the three checks of step 1: know the manual steps and look at production before you create anything.",
     info_verify: "You verified {{n}} of 3 things in production: the most common incident after a release is an old feature breaking.",
     info_quick: "You missed Quick Deploy: the validation already ran the tests.",
-    info_coins: "You picked up {{got}} of {{total}} notes."
+    info_coins: "You ate {{got}} of {{total}} vegetables."
   }),
   fr: Object.assign({}, MUSICAL_TEXTS.fr, {
     intro: "La recette UAT est validée. La release part en production ce soir : répétez le morceau en preprod, puis jouez-le pour de vrai.",
@@ -171,7 +172,7 @@ export const TEXTS = {
     goal0: "Sautez pour les trois contrôles qui valent la peine",
     goal1: "Répétez en preprod : apprenez le riff, les erreurs sont gratuites",
     goal1manual: "Le premier contrôle s'arrête en rouge, exprès : appuyez sur Mark as done",
-    goal2: "La Pull Request de production : lisez le contrôle comme si ça comptait",
+    goal2: "La Pull Request vers la branch main : lisez le contrôle comme si ça comptait",
     goal3: "Le même riff, pour de vrai. Attention à la dérive",
     goal4: "Vérifiez en production : la nouvelle story, et une ancienne",
     coachRehearse: "preprod : le même riff qu'en production, gratuitement",
@@ -182,6 +183,7 @@ export const TEXTS = {
     s_check2: "Étapes manuelles",
     s_check3: "Regarder la prod",
     s_jwt: "sf org login jwt",
+    s_jwt2: "org helios-prod",
     s_quick: "Quick Deploy",
     s_v1: "Panels Required",
     s_v2: "Timeline",
@@ -196,9 +198,9 @@ export const TEXTS = {
     s_dora: "Métriques DORA",
     p_check1: "UAT validée : quelqu'un a testé et a dit oui",
     p_check2: "Les étapes manuelles de la release, connues avant de créer quoi que ce soit",
-    p_check3: "helios-prod contient ce que le cours y a mis, rien d'autre pour l'instant",
+    p_check3: "L'org helios-prod contient ce que le cours y a mis, rien d'autre pour l'instant",
     p_jwt: "sf org login jwt : la clé du Lab 3.1 marche",
-    p_jwt2: "sf org login jwt : la première connexion JWT à helios-prod",
+    p_jwt2: "sf org login jwt : la première connexion JWT à l'org helios-prod",
     p_quick: "Quick Deploy. Apex tests: Already run during the validation",
     p_v1: "Panels Required : l'équipe voit combien de panneaux demande un chantier",
     p_v2: "Le composant timeline marche toujours",
@@ -232,7 +234,7 @@ export const TEXTS = {
     q0Ok: "S'arrêter sur une suppression inattendue, c'est le métier",
     q0bTip: "Une suppression en production est définitive et emporte des données avec elle. Arrêtez-vous, et cherchez ce qui part et qui l'a voulu.",
     q0cTip: "Relancer affiche le même chiffre. Le commentaire ne dit pas ce qui part : destructiveChanges.xml et le diff, si.",
-    mainGreen: "Process Deployment (sfdx-hardis) sur main : vert",
+    mainGreen: "Process Deployment (sfdx-hardis) sur la branch main : vert",
     doraTitle: "Métriques DORA",
     doraPeriod: "main, Last 90 days",
     q1: "Votre manager demande votre lead time. Vous annoncez :",
@@ -254,7 +256,7 @@ export const TEXTS = {
     info_checks: "Vous avez sauté {{n}} des trois contrôles de l'étape 1 : connaissez les étapes manuelles et regardez la production avant de créer quoi que ce soit.",
     info_verify: "Vous avez vérifié {{n}} choses sur 3 en production : l'incident le plus courant après une release, c'est une ancienne fonctionnalité qui casse.",
     info_quick: "Vous avez raté le Quick Deploy : la validation a déjà exécuté les tests.",
-    info_coins: "Vous avez ramassé {{got}} notes sur {{total}}."
+    info_coins: "Vous avez mangé {{got}} légumes sur {{total}}."
   })
 };
 
@@ -323,7 +325,8 @@ export function createWorld(ctx) {
     tests: look("tests", SLDS.purple, "code", "s_quick", "o_tests", { group: "tests", sign: "" }),
     latemain: look("latemain", SLDS.warningDark, "warning", "s_late", "o_latemain", { signEvery: true })
   };
-  const COIN = { id: "note", color: "#E3066A", glyph: "star" };
+  // The bonus pickups on the beat: vegetables, as in world 0
+  const COIN = { id: "veg", vegetable: true, color: "#2E844A", glyph: "star" };
   const OK = { id: "ok", color: SLDS.success, glyph: "check" };
   const L = createLevel();
   const part = (bar, color, archKey) => {
@@ -368,7 +371,7 @@ export function createWorld(ctx) {
   part(18, 0x032d60, "arch2");
   const p3 = { block: LOOKS.prod, coin: COIN };
   L.riff(18, "--..", p3);
-  L.power(18 * BAR + 2, { id: "jwt2", model: "permission-set", color: SLDS.navy, glyph: "lock", sign: "helios-prod" }, true);
+  L.power(18 * BAR + 2, { id: "jwt2", model: "permission-set", color: SLDS.navy, glyph: "lock", sign: t("s_jwt2") }, true);
   L.riff(19, "-...", p3);
   if (manualOk) {
     L.manual(20 * BAR, { header: t("stopHeader"), button: t("stopButton"), id: "prod" });
@@ -472,7 +475,7 @@ export function createWorld(ctx) {
     level: L,
     palette: [0x9050e9, 0xe3066a, 0xffb400, 0x06a59a, 0x1b96ff, 0x2e844a],
     scenery: SCENERY,
-    coinModels: { note: ["custom-field", "apex", "flow", "permission-set", "lwc"], ok: "check-pass" },
+    coinModels: { ok: "check-pass" },
     pitModel: "check-fail",
     checkpointModel: "check-pass",
     // The release: the rocket takes off when the world is done, past the Cloudity logo

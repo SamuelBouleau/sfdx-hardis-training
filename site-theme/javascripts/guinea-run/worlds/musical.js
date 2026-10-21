@@ -56,6 +56,20 @@ const STRIDES_PER_BEAT = 2;
 const SCENERY_RANGE = 34;
 // The salesforce items already face this camera (it looks from +Z): no turn
 const ITEM_FACE = 0;
+// The bonus vegetables, as in world 0: one model of the vegetables pack each,
+// glowing a little in its own colour, 15 points and a happy wheek
+const VEGETABLES = [
+  { model: "fennel", key: "fennel", color: 0x7bc96f },
+  { model: "carrot", key: "carrot", color: 0xff8a3d },
+  { model: "bell-pepper", key: "bellPepper", color: 0xe8473b },
+  { model: "cucumber", key: "cucumber", color: 0x3e9b4f },
+  { model: "romaine", key: "romaine", color: 0x8cd17d },
+  { model: "parsley", key: "parsley", color: 0x2e844a }
+];
+const VEG_H = 0.75;
+const VEG_POINTS = 15;
+// Vegetables come in short rows of one kind; the name shows over the first of each kind
+const VEG_ROW = 3;
 
 export const MUSICAL_TEXTS = {
   en: {
@@ -70,7 +84,15 @@ export const MUSICAL_TEXTS = {
     mu_soft: "In preprod, a mistake costs nothing",
     mu_checkpoint: "Checkpoint",
     mu_faster: "Faster!",
-    mu_mercy: "A little slower, for a few bars"
+    mu_mercy: "A little slower, for a few bars",
+    mu_vegetables: "Vegetables: {{n}}",
+    mu_coachVeg: "Yum! Vegetables are bonus points",
+    mu_veg_fennel: "Fennel",
+    mu_veg_carrot: "Carrot",
+    mu_veg_bellPepper: "Bell pepper",
+    mu_veg_cucumber: "Cucumber",
+    mu_veg_romaine: "Romaine",
+    mu_veg_parsley: "Parsley"
   },
   fr: {
     mu_start: "Sautez sur le temps, quand l'anneau se referme !",
@@ -84,7 +106,15 @@ export const MUSICAL_TEXTS = {
     mu_soft: "En preprod, une erreur ne coûte rien",
     mu_checkpoint: "Checkpoint",
     mu_faster: "Plus vite !",
-    mu_mercy: "Un peu plus lent, quelques mesures"
+    mu_mercy: "Un peu plus lent, quelques mesures",
+    mu_vegetables: "Légumes : {{n}}",
+    mu_coachVeg: "Miam ! Les légumes, ce sont des points bonus",
+    mu_veg_fennel: "Fenouil",
+    mu_veg_carrot: "Carotte",
+    mu_veg_bellPepper: "Poivron",
+    mu_veg_cucumber: "Concombre",
+    mu_veg_romaine: "Romaine",
+    mu_veg_parsley: "Persil"
   }
 };
 
@@ -117,6 +147,12 @@ export const MUSICAL_CSS = `
   margin: 0 0 10px;
   color: #444444;
   font-size: 15px;
+}
+.guinea-run .gr-mu-hint {
+  margin: 8px 0 0;
+  color: #444444;
+  font-size: 13px;
+  text-align: center;
 }
 .guinea-run .gr-mu-options {
   display: grid;
@@ -165,10 +201,22 @@ export const MUSICAL_CSS = `
   font-size: 15px;
   font-weight: 800;
 }
+.guinea-run .gr-mu-veg {
+  display: inline-flex;
+  align-items: center;
+  margin: 6px 0 0 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #fff1d6;
+  color: #8a4b00;
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+}
 @media (max-width: 600px) {
   .guinea-run .gr-mu-choice {
     top: auto;
-    bottom: 112px;
+    bottom: 178px;
   }
   .guinea-run .gr-mu-prompt {
     font-size: 16px;
@@ -186,8 +234,11 @@ export function endMissedInfo(lines, run, stats, t) {
   if (!run.powerTaken("quick")) {
     lines.push(t("info_quick"));
   }
-  if (stats.got < stats.coins * 0.9) {
-    lines.push(t("info_coins", { got: stats.got, total: stats.coins }));
+  // The bonus vegetables when the track has some, every pickup otherwise
+  const got = stats.vegTotal ? stats.vegetables : stats.got;
+  const total = stats.vegTotal || stats.coins;
+  if (got < total * 0.9) {
+    lines.push(t("info_coins", { got, total }));
   }
   return lines.slice(0, 2).join(" ");
 }
@@ -726,6 +777,15 @@ export function createMusicalRun(ctx, def) {
     }
     return glowPools.get(name);
   }
+  /** The pool of one vegetable: its own colours, glowing a little in its colour, like world 0. */
+  function vegPool(veg) {
+    const key = "veg:" + veg.model;
+    if (!glowPools.has(key)) {
+      const material = keep(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, emissive: veg.color, emissiveIntensity: 0.3 }));
+      glowPools.set(key, pool(veg.model, { height: VEG_H, shadows: false }, 24, material));
+    }
+    return glowPools.get(key);
+  }
   (def.scenery || []).forEach((layer, l) => {
     const byName = new Map();
     for (let x = -40, i = 0; x < length; x += layer.every, i++) {
@@ -796,7 +856,30 @@ export function createMusicalRun(ctx, def) {
   function buildCoins() {
     const counters = new Map();
     const byModel = new Map();
+    let vegCount = 0;
+    const vegNamed = new Set();
     for (const c of coins) {
+      if (c.coin.vegetable) {
+        // A short row of one kind, then the next kind; the first of each kind carries its name
+        const veg = VEGETABLES[Math.floor(vegCount / VEG_ROW) % VEGETABLES.length];
+        vegCount += 1;
+        c.veg = veg;
+        c.pool = vegPool(veg);
+        if (!c.pool) {
+          const face = paint.coin("mu-coin-" + c.coin.id, c.coin.color, c.coin.glyph || "star", "");
+          c.mesh = new THREE.Mesh(coinGeometry, [gold, face, face]);
+          c.mesh.rotation.order = "YXZ";
+          c.mesh.rotation.x = Math.PI / 2;
+          c.mesh.position.set(c.x, c.y, 0);
+          root.add(c.mesh);
+          showCoin(c, !c.hidden, 0, 0);
+        }
+        if (!c.hidden && !vegNamed.has(veg.key)) {
+          vegNamed.add(veg.key);
+          c.sign = addSign(t("mu_veg_" + veg.key), c.x, c.y + 0.85, { color: "#" + veg.color.toString(16).padStart(6, "0"), height: 0.4, name: "mu-veg", z: 0.2 });
+        }
+        continue;
+      }
       const wanted = (def.coinModels && def.coinModels[c.coin.id]) || "coin-gold";
       const names = Array.isArray(wanted) ? wanted : [wanted];
       const n = counters.get(c.coin.id) || 0;
@@ -826,6 +909,18 @@ export function createMusicalRun(ctx, def) {
   }
 
   function showCoin(c, on, time, pulse) {
+    if (c.veg) {
+      // A vegetable spins, as in world 0
+      if (c.pool) {
+        if (on) {
+          c.pool.add(c.x, c.y - VEG_H / 2 + pulse * 0.05, 0, 1 + pulse * 0.15, time * 2.2 + c.order);
+        }
+      } else {
+        c.mesh.visible = on;
+        c.mesh.rotation.y = time * 2.2 + c.order;
+      }
+      return;
+    }
     const turn = Math.sin(time * 3 + c.order) * 0.6;
     if (c.mesh) {
       c.mesh.visible = on;
@@ -1170,7 +1265,15 @@ export function createMusicalRun(ctx, def) {
   }
   const run = { pace: 1, mercyUntil: -1, mode: "ready", offset: 0, beat: 0, prev: 0, stop: null, resumeAt: 0, rewindUntil: 0, rewindFrom: 0, cp: checkpoints[0], inv: 0, section: def.song.start || "intro", choiceStart: 0, lit: -1 };
   const player = { y: 0, vy: 0, grounded: true, coyote: 0, buffer: 0, floaty: false, squash: 0, jumps: 0, wobble: 0, pressBeat: -10 };
-  const stats = { coins: coins.filter((c) => !c.hidden).length, got: 0, hits: 0, perfect: 0, streak: 0, best: 0 };
+  const stats = { coins: coins.filter((c) => !c.hidden).length, got: 0, hits: 0, perfect: 0, streak: 0, best: 0, vegetables: 0, vegTotal: coins.filter((c) => c.veg && !c.hidden).length };
+  // The vegetables eaten so far, beside the goal; the kinds already named in a toast
+  const vegEaten = new Set();
+  let vegCard = null;
+  if (stats.vegTotal) {
+    vegCard = document.createElement("span");
+    vegCard.className = "gr-mu-veg";
+    hud.extra.appendChild(vegCard);
+  }
   let camX = 0;
   let camY = 2;
   let shake = 0;
@@ -1363,8 +1466,12 @@ export function createMusicalRun(ctx, def) {
     stats.streak += 1;
     stats.best = Math.max(stats.best, stats.streak);
     const multiplier = 1 + Math.min(3, Math.floor(stats.streak / STREAK_STEP));
-    ctx.points(10 * multiplier);
     music.note(c.order);
+    if (c.veg) {
+      eatVegetable(c, multiplier);
+    } else {
+      ctx.points(10 * multiplier);
+    }
     if (stats.streak % STREAK_STEP === 0) {
       ctx.fx.burst(c.x, c.y, 0, { count: 30, speed: 4.5, up: 5, life: 1.1 });
       hud.toast(t("mu_streak", { n: multiplier }), "good");
@@ -1372,6 +1479,31 @@ export function createMusicalRun(ctx, def) {
     if (calls.onCoin) {
       calls.onCoin(c.coin, c);
     }
+  }
+
+  /** A vegetable: 15 points, a happy wheek, its name the first time each kind is eaten. */
+  function eatVegetable(c, multiplier) {
+    stats.vegetables += 1;
+    ctx.points(VEG_POINTS * multiplier);
+    sound.play("wheek");
+    if (c.sign) {
+      c.sign.sprite.visible = false;
+    }
+    if (!vegEaten.has(c.veg.key)) {
+      vegEaten.add(c.veg.key);
+      hud.toast(t("mu_veg_" + c.veg.key) + " +" + VEG_POINTS * multiplier, "good");
+    }
+    if (stats.vegetables === 1) {
+      coach(t("mu_coachVeg"), 2000);
+    }
+    renderVegetables();
+  }
+
+  function renderVegetables() {
+    if (vegCard) {
+      vegCard.textContent = t("mu_vegetables", { n: stats.vegetables });
+    }
+    setData("vegetables", stats.vegetables);
   }
 
   function hit(look, block) {
@@ -1503,8 +1635,8 @@ export function createMusicalRun(ctx, def) {
     choiceUi = document.createElement("div");
     choiceUi.className = "gr-mu-choice";
     hud.layer.appendChild(choiceUi);
+    // How to answer is written in the card: a coach would cover the question
     showRound(stop);
-    coach(t(hud.touch ? "mu_choiceTouch" : "mu_choice"), 2800, true);
     void e;
   }
 
@@ -1534,6 +1666,10 @@ export function createMusicalRun(ctx, def) {
       option.off = false;
       return button;
     });
+    const hint = document.createElement("p");
+    hint.className = "gr-mu-hint";
+    hint.textContent = t(hud.touch ? "mu_choiceTouch" : "mu_choice");
+    choiceUi.appendChild(hint);
     run.choiceStart = Math.ceil(music.beat);
     run.lit = -1;
     setData("ok", round.options.findIndex((o) => o.ok));
@@ -2048,6 +2184,7 @@ export function createMusicalRun(ctx, def) {
   placeRings();
   placeCamera(1);
   setData("jumps", 0);
+  renderVegetables();
   writeData();
 
   return Object.assign(api, {
@@ -2210,6 +2347,10 @@ export function createMusicalRun(ctx, def) {
     },
     dispose() {
       music.dispose();
+      if (vegCard) {
+        vegCard.remove();
+        vegCard = null;
+      }
       if (choiceUi) {
         choiceUi.remove();
         choiceUi = null;

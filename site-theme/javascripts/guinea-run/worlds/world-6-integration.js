@@ -11,7 +11,7 @@
  * - an action declared in the wrong place fails with its real error, as a
  *   block to jump over
  * - the backfill declared after the deployment turns the 30 installations
- *   nobody can save into coins; without it they stay, as blocks
+ *   nobody can save into green checks; without it they stay, as blocks
  *
  * The bosses: the .forceignore fog of Romain's US-056 (the deployment log
  * shows the walls it hides), the green lie of Lab 2.3, and the three failed
@@ -23,8 +23,8 @@ import { SLDS } from "../core/painter.js";
 
 export const PADS = ["jump"];
 // The salesforce items (components, checks, runners, orgs, the Cloudity logo), the Kenney
-// springs, and trees and bushes far behind
-export const MODELS = ["salesforce", "platform", "nature"];
+// springs, trees and bushes far behind, and the bonus vegetables
+export const MODELS = ["salesforce", "platform", "nature", "vegetables"];
 
 // Behind the track: trees, then the CI runners and the orgs, every row on the beat
 const SCENERY = [
@@ -50,9 +50,9 @@ const BAR = 4;
 
 export const TEXTS = {
   en: Object.assign({}, MUSICAL_TEXTS.en, {
-    intro: "Your Pull Request is merged into integration and the deployment job starts. Run through the log in its five parts, to the music.",
+    intro: "Your Pull Request is merged into the integration branch and the deployment job starts. Run through the log in its five parts, to the music.",
     how1: "Jump with Up, Space or a tap when the ring closes",
-    how2: "Collect the notes, press Mark as done on the way",
+    how2: "Eat the vegetables, press Mark as done on the way",
     how3: "Read the log: it shows what the fog hides",
     note: "Victor knew this org. Victor has left. Read the log, it knows more than I did. - V.",
     path0: "Auth",
@@ -74,7 +74,7 @@ export const TEXTS = {
     goal4: "Part 5: the post-deploy actions",
     goal5: "Pick the way out of each failed action",
     goal6: "Verify in the org, not in the log",
-    coachArc: "Pink rings are for fun: jump for the notes!",
+    coachArc: "Pink rings are for fun: jump for the vegetables!",
     coachPackage: "1 file in your Pull Request, about sixty in the package: delta is off",
     coachQuick: "Quick Deploy: the check already ran the tests",
     coachLog: "Jump for the log: it shows what .forceignore hides!",
@@ -134,12 +134,12 @@ export const TEXTS = {
     backfillMissing: "No backfill declared: jump the records nobody can save",
     mariiaFail: "My three actions run after the merge only: the check never ran them. Pick the right way out for each.",
     failTick: "System.QueryException: List has no rows for assignment to SObject",
-    r1: "Put the delivery managers in the Crew Leads group: failed",
-    r1d: "List has no rows for assignment to SObject. You have now created the Helios_Crew_Leads group.",
-    r2: "Recalculate the crew capacity once: failed",
-    r2d: "The class CrewCapacityBach does not exist: a typo in a merged Pull Request.",
-    r3: "Add the deployment user to the Crew Leads group",
-    r3d: "You did it by hand in Setup: it took twenty seconds.",
+    r1: "Crew Leads group action: failed",
+    r1d: "The action is right, the org had no group. Now the Helios_Crew_Leads group exists.",
+    r2: "Crew capacity action: failed",
+    r2d: "The action is wrong: it calls CrewCapacityBach, a typo.",
+    r3: "Deployment user action: stopped",
+    r3d: "You already did it by hand in Setup.",
     optRetry: "Retry",
     optFix: "Move to a fix Pull Request",
     optDone: "Mark as done",
@@ -147,25 +147,25 @@ export const TEXTS = {
     l1: "The org was missing something, now it has it: Retry",
     l2: "The action itself is wrong: a fix Pull Request",
     l3: "Done by hand: Mark as done",
-    tRerun: "Re-running the job deploys everything again, without the Quick Deploy. A failed action has its own way out.",
-    t1fix: "The action is right: the org was missing its group. Now that the group exists, Retry.",
-    t1done: "Nobody put the delivery managers in the group: Retry it now that the group exists.",
-    t2retry: "Retrying fails every time: the class name has a typo. Move it to a fix Pull Request.",
-    t2done: "Nothing recalculated the crew capacity: the action itself is wrong. Move it to a fix Pull Request.",
-    t3retry: "It is already done, by hand: Mark as done records it, and the next deployment skips it.",
-    t3fix: "The action is right, and already done by hand: Mark as done.",
-    endSign: "helios-integration",
-    arrived: "US-014 is in integration, and it works.",
-    info_coins: "You picked up {{got}} of {{total}} notes.",
+    tRerun: "Re-running the job deploys everything again. Each failed action has its own way out.",
+    t1fix: "Nothing to fix: the action is right. Retry it.",
+    t1done: "Nobody did it by hand: Retry it.",
+    t2retry: "Retry fails every time: the class name is wrong. Fix Pull Request.",
+    t2done: "Nothing ran: the action is wrong. Fix Pull Request.",
+    t3retry: "Already done by hand: Mark as done.",
+    t3fix: "The action is right and already done: Mark as done.",
+    endSign: "helios-integration org",
+    arrived: "US-014 is in the helios-integration org, and it works.",
+    info_coins: "You ate {{got}} of {{total}} vegetables.",
     info_log: "You did not read the deployment log: in Lab 3.3, it names the .forceignore line that hid Crew_Workload__c.",
     info_quick: "You missed Quick Deploy: the check already ran the tests, so the merge job takes seconds.",
     info_backfill: "No backfill after the deployment in World 3: in Lab 2.3, 30 installations could not be saved.",
     info_misplaced: "{{n}} deployment actions sat in the wrong place in World 3, and failed here."
   }),
   fr: Object.assign({}, MUSICAL_TEXTS.fr, {
-    intro: "Votre Pull Request est mergée dans integration et le job de déploiement démarre. Traversez le log en cinq parties, en musique.",
+    intro: "Votre Pull Request est mergée dans la branch integration et le job de déploiement démarre. Traversez le log en cinq parties, en musique.",
     how1: "Sautez avec Haut, Espace ou en touchant quand l'anneau se referme",
-    how2: "Ramassez les notes, appuyez sur Mark as done en passant",
+    how2: "Mangez les légumes, appuyez sur Mark as done en passant",
     how3: "Lisez le log : il montre ce que cache le brouillard",
     note: "Victor connaissait cette org. Victor est parti. Lisez le log, il en sait plus que moi. - V.",
     path0: "Auth",
@@ -187,7 +187,7 @@ export const TEXTS = {
     goal4: "Partie 5 : les actions post-deploy",
     goal5: "Choisissez la sortie de chaque action en échec",
     goal6: "Vérifiez dans l'org, pas dans le log",
-    coachArc: "Les anneaux roses, c'est pour le plaisir : sautez pour les notes !",
+    coachArc: "Les anneaux roses, c'est pour le plaisir : sautez pour les légumes !",
     coachPackage: "1 fichier dans votre Pull Request, une soixantaine dans le package : le delta est désactivé",
     coachQuick: "Quick Deploy : le contrôle a déjà exécuté les tests",
     coachLog: "Sautez pour le log : il montre ce que cache .forceignore !",
@@ -247,12 +247,12 @@ export const TEXTS = {
     backfillMissing: "Pas de backfill déclaré : sautez les enregistrements que personne ne peut sauver",
     mariiaFail: "Mes trois actions ne tournent qu'après le merge : le contrôle ne les a jamais exécutées. Choisissez la bonne sortie pour chacune.",
     failTick: "System.QueryException: List has no rows for assignment to SObject",
-    r1: "Mettre les delivery managers dans le groupe Crew Leads : en échec",
-    r1d: "List has no rows for assignment to SObject. Vous avez maintenant créé le groupe Helios_Crew_Leads.",
-    r2: "Recalculer une fois la capacité des équipes : en échec",
-    r2d: "La classe CrewCapacityBach n'existe pas : une faute de frappe dans une Pull Request mergée.",
-    r3: "Ajouter l'utilisateur de déploiement au groupe Crew Leads",
-    r3d: "Vous l'avez fait à la main dans Setup : vingt secondes.",
+    r1: "Action du groupe Crew Leads : en échec",
+    r1d: "L'action est juste, il manquait le groupe à l'org. Le groupe Helios_Crew_Leads existe maintenant.",
+    r2: "Action de capacité des équipes : en échec",
+    r2d: "L'action est fausse : elle appelle CrewCapacityBach, une faute de frappe.",
+    r3: "Action de l'utilisateur de déploiement : arrêtée",
+    r3d: "Vous l'avez déjà fait à la main dans Setup.",
     optRetry: "Retry",
     optFix: "Pull Request de correction",
     optDone: "Mark as done",
@@ -260,16 +260,16 @@ export const TEXTS = {
     l1: "Il manquait quelque chose à l'org, elle l'a désormais : Retry",
     l2: "L'action elle-même est fausse : une Pull Request de correction",
     l3: "Fait à la main : Mark as done",
-    tRerun: "Relancer le job redéploie tout, sans le Quick Deploy. Une action en échec a sa propre sortie.",
-    t1fix: "L'action est juste : il manquait son groupe à l'org. Maintenant que le groupe existe, Retry.",
-    t1done: "Personne n'a mis les delivery managers dans le groupe : relancez-la avec Retry maintenant que le groupe existe.",
-    t2retry: "Retry échouera à chaque fois : le nom de classe a une faute. Déplacez-la dans une Pull Request de correction.",
-    t2done: "Rien n'a recalculé la capacité des équipes : l'action elle-même est fausse. Déplacez-la dans une Pull Request de correction.",
-    t3retry: "C'est déjà fait, à la main : Mark as done l'enregistre, et le prochain déploiement la saute.",
-    t3fix: "L'action est juste, et déjà faite à la main : Mark as done.",
-    endSign: "helios-integration",
-    arrived: "US-014 est en integration, et ça marche.",
-    info_coins: "Vous avez ramassé {{got}} notes sur {{total}}.",
+    tRerun: "Relancer le job redéploie tout. Chaque action en échec a sa propre sortie.",
+    t1fix: "Rien à corriger : l'action est juste. Retry.",
+    t1done: "Personne ne l'a faite à la main : Retry.",
+    t2retry: "Retry échoue à chaque fois : le nom de classe est faux. Pull Request de correction.",
+    t2done: "Rien n'a tourné : l'action est fausse. Pull Request de correction.",
+    t3retry: "Déjà fait à la main : Mark as done.",
+    t3fix: "L'action est juste et déjà faite : Mark as done.",
+    endSign: "org helios-integration",
+    arrived: "US-014 est dans l'org helios-integration, et ça marche.",
+    info_coins: "Vous avez mangé {{got}} légumes sur {{total}}.",
     info_log: "Vous n'avez pas lu le log de déploiement : dans le Lab 3.3, il nomme la ligne de .forceignore qui cachait Crew_Workload__c.",
     info_quick: "Vous avez raté le Quick Deploy : le contrôle a déjà exécuté les tests, donc le job du merge prend quelques secondes.",
     info_backfill: "Pas de backfill après le déploiement dans le Monde 3 : dans le Lab 2.3, 30 installations ne pouvaient plus être enregistrées.",
@@ -328,7 +328,8 @@ export function createWorld(ctx) {
     latemanual: look("latemanual", SLDS.warningDark, "warning", "s_late", "o_latemanual", { signEvery: true }),
     lateorder: look("lateorder", SLDS.warningDark, "loop", "s_order", "o_lateorder", { signEvery: true })
   };
-  const COIN = { id: "note", color: "#FFB400", glyph: "star" };
+  // The bonus pickups on the beat: vegetables, as in world 0
+  const COIN = { id: "veg", vegetable: true, color: "#2E844A", glyph: "star" };
   const COMP = { id: "comp", color: SLDS.brand, glyph: "box" };
   const OK = { id: "ok", color: SLDS.success, glyph: "check" };
   const L = createLevel();
@@ -471,7 +472,7 @@ export function createWorld(ctx) {
   say(0, () => {
     hud.setPath([t("path0"), t("path1"), t("path2"), t("path3"), t("path4")], 0);
     hud.goal(t("goal0"));
-    hud.tick("Login to integration: auth URL");
+    hud.tick("Login to the helios-integration org: auth URL");
   });
   say(7 * BAR - 1, (api) => api.coach(t("coachArc"), 2400));
   say(6 * BAR, () => {
@@ -549,8 +550,8 @@ export function createWorld(ctx) {
     level: L,
     palette: [0x06a59a, 0x9050e9, 0x2e844a, 0xfe9339, 0x1b96ff, 0xe3066a],
     scenery: SCENERY,
-    // The notes and the package are its components, in turn; what the backfill and Quick Deploy free passes
-    coinModels: { note: ["custom-field", "apex", "flow", "permission-set", "lwc"], comp: ["custom-field", "apex", "flow", "permission-set", "lwc"], ok: "check-pass" },
+    // The package is its components, in turn; what the backfill and Quick Deploy free passes
+    coinModels: { comp: ["custom-field", "apex", "flow", "permission-set", "lwc"], ok: "check-pass" },
     // A gap is a failed check to fall in; a checkpoint is a check that passed
     pitModel: "check-fail",
     checkpointModel: "check-pass",
