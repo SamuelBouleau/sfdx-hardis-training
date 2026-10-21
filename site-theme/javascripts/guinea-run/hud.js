@@ -168,9 +168,13 @@ export function createHud(t, options) {
   let celebration = null;
   let lastUpdate = "";
 
+  // The pads of the world on screen: the keys list names only those
+  let worldPads = null;
   function keysHelp(parent) {
     const list = element("ul", "gr-keys", parent);
-    const lines = touch ? ["keysTouch", "keysMove", "keysJump", "keysConfirm"] : ["keysMove", "keysJump", "keysDuck", "keysConfirm", "keysOther"];
+    const uses = { keysMove: ["left", "right"], keysJump: ["jump"], keysDuck: ["duck"], keysConfirm: ["confirm"] };
+    const all = touch ? ["keysTouch", "keysMove", "keysJump", "keysConfirm"] : ["keysMove", "keysJump", "keysDuck", "keysConfirm", "keysOther"];
+    const lines = all.filter((key) => !worldPads || !uses[key] || uses[key].some((pad) => worldPads.includes(pad)));
     for (const key of lines) {
       element("li", "", list, t(key));
     }
@@ -351,7 +355,8 @@ export function createHud(t, options) {
     },
 
     /** The card of a world, before it starts. */
-    intro(world, record, story, how) {
+    intro(world, record, story, how, pads) {
+      worldPads = pads || null;
       screen("intro", t("world", { n: world.id }) + " · " + t("w" + world.id + "_name"), (body, footer) => {
         element("p", "", body, story || t("w" + world.id + "_pitch"));
         if (how && how.length) {

@@ -355,7 +355,7 @@ function createGame(options) {
     engine.setActive(false);
     // A world says how it is played in three short steps: how1, how2, how3
     const how = ["how1", "how2", "how3"].map((key) => current.t(key)).filter((text, i) => text && text !== "how" + (i + 1));
-    hud.intro(info, progress.world(id), current.t("intro"), how);
+    hud.intro(info, progress.world(id), current.t("intro"), how, module.PADS);
     track("easter_egg_world_open", { world: id });
   }
 
