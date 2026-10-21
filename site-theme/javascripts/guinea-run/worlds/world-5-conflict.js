@@ -16,6 +16,9 @@ import { SLDS, glyph, fitText, rounded } from "../core/painter.js";
 
 export const PADS = ["left", "right", "jump", "duck", "confirm"];
 
+// The Kenney office pack: desks, chairs, screens, plants, rugs, a bookcase
+export const MODELS = ["office"];
+
 const PERMSET_FILE = "Helios_Delivery_Manager.permissionset-meta.xml";
 const FLOW_FILE = "Installation_Assign_Crew.flow-meta.xml";
 const FIELD_CAP = "    <field>Installation__c.Crew_Capacity_Cap__c</field>";
@@ -401,6 +404,21 @@ export function createWorld(ctx) {
     return mesh;
   }
 
+  /**
+   * A model of the office pack at a place, or null when the pack did not load
+   * (the world then draws its own shapes). Small things cast no shadow.
+   */
+  function model(name, options, x, y, z, turn, parent) {
+    const copy = ctx.models ? ctx.models.get(name, options) : null;
+    if (!copy) {
+      return null;
+    }
+    copy.position.set(x, y, z);
+    copy.rotation.y = turn || 0;
+    (parent || ctx.root).add(copy);
+    return copy;
+  }
+
   const floor = new THREE.Mesh(
     plane,
     paint.plain(0xfdf6e9, { roughness: 0.9 }),
@@ -430,22 +448,28 @@ export function createWorld(ctx) {
     stripe.rotation.z = i % 2 ? 0.04 : -0.04;
     ctx.root.add(stripe);
   });
-  const rug = new THREE.Mesh(
-    cylinder,
-    paint.plain(0x7fd6cf, { roughness: 0.95 }),
-  );
-  rug.scale.set(3, 0.02, 2.4);
-  rug.position.set(0.1, 0.01, -0.6);
-  rug.receiveShadow = true;
-  ctx.root.add(rug);
-  const herRug = new THREE.Mesh(
-    cylinder,
-    paint.plain(0xffc7e2, { roughness: 0.95 }),
-  );
-  herRug.scale.set(2.6, 0.02, 2.2);
-  herRug.position.set(-3.1, 0.011, -0.8);
-  herRug.receiveShadow = true;
-  ctx.root.add(herRug);
+  if (!model("rugRound", { width: 3.2, shadows: false }, 0.1, 0.005, -0.6)) {
+    const rug = new THREE.Mesh(
+      cylinder,
+      paint.plain(0x7fd6cf, { roughness: 0.95 }),
+    );
+    rug.scale.set(3, 0.02, 2.4);
+    rug.position.set(0.1, 0.01, -0.6);
+    rug.receiveShadow = true;
+    ctx.root.add(rug);
+  }
+  if (
+    !model("rugRounded", { width: 3, shadows: false }, -3.1, 0.006, -0.8, 0.35)
+  ) {
+    const herRug = new THREE.Mesh(
+      cylinder,
+      paint.plain(0xffc7e2, { roughness: 0.95 }),
+    );
+    herRug.scale.set(2.6, 0.02, 2.2);
+    herRug.position.set(-3.1, 0.011, -0.8);
+    herRug.receiveShadow = true;
+    ctx.root.add(herRug);
+  }
   // Two plants: a pot and three round leaves each
   const sphere = paint.geometry(
     "w5-sphere",
@@ -457,6 +481,9 @@ export function createWorld(ctx) {
     [1.9, -1.8],
     [-5.2, -1.6],
   ]) {
+    if (model("pottedPlant", { height: 1.4 }, px, 0, pz)) {
+      continue;
+    }
     const plant = new THREE.Group();
     plant.position.set(px, 0, pz);
     ctx.root.add(plant);
@@ -475,6 +502,20 @@ export function createWorld(ctx) {
       plant.add(ball);
     }
   }
+  model("bookcaseOpen", { height: 2.2 }, 3.3, 0, -1.85);
+  model("books", { width: 0.7, shadows: false }, 3.3, 1.12, -1.85);
+  model("sideTable", { height: 0.7 }, 2.3, 0, -1.6);
+  model(
+    "kitchenCoffeeMachine",
+    { height: 0.55, shadows: false },
+    2.3,
+    0.7,
+    -1.6,
+    -0.4,
+  );
+  model("trashcan", { height: 0.55, shadows: false }, 1.35, 0, -0.9);
+  model("loungeSofa", { width: 2.6 }, -6.4, 0, -1.4, 0.5);
+  model("plantSmall1", { height: 0.5, shadows: false }, -5.6, 0, -0.2);
   const plaque = new THREE.Mesh(plane, paint.plaque());
   plaque.scale.set(1.1, 0.53, 1);
   plaque.position.set(1.8, 1.75, -2.18);
@@ -487,6 +528,41 @@ export function createWorld(ctx) {
     // Built at a person's size, then grown: the guinea pig is the hero, not to scale
     group.scale.setScalar(DESK_SCALE);
     ctx.root.add(group);
+    const top = model("desk", { width: 1.8 }, 0, 0, 0, 0, group);
+    if (top) {
+      const height = new THREE.Box3().setFromObject(top).max.y;
+      const monitor = ctx.models.get("computerScreen", { width: 1.2 });
+      if (monitor) {
+        monitor.position.set(0, height, -0.15);
+        // The picture sits in front of the model's own screen, on its upper part
+        const frame = new THREE.Box3().setFromObject(monitor);
+        const size = frame.getSize(new THREE.Vector3());
+        group.add(monitor);
+        const screen = new THREE.Mesh(plane, screenMaterial);
+        screen.scale.set(size.x * 0.88, size.y * 0.62, 1);
+        screen.position.set(0, frame.min.y + size.y * 0.6, frame.max.z + 0.01);
+        group.add(screen);
+        model(
+          "computerKeyboard",
+          { width: 0.62, shadows: false },
+          0,
+          height,
+          0.2,
+          0,
+          group,
+        );
+        model(
+          "lampRoundTable",
+          { height: 0.5, shadows: false },
+          -0.68,
+          height,
+          -0.12,
+          0,
+          group,
+        );
+        return { group, screen, top: height };
+      }
+    }
     block(wood, 1.7, 0.06, 0.7, 0, 0.5, 0, group);
     for (const [lx, lz] of [
       [-0.78, -0.28],
@@ -504,7 +580,7 @@ export function createWorld(ctx) {
     screen.position.set(0, 1.08, -0.172);
     group.add(screen);
     block(paint.plain(0xdddddd), 0.6, 0.025, 0.18, 0, 0.545, 0.17, group);
-    return { group, screen };
+    return { group, screen, top: 0.53 };
   }
 
   // The guinea pig's monitor shows where the merge stands
@@ -529,7 +605,7 @@ export function createWorld(ctx) {
   const mine = desk(0, -1.5, screenMaterial("permset"));
   const mug = new THREE.Mesh(cylinder, paint.plain(0x0176d3));
   mug.scale.set(0.1, 0.13, 0.1);
-  mug.position.set(0.62, 0.6, 0.1);
+  mug.position.set(0.62, mine.top + 0.07, 0.1);
   mine.group.add(mug);
 
   // Mariia's desk, to the right: her US-018 on screen, her chair, her name
@@ -547,10 +623,12 @@ export function createWorld(ctx) {
   chair.rotation.y = 0.35;
   chair.scale.setScalar(DESK_SCALE);
   ctx.root.add(chair);
-  const purple = paint.plain(0x9050e9);
-  block(purple, 0.5, 0.07, 0.5, 0, 0.42, 0, chair);
-  block(purple, 0.5, 0.55, 0.07, 0, 0.72, 0.24, chair);
-  block(steel, 0.06, 0.4, 0.06, 0, 0.2, 0, chair);
+  if (!model("chairDesk", { height: 1.0 }, 0, 0, 0, Math.PI, chair)) {
+    const purple = paint.plain(0x9050e9);
+    block(purple, 0.5, 0.07, 0.5, 0, 0.42, 0, chair);
+    block(purple, 0.5, 0.55, 0.07, 0, 0.72, 0.24, chair);
+    block(steel, 0.06, 0.4, 0.06, 0, 0.2, 0, chair);
+  }
   // Mariia herself, on her chair: she turns to the guinea pig when it comes
   const mariia = new THREE.Group();
   mariia.position.set(0, 0.46, 0.02);
