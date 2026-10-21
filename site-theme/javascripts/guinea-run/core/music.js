@@ -50,6 +50,14 @@ export const SECTIONS = {
   silence: {}
 };
 
+/**
+ * A melody written as text, one character per sixteenth: a digit is a degree
+ * of the scale from the root (0 to 9, then a and b), a dot is a rest.
+ */
+export function melody(text) {
+  return [...text.replace(/\s/g, "")].map((ch) => (ch === "." ? null : parseInt(ch, 12)));
+}
+
 function mod(n, m) {
   return ((n % m) + m) % m;
 }

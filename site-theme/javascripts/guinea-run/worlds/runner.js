@@ -144,7 +144,7 @@ export function createRunner(ctx, config) {
   function buildScenery() {
     // Three pastel lanes with white dashes and soft chevrons pointing ahead
     const trackTexture = paint.texture("track-lanes", 256, 128, (c, w, h) => {
-      const lanes = ["#CFE8FF", "#D3F5DF", "#FFDDEB"];
+      const lanes = ["#8ECBFF", "#94E6B4", "#FFB3D1"];
       for (let i = 0; i < 3; i++) {
         c.fillStyle = lanes[i];
         c.fillRect((i * w) / 3, 0, w / 3 + 1, h);
@@ -259,7 +259,7 @@ export function createRunner(ctx, config) {
     const islands = [];
     for (let i = 0; i < 10; i++) {
       const side = i % 2 === 0 ? 1 : -1;
-      islands.push({ x: side * (11 + sceneRandom() * 14), y: -3 + sceneRandom() * 5, offset: (i / 10) * 240, s: 1.6 + sceneRandom() * 1.8 });
+      islands.push({ x: side * (13 + sceneRandom() * 14), y: -3 + sceneRandom() * 5, offset: (i / 10) * 240, s: 1.6 + sceneRandom() * 1.8 });
     }
     const rocks = new THREE.InstancedMesh(
       paint.geometry("island-rock", () => new THREE.ConeGeometry(1, 1.6, 7).rotateX(Math.PI).translate(0, -0.8, 0)),
@@ -286,7 +286,7 @@ export function createRunner(ctx, config) {
     const balloonList = [];
     for (let i = 0; i < 14; i++) {
       const side = i % 2 === 0 ? -1 : 1;
-      balloonList.push({ x: side * (6 + sceneRandom() * 4), y: 1.5 + sceneRandom() * 5, offset: (i / 14) * 160, phase: sceneRandom() * 6 });
+      balloonList.push({ x: side * (8 + sceneRandom() * 5), y: 2.5 + sceneRandom() * 5, offset: (i / 14) * 160, phase: sceneRandom() * 6 });
     }
     const balloonMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25, metalness: 0.05 });
     const balloons = new THREE.InstancedMesh(
@@ -362,7 +362,7 @@ export function createRunner(ctx, config) {
     });
     scenery.clouds.instanceMatrix.needsUpdate = true;
     scenery.islands.forEach((island, i) => {
-      const z = 30 - ((island.offset + 240 - ((distance * 0.5) % 240)) % 240);
+      const z = -4 - ((island.offset + 240 - ((distance * 0.5) % 240)) % 240);
       const bob = Math.sin(time * 0.8 + i) * 0.25;
       position.set(island.x, island.y + bob, z);
       scale.set(island.s, island.s, island.s);
@@ -1436,6 +1436,10 @@ export function createRunner(ctx, config) {
         object.mesh.position.y = object.y + Math.sin(time * 4 + object.at) * 0.08;
       }
       if (object.done) {
+        // A gate behind the guinea pig would fill the camera: it goes at once
+        if (object.type === "gate" && dz < -0.4) {
+          object.mesh.visible = false;
+        }
         if (dz < -12) {
           remove(object);
         }

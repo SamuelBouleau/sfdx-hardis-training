@@ -286,7 +286,7 @@ function levelPlatforms(t) {
     { x0: 202.4, x1: 207, top: 4.4, look: "card", text: "Helios Delivery Manager", ghost: true },
     { x0: 208.5, x1: 217.5, top: 3.6, look: "fls", text: "Panels Required", sub: "Field Permissions", faint: true },
     // The record
-    { x0: 219, x1: 222.5, top: 2.8, look: "card", text: "App Launcher > Helios Delivery > Installations" },
+    { x0: 219, x1: 222.5, top: 2.8, look: "card", text: "App Launcher" },
     { x0: 224, x1: 237, top: 2, h: 2.6, look: "record", text: "INST-00001" }
   ];
 }
@@ -507,9 +507,8 @@ export function createWorld(ctx) {
     root.add(tick);
     profileTicks.push(tick);
   }
-  const tickLabel = new THREE.Mesh(plane, paint.label("w1-profiles", "Visible", { width: 256, height: 64, size: 40, fg: SLDS.navy, bg: "rgba(255,255,255,0.9)" }));
-  tickLabel.scale.set(1.4, 0.35, 1);
-  tickLabel.position.set(145.8, 6.15, -1.3);
+  const tickLabel = paint.sign("w1-profiles", "Profiles", { color: SLDS.brand, height: 0.5 });
+  tickLabel.position.set(145.8, 6.3, -1.3);
   root.add(tickLabel);
 
   function setTicks(on) {
@@ -1243,6 +1242,9 @@ export function createWorld(ctx) {
       if (player.x >= checkpoints[i].x && player.grounded) {
         checkpoint = i;
         checkpoints[i].flag.material = flagGreen;
+        if (i === checkpoints.length - 1) {
+          hud.tick("App Launcher > Helios Delivery > Installations");
+        }
         ctx.fx.burst(checkpoints[i].x, checkpoints[i].y + 1.4, -0.9, { count: 10, colors: [0x2e844a, 0x91db8b, 0xffffff], speed: 2, up: 2.5, life: 0.7 });
         ctx.sound.play("click");
       }

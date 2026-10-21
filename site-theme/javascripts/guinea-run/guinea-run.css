@@ -1379,3 +1379,10 @@ html.guinea-run-open body {
     transition: none;
   }
 }
+
+@media (max-width: 600px) {
+  /* Below the top bar, the goal line and the toast on a phone */
+  .guinea-run .gr-coach {
+    top: 44%;
+  }
+}

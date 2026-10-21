@@ -297,17 +297,24 @@ export function createWorld(ctx) {
   const required = {};
   let restartsDone = 0;
   let finished = false;
+  // A restart is owed: a wrong door left tools "installed, not found"
+  let owed = false;
+  // The gate the guinea pig is running at, once its doors are shown
+  let nearGate = null;
+  let foundTold = false;
+  let allGreen = false;
 
   const items = {};
   for (const [id, tool] of Object.entries(TOOLS)) {
-    items[id] = { glyph: tool.glyph, color: tool.color, label: tool.label, points: 50 };
+    // The tools that count are big, with a halo and their name always shown
+    items[id] = { glyph: tool.glyph, color: tool.color, label: tool.label, points: 50, big: true };
   }
-  items.sfdmu = { glyph: "box", color: "#0D9DDA", label: "sfdmu", points: 10 };
+  items.sfdmu = { glyph: "box", color: "#0D9DDA", label: "SFDMU", points: 10 };
   items.sgd = { glyph: "delta", color: "#DD7A01", label: "sfdx-git-delta", points: 10 };
   items.gh = { glyph: "branch", color: "#24292F", label: "GitHub CLI", points: 10 };
   items.note = { glyph: "note", color: "#F2C94C", label: "?", points: 0 };
 
-  const ob = (move, key, theme, detail) => ({ move, title: "o_" + key, tip: "o_" + key + "_tip", theme: theme || "error", detail });
+  const ob = (move, key, theme, detail) => ({ move, title: "o_" + key, tip: "o_" + key + "_tip", short: "o_" + key + "_s", theme: theme || "error", detail });
   const config = {
     sections: [
       { name: t("s0"), color: 0x2e844a, length: 300, speed: 7.5, obstacles: ["path", "trust", "gitbash"], items: ["sfdmu", "gh"], powers: ["reload", "vibes"] },
@@ -330,23 +337,23 @@ export function createWorld(ctx) {
     },
     items,
     powers: {
-      pending: { glyph: "loop", color: "#0176D3", label: "Run pending installs", effect: "magnet", metres: 200, kinds: REQUIRED, toast: "p_pending" },
-      reload: { glyph: "loop", color: "#2E844A", label: "Reload Window", effect: "attempt", toast: "p_reload" },
-      vibes: { glyph: "bolt", color: "#9050E9", label: "Agentforce Vibes", effect: "shield", seconds: 5, toast: "p_vibes" },
-      delete: { glyph: "error", color: "#BA0517", label: "Delete scratch org", effect: "trap", toast: "p_delete", tip: "p_delete_tip" },
-      restart: { glyph: "loop", color: "#0176D3", label: "Restart VS Code", effect: "custom" }
+      pending: { glyph: "loop", color: "#0176D3", label: "Run pending installs", short: "p_pending_s", effect: "magnet", metres: 200, kinds: REQUIRED, toast: "p_pending" },
+      reload: { glyph: "loop", color: "#2E844A", label: "Reload Window", short: "p_reload_s", effect: "attempt", toast: "p_reload" },
+      vibes: { glyph: "bolt", color: "#9050E9", label: "Agentforce Vibes", short: "p_vibes_s", effect: "shield", seconds: 5, toast: "p_vibes" },
+      delete: { glyph: "error", color: "#BA0517", label: "Delete scratch org", short: "p_delete_s", effect: "trap", toast: "p_delete", tip: "p_delete_tip" },
+      restart: { glyph: "loop", color: "#0176D3", label: "Restart VS Code", short: "p_restart_s", effect: "custom" }
     },
     gates(index) {
       if (index === 0) {
-        return restartGate("g0_banner", [
-          { text: t("g_keep"), tip: t("g_keep_tip") },
-          { text: t("g_terminal"), tip: t("g_terminal_tip") }
+        return restartGate("q0", [
+          { text: t("g_keep"), short: t("g_keep_s"), tip: t("g_keep_tip") },
+          { text: t("g_terminal"), short: t("g_terminal_s"), tip: t("g_terminal_tip") }
         ]);
       }
       if (index === 1) {
-        return restartGate("g1_banner", [
-          { text: t("g_again"), tip: t("g_again_tip") },
-          { text: t("g_reinstall"), tip: t("g_reinstall_tip") }
+        return restartGate("q1", [
+          { text: t("g_again"), short: t("g_again_s"), tip: t("g_again_tip") },
+          { text: t("g_reinstall"), short: t("g_reinstall_s"), tip: t("g_reinstall_tip") }
         ]);
       }
       return portalGate();
@@ -358,28 +365,42 @@ export function createWorld(ctx) {
     ]
   };
 
-  function restartGate(banner, wrong) {
-    const open = Math.floor(ctx.random() * 3);
-    const doors = [];
-    let w = 0;
-    for (let lane = 0; lane < 3; lane++) {
-      doors.push(lane === open ? { text: t("g_restart"), ok: true, look: "quiz", restart: true } : Object.assign({ ok: false, look: "quiz" }, wrong[w++]));
+  // The runner asks for the gates again each time it lays a row: build each
+  // once, so its doors stay where they were drawn
+  const gateSpecs = {};
+  function cached(key, make) {
+    if (!gateSpecs[key]) {
+      gateSpecs[key] = make();
     }
-    return { doors, banner: t(banner), quiz: true };
+    return gateSpecs[key];
+  }
+
+  function restartGate(question, wrong) {
+    return cached(question, () => {
+      const open = Math.floor(ctx.random() * 3);
+      const doors = [];
+      let w = 0;
+      for (let lane = 0; lane < 3; lane++) {
+        doors.push(lane === open ? { text: t("g_restart"), short: t("g_restart_s"), ok: true, look: "quiz", restart: true } : Object.assign({ ok: false, look: "quiz" }, wrong[w++]));
+      }
+      return { doors, question: t(question), sign: t("signQuiz"), quiz: true };
+    });
   }
 
   function portalGate() {
-    const open = Math.floor(ctx.random() * 3);
-    const wrong = [
-      { text: t("g_recreate"), tip: t("g_recreate_tip"), ok: false, look: "trap" },
-      { text: t("g_testlogin"), tip: t("g_testlogin_tip"), ok: false, look: "closed" }
-    ];
-    const doors = [];
-    let w = 0;
-    for (let lane = 0; lane < 3; lane++) {
-      doors.push(lane === open ? { text: t("g_setup"), ok: true, look: "open", portal: true } : wrong[w++]);
-    }
-    return { doors, banner: t("g2_banner"), quiz: true };
+    return cached("portal", () => {
+      const open = Math.floor(ctx.random() * 3);
+      const wrong = [
+        { text: t("g_recreate"), short: t("g_recreate_s"), tip: t("g_recreate_tip"), ok: false, look: "trap" },
+        { text: t("g_testlogin"), short: t("g_testlogin_s"), tip: t("g_testlogin_tip"), ok: false, look: "closed" }
+      ];
+      const doors = [];
+      let w = 0;
+      for (let lane = 0; lane < 3; lane++) {
+        doors.push(lane === open ? { text: t("g_setup"), short: t("g_setup_s"), ok: true, look: "open", portal: true } : wrong[w++]);
+      }
+      return { doors, question: t("q2"), sign: "Training: Level 1", coach: t("coachPortal"), quiz: true, portal: true };
+    });
   }
 
   const runner = createRunner(ctx, config);
@@ -416,6 +437,25 @@ export function createWorld(ctx) {
   }
   render();
 
+  /** The goal line: always the next thing to do. */
+  function updateGoal() {
+    if (finished) {
+      hud.goal("");
+      return;
+    }
+    if (owed) {
+      hud.goal(t("goalRestart"));
+      return;
+    }
+    if (nearGate) {
+      hud.goal(nearGate.spec.portal ? t("goalPortal") : t("goalDoor"));
+      return;
+    }
+    const index = Math.min(runner.sectionIndex, BY_SECTION.length - 1);
+    const left = BY_SECTION[index].filter((id) => state[id] === "missing").length;
+    hud.goal(left ? t("goal" + index, { n: left }) : t("goalReady"));
+  }
+
   function spawnRequired(id, at) {
     const lane = PLACES[id][1];
     required[id] = runner.spawnItem(id, lane, at);
@@ -427,9 +467,20 @@ export function createWorld(ctx) {
       state[id] = "ok";
     }
     restartsDone += 1;
-    render();
+    owed = false;
+    checkGreen(render());
     if (found.length) {
       hud.toast(t("restarted", { tools: found.map((id) => TOOLS[id].label).join(", ") }), "good");
+    }
+  }
+
+  /** The first time every card is green, a bigger cheer. */
+  function checkGreen(green) {
+    if (green === REQUIRED.length && !allGreen) {
+      allGreen = true;
+      ctx.fx.burst(0, 2, -1, { count: 60, speed: 6, up: 6, life: 1.5 });
+      ctx.sound.play("happy");
+      runner.coach(t("coachGreen"), 2000, true);
     }
   }
 
@@ -454,8 +505,15 @@ export function createWorld(ctx) {
           spawnRequired(event.step.spawn, PLACES[event.step.spawn][0]);
         } else if (event.step.note) {
           runner.spawnObstacle("trust", 0, event.step.at + 90);
-          runner.spawnItem("note", 0, event.step.at + 90, 2.1);
+          runner.spawnItem("note", 0, event.step.at + 90, 2.1, { label: false });
         }
+        return;
+      case "section":
+        updateGoal();
+        return;
+      case "gateNear":
+        nearGate = event.gate;
+        updateGoal();
         return;
       case "item":
         if (event.kind === "note") {
@@ -464,8 +522,15 @@ export function createWorld(ctx) {
         }
         if (REQUIRED.includes(event.kind)) {
           state[event.kind] = NEEDS_RESTART.includes(event.kind) ? "found" : "ok";
-          render();
+          const green = render();
           ctx.collect(50, TOOLS[event.kind].label + (state[event.kind] === "found" ? " · " + t("stateFound") : ""));
+          runner.hop();
+          if (state[event.kind] === "found" && !foundTold) {
+            foundTold = true;
+            runner.coach(t("coachFound"), 2800, true);
+          }
+          checkGreen(green);
+          updateGoal();
           return;
         }
         runner.handle(event);
@@ -473,29 +538,34 @@ export function createWorld(ctx) {
       case "power":
         if (event.kind === "restart") {
           ctx.sound.play("power");
+          ctx.fx.burst(event.object.x, 1.2, 0, { count: 30, speed: 4, up: 5 });
           restart();
+          updateGoal();
           return;
         }
         runner.handle(event);
         return;
       case "gate": {
+        nearGate = null;
         if (event.ok && event.door.restart) {
-          ctx.sound.play("gate");
-          ctx.points(100);
+          runner.celebrate(event.lane, 100);
           restart();
+          updateGoal();
           return;
         }
         if (event.ok && event.door.portal) {
-          ctx.sound.play("gate");
-          ctx.points(200);
+          runner.celebrate(event.lane, 200);
+          ctx.sound.play("fanfare");
           return;
         }
         runner.handle(event);
         if (!event.door.portal && event.gate.spec.quiz && REQUIRED.some((id) => state[id] === "found")) {
           // A restart is still owed: it comes down the track as a power-up
+          owed = true;
           runner.spawnPower("restart", runner.lane, runner.distance + 45);
           hud.toast(t("stillNotFound"), "bad");
         }
+        updateGoal();
         return;
       }
       case "end": {
@@ -503,6 +573,7 @@ export function createWorld(ctx) {
         // on the result, as the setup panel would still show them pending
         const missing = pendingTools();
         finished = true;
+        hud.goal("");
         hud.toast(t("created"), "good");
         const info = missing.length ? t("missedTools", { tools: missing.map((id) => TOOLS[id].label).join(", ") }) : "";
         ctx.finish((restartsDone >= 2 ? 100 : 0) - missing.length * 40, info);
@@ -514,7 +585,10 @@ export function createWorld(ctx) {
   }
 
   return {
-    start() {},
+    start() {
+      updateGoal();
+      runner.coach(t(hud.touch ? "coachStartTouch" : "coachStart"), 2800, true);
+    },
     update(dt, time) {
       if (finished) {
         return;
@@ -525,6 +599,10 @@ export function createWorld(ctx) {
         if (!ctx.playing) {
           return;
         }
+      }
+      // A restart owed: once the red toast and the tip are read, say so big
+      if (owed === true && runner.coach(t("coachRestart"), 2200)) {
+        owed = "told";
       }
       // A required tool that went by uncollected comes back as a pending install
       for (const id of REQUIRED) {
@@ -546,36 +624,41 @@ export function createWorld(ctx) {
   };
 }
 
-export const CSS = `
+export const CSS =
+  RUNNER_CSS +
+  `
 .guinea-run .gr-w0-panel {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  max-width: 720px;
-  padding: 4px 8px;
-  border: 1px solid #c9c9c9;
-  border-radius: 4px;
+  gap: 5px;
+  max-width: 760px;
+  padding: 6px 10px;
+  border: 2px solid #ffffff;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.95);
-  font-size: 11px;
+  box-shadow: 0 3px 0 rgba(3, 45, 96, 0.25);
+  font-size: 13px;
   pointer-events: none;
 }
 .guinea-run .gr-w0-panel strong {
   margin-right: 4px;
   color: #032d60;
-  font-size: 12px;
+  font-size: 13px;
 }
 .guinea-run .gr-w0-card {
-  padding: 2px 7px;
+  padding: 3px 9px;
   border-radius: 999px;
-  background: #e5e5e5;
-  color: #444444;
+  background: #e8edf3;
+  color: #3e3e3c;
   font-weight: 700;
   white-space: nowrap;
+  transition: background 0.2s, transform 0.2s;
 }
 .guinea-run .gr-w0-card[data-state="found"] {
   background: #fe9339;
   color: #181818;
+  transform: scale(1.08);
 }
 .guinea-run .gr-w0-card[data-state="found"]::after {
   content: " ?";
@@ -588,9 +671,16 @@ export const CSS = `
   content: "\\2713  ";
 }
 @media (max-width: 600px) {
+  .guinea-run .gr-w0-panel {
+    gap: 3px;
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+  .guinea-run .gr-w0-panel strong {
+    display: none;
+  }
   .guinea-run .gr-w0-card {
-    padding: 1px 5px;
-    font-size: 10px;
+    padding: 2px 6px;
   }
 }
 `;
