@@ -18,6 +18,11 @@
 
 const SKIN = 0xe2ad9c;
 const FUR_LENGTH = 0.05;
+// Height of the body's axis: low, a well-fed guinea pig's belly almost drags
+const BODY_Y = 0.375;
+// The shadow under it, as wide as its tummy
+const SHADOW_X = 1.15;
+const SHADOW_Z = 1.25;
 
 export function createGuineaPig(THREE, options) {
   const shells = options && options.furShells !== undefined ? options.furShells : 8;
@@ -27,7 +32,7 @@ export function createGuineaPig(THREE, options) {
   outer.add(group);
   // Everything that bounces and squashes, above the feet
   const body = new THREE.Group();
-  body.position.y = 0.38;
+  body.position.y = BODY_Y;
   group.add(body);
   const disposables = [];
   const keep = (thing) => {
@@ -67,7 +72,7 @@ export function createGuineaPig(THREE, options) {
   const eyeGeometry = keep(new THREE.SphereGeometry(0.05, 20, 14));
   for (const side of [-1, 1]) {
     const eye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    eye.position.set(side * 0.29, 0.085, -0.55);
+    eye.position.set(side * 0.325, 0.085, -0.55);
     eye.scale.set(0.8, 1, 1.1);
     body.add(eye);
   }
@@ -77,7 +82,7 @@ export function createGuineaPig(THREE, options) {
   const earMaterial = keep(new THREE.MeshStandardMaterial({ color: 0xc08e7c, roughness: 0.75, side: THREE.DoubleSide }));
   const ears = [-1, 1].map((side) => {
     const pivot = new THREE.Group();
-    pivot.position.set(side * 0.2, 0.28, -0.42);
+    pivot.position.set(side * 0.23, 0.28, -0.42);
     const ear = new THREE.Mesh(earGeometry, earMaterial);
     ear.scale.set(0.12, 0.09, 0.022);
     ear.position.set(side * 0.08, 0.02, 0);
@@ -103,10 +108,10 @@ export function createGuineaPig(THREE, options) {
   const footGeometry = keep(new THREE.SphereGeometry(1, 14, 10));
   const footMaterial = keep(new THREE.MeshStandardMaterial({ color: SKIN, roughness: 0.7 }));
   const feet = [
-    [0.16, -0.4],
-    [-0.16, -0.4],
-    [0.2, 0.26],
-    [-0.2, 0.26]
+    [0.18, -0.4],
+    [-0.18, -0.4],
+    [0.23, 0.26],
+    [-0.23, 0.26]
   ].map(([x, z], i) => {
     const foot = new THREE.Mesh(footGeometry, footMaterial);
     foot.scale.set(0.065, 0.035, i < 2 ? 0.075 : 0.1);
@@ -121,7 +126,7 @@ export function createGuineaPig(THREE, options) {
   const shadow = new THREE.Mesh(keep(new THREE.CircleGeometry(0.6, 32)), keep(shadowMaterial(THREE)));
   keep(shadow.material.map);
   shadow.rotation.x = -Math.PI / 2;
-  shadow.scale.set(0.85, 1.3, 1);
+  shadow.scale.set(SHADOW_X, SHADOW_Z, 1);
   shadow.renderOrder = 1;
 
   // The companions of the change ride on its back: small tiles, added by the
@@ -291,7 +296,7 @@ export function createGuineaPig(THREE, options) {
         animateModel(dt, state);
         const lift = Math.max(0, Math.min(state.height || 0, 2));
         const size = 1 - lift * 0.25;
-        shadow.scale.set(0.85 * size, 1.3 * size, 1);
+        shadow.scale.set(SHADOW_X * size, SHADOW_Z * size, 1);
         shadow.material.opacity = 0.5 * (1 - lift * 0.3);
         return;
       }
@@ -301,7 +306,7 @@ export function createGuineaPig(THREE, options) {
         phase += dt * 2;
         body.rotation.x = 0.5;
         body.rotation.z = 0;
-        body.position.y = 0.52 + Math.sin(phase) * 0.01;
+        body.position.y = BODY_Y + 0.14 + Math.sin(phase) * 0.01;
         body.scale.set(1, 1, 1);
         feet.forEach((foot, i) => {
           foot.position.y = i < 2 ? 0.42 : 0.035;
@@ -316,7 +321,7 @@ export function createGuineaPig(THREE, options) {
       // A gallop stretches and gathers the body; a duck flattens it
       const flat = state.ducking ? 0.62 : 1;
       body.scale.set(state.ducking ? 1.12 : 1 + breathe, flat * (1 - gallop * 0.04 + breathe), (state.ducking ? 1.08 : 1) * (1 + gallop * 0.05));
-      body.position.y = 0.38 * flat + Math.abs(gallop) * 0.05;
+      body.position.y = BODY_Y * flat + Math.abs(gallop) * 0.05;
       // In the air it does what guinea pigs do when they are happy: popcorn
       body.rotation.z = state.airborne ? Math.sin(air * 9) * 0.28 : 0;
       body.rotation.x = state.airborne ? -0.18 : gallop * 0.03;
@@ -335,7 +340,7 @@ export function createGuineaPig(THREE, options) {
       // The shadow shrinks and fades as it goes up
       const lift = Math.max(0, Math.min(state.height || 0, 2));
       const size = 1 - lift * 0.25;
-      shadow.scale.set(0.85 * size, 1.3 * size, 1);
+      shadow.scale.set(SHADOW_X * size, SHADOW_Z * size, 1);
       shadow.material.opacity = 0.5 * (1 - lift * 0.3);
     },
     /** A short shake when it hits something. */
@@ -360,23 +365,26 @@ export function createGuineaPig(THREE, options) {
   return pig;
 }
 
-/** The silhouette, rump to nose along -Z, as one closed lathe. */
+/**
+ * The silhouette, rump to nose along -Z, as one closed lathe: the same well-fed
+ * shape as the Blender model, a short loaf with a big round rump and no neck.
+ */
 function bodyGeometry(THREE) {
   // radius along the axis, from the rump (y < 0) to the nose (y > 0)
   const profile = [
-    [0, -0.62],
-    [0.17, -0.6],
-    [0.31, -0.54],
-    [0.41, -0.44],
-    [0.46, -0.3],
-    [0.48, -0.1],
-    [0.46, 0.1],
-    [0.415, 0.28],
-    [0.36, 0.42],
-    [0.315, 0.54],
-    [0.255, 0.64],
-    [0.175, 0.72],
-    [0.085, 0.77],
+    [0, -0.57],
+    [0.19, -0.555],
+    [0.35, -0.5],
+    [0.46, -0.4],
+    [0.515, -0.26],
+    [0.525, -0.08],
+    [0.51, 0.1],
+    [0.475, 0.26],
+    [0.405, 0.42],
+    [0.335, 0.54],
+    [0.262, 0.64],
+    [0.178, 0.72],
+    [0.086, 0.77],
     [0, 0.785]
   ].map(([r, y]) => new THREE.Vector2(r, y));
   const curve = new THREE.SplineCurve(profile).getPoints(48);
@@ -389,9 +397,25 @@ function bodyGeometry(THREE) {
   const v = new THREE.Vector3();
   for (let i = 0; i < position.count; i++) {
     v.fromBufferAttribute(position, i);
+    // Along the axis: s < 0 at the rump, s > 0 at the nose
+    const s = -v.z;
+    // A loaf, not a tube: the cross-section is squarer than a circle, most
+    // of all under the flanks; the head stays round
+    const ring = Math.hypot(v.x, v.y);
+    if (ring > 1e-6) {
+      const loaf = 1 - smooth(0.3, 0.75, s);
+      const e = 2 / (2 + (v.y < 0 ? 0.8 : 0.35) * loaf);
+      const dx = v.x / ring;
+      const dy = v.y / ring;
+      v.x = Math.sign(dx) * Math.abs(dx) ** e * ring;
+      v.y = Math.sign(dy) * Math.abs(dy) ** e * ring;
+      // Full flanks, bulging out before they turn under the belly
+      v.x *= 1 + 0.04 * (1 - smooth(0, 0.65, Math.abs(dy + 0.2))) * loaf;
+    }
     // A flat belly and a slightly narrower back
     v.y *= v.y < 0 ? 0.62 : 0.9;
-    v.x *= 1.03;
+    // A broad body and rump, full cheeks
+    v.x *= 1.1 * (1 + 0.1 * (1 - smooth(0.1, 0.75, s))) * (1 + 0.05 * smooth(0.05, -0.35, s));
     // The rump sits a little higher, the nose dips
     v.y += 0.05 * smooth(0, 0.6, v.z);
     v.y -= 0.09 * smooth(0.45, 0.8, -v.z);

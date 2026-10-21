@@ -61,14 +61,15 @@ def material(name, color, roughness=0.6, metallic=0.0, vertex_colors=False, clea
     return mat
 
 
-# The side profile, rump (s < 0) to nose (s > 0): (s, radius). The same
-# silhouette the game drew before, now on a dense, smooth mesh.
+# The side profile, rump (s < 0) to nose (s > 0): (s, radius). A well-fed
+# guinea pig: a short loaf with a big round rump, full up to the cheeks, so the
+# head flows into the body with no neck. The face (s > 0.5) keeps its size.
 PROFILE = [
-    (-0.62, 0.0), (-0.6, 0.17), (-0.54, 0.31), (-0.44, 0.41), (-0.3, 0.46), (-0.1, 0.48),
-    (0.1, 0.46), (0.28, 0.415), (0.42, 0.36), (0.54, 0.315), (0.64, 0.255), (0.72, 0.175),
-    (0.77, 0.085), (0.785, 0.0),
+    (-0.57, 0.0), (-0.555, 0.19), (-0.5, 0.35), (-0.4, 0.46), (-0.26, 0.515), (-0.08, 0.525),
+    (0.1, 0.51), (0.26, 0.475), (0.42, 0.405), (0.54, 0.335), (0.64, 0.262), (0.72, 0.178),
+    (0.77, 0.086), (0.785, 0.0),
 ]
-AXIS = 0.42  # height of the body's axis above the floor
+AXIS = 0.38  # height of the body's axis above the floor: the belly almost on it
 
 
 def profile(s):
@@ -92,6 +93,11 @@ def smooth(edge0, edge1, x):
     return t * t * (3 - 2 * t)
 
 
+def width(s):
+    """How much wider than round the body is at s: a broad body and rump, full cheeks."""
+    return 1.1 * (1 + 0.1 * (1 - smooth(0.1, 0.75, s))) * (1 + 0.05 * smooth(0.05, -0.35, s))
+
+
 def body_mesh():
     """A dense sphere wrapped onto the profile: round rump, tapered head, flat belly."""
     bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=48, radius=1)
@@ -100,14 +106,21 @@ def body_mesh():
     for v in mesh.data.vertices:
         x, y, z = v.co
         # z from -1 (rump pole) to 1 (nose pole) becomes the axial position s
-        s = -0.62 + (z + 1) / 2 * (0.785 + 0.62)
+        s = PROFILE[0][0] + (z + 1) / 2 * (PROFILE[-1][0] - PROFILE[0][0])
         ring = math.hypot(x, y)
         dx, dy = (x / ring, y / ring) if ring > 1e-6 else (0.0, 0.0)
+        # A loaf, not a tube: the body's cross-section is squarer than a
+        # circle, most of all under the flanks; the head stays round
+        loaf = 1 - smooth(0.3, 0.75, s)
+        e = 2 / (2 + (0.8 if dy < 0 else 0.35) * loaf)
+        dx, dy = math.copysign(abs(dx) ** e, dx), math.copysign(abs(dy) ** e, dy)
         r = profile(s)
-        X = dx * r * 1.03
+        X = dx * r * width(s)
         up = dy * r
         # A flat belly and a slightly narrower back
         up *= 0.62 if up < 0 else 0.9
+        # Full flanks: the lower sides bulge out before they turn under the belly
+        X *= 1 + 0.04 * (1 - smooth(0.0, 0.65, abs(dy + 0.2))) * loaf
         # The rump sits a little higher, the nose dips; cheeks fill the head
         up += 0.05 * smooth(0, 0.6, -s)
         up -= 0.09 * smooth(0.45, 0.8, s)
@@ -213,17 +226,17 @@ def coat_material(body):
     links.new(remap(xyz.outputs["Z"], AXIS + 0.02, AXIS - 0.1), chin.inputs[1])
     coat = mix(coat, (0.74, 0.63, 0.5), chin.outputs["Value"])
     # The warm tan ring round each eye
-    absolute = node("ShaderNodeVectorMath")
-    absolute.operation = "ABSOLUTE"
-    links.new(coords.outputs["Object"], absolute.inputs[0])
+    # Mirrored on X only: both eyes, and nothing on the rump
+    side = node("ShaderNodeMath")
+    side.operation = "ABSOLUTE"
+    links.new(xyz.outputs["X"], side.inputs[0])
+    mirrored = nodes.new("ShaderNodeCombineXYZ")
+    links.new(side.outputs["Value"], mirrored.inputs["X"])
+    links.new(xyz.outputs["Y"], mirrored.inputs["Y"])
+    links.new(xyz.outputs["Z"], mirrored.inputs["Z"])
     eye = node("ShaderNodeVectorMath")
     eye.operation = "DISTANCE"
-    eye.inputs[1].default_value = (EYE.x, abs(EYE.y), EYE.z)
-    flip = node("ShaderNodeVectorMath")
-    flip.operation = "MULTIPLY"
-    flip.inputs[1].default_value = (1.0, -1.0, 1.0)
-    links.new(absolute.outputs["Vector"], flip.inputs[0])
-    links.new(flip.outputs["Vector"], eye.inputs[0])
+    links.new(mirrored.outputs["Vector"], eye.inputs[0])
     eye.inputs[1].default_value = (EYE.x, EYE.y, EYE.z)
     coat = mix(coat, (0.5, 0.33, 0.2), remap(eye.outputs["Value"], 0.105, 0.065))
     links.new(coat, bsdf.inputs["Base Color"])
@@ -300,7 +313,7 @@ def add(primitive, name, location, scale=(1, 1, 1), rotation=(0, 0, 0), mat=None
 def surface(s, side, lift):
     """A point on the body at axial position s, on one side, lift above the axis."""
     r = profile(s)
-    return Vector((side * math.sqrt(max(r * r - lift * lift, 0)) * 1.03, -s, AXIS + lift - 0.09 * smooth(0.45, 0.8, s)))
+    return Vector((side * math.sqrt(max(r * r - lift * lift, 0)) * width(s), -s, AXIS + lift - 0.09 * smooth(0.45, 0.8, s)))
 
 
 EYE = Vector((0.0, 0.0, 0.0))
@@ -333,7 +346,7 @@ def details(mats):
         lip = add("cylinder", "Mouth", (side * 0.014, nose_at[1] + 0.008, nose_at[2] - 0.062), (0.003, 0.003, 0.016), (0, math.radians(55 * side), 0), mat=mats["mouth"], vertices=6)
         parts.append(lip)
     # Feet: grey-pink pads with small toes and dark claws
-    for name, (x, s) in {"FootFL": (0.17, 0.36), "FootFR": (-0.17, 0.36), "FootBL": (0.21, -0.36), "FootBR": (-0.21, -0.36)}.items():
+    for name, (x, s) in {"FootFL": (0.19, 0.36), "FootFR": (-0.19, 0.36), "FootBL": (0.24, -0.36), "FootBR": (-0.24, -0.36)}.items():
         parts.append(add("uv_sphere", name, (x, -s, 0.032), (0.06, 0.085, 0.034), mat=mats["foot"], segments=14, ring_count=8))
         toes = 4 if s > 0 else 3
         for i in range(toes):
@@ -376,10 +389,10 @@ def armature():
     bone("head", (0, -0.3, AXIS), (0, -0.8, AXIS - 0.05), "body")
     bone("ear.L", (0.17, -0.36, AXIS + 0.22), (0.2, -0.32, AXIS + 0.34), "head")
     bone("ear.R", (-0.17, -0.36, AXIS + 0.22), (-0.2, -0.32, AXIS + 0.34), "head")
-    bone("leg.FL", (0.17, -0.36, 0.22), (0.17, -0.36, 0.0), "body")
-    bone("leg.FR", (-0.17, -0.36, 0.22), (-0.17, -0.36, 0.0), "body")
-    bone("leg.BL", (0.21, 0.36, 0.22), (0.21, 0.36, 0.0), "body")
-    bone("leg.BR", (-0.21, 0.36, 0.22), (-0.21, 0.36, 0.0), "body")
+    bone("leg.FL", (0.19, -0.36, 0.22), (0.19, -0.36, 0.0), "body")
+    bone("leg.FR", (-0.19, -0.36, 0.22), (-0.19, -0.36, 0.0), "body")
+    bone("leg.BL", (0.24, 0.36, 0.22), (0.24, 0.36, 0.0), "body")
+    bone("leg.BR", (-0.24, 0.36, 0.22), (-0.24, 0.36, 0.0), "body")
     bpy.ops.object.mode_set(mode="OBJECT")
     return rig
 
