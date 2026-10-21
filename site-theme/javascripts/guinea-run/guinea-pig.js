@@ -1,5 +1,8 @@
 /*
- * The guinea pig, built in code: no model file to load or license.
+ * The guinea pig. Its model is built in Blender by scripts/blender/guinea-pig.py,
+ * rigged and animated (idle, run, jump, sit, happy, hit), and loaded from
+ * options.modelUrl. Until it has loaded, or if it cannot load, the guinea pig
+ * below, built in code, stands in: the game never waits for the file.
  *
  * A guinea pig has no visible neck, so the body and the head are one shape: a
  * lathe profile turned around the long axis, then flattened under the belly
@@ -143,12 +146,116 @@ export function createGuineaPig(THREE, options) {
   let phase = 0;
   let air = 0;
   let sitting = false;
+  let ghost = false;
+  let disposed = false;
 
-  return {
+  // The Blender model, once loaded: an animation mixer plays its clips
+  const rig = { model: null, mixer: null, actions: {}, playing: null, lastHit: 0, wasAirborne: false };
+  if (options && options.modelUrl) {
+    loadModel(THREE, options.modelUrl)
+      .then((gltf) => {
+        if (disposed) {
+          return;
+        }
+        useModel(gltf);
+      })
+      .catch(() => {
+        // The guinea pig built in code stays: nothing is lost but the looks
+      });
+  }
+
+  function useModel(gltf) {
+    const model = gltf.scene;
+    model.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        // A skinned mesh moves outside its bind-pose bounds
+        child.frustumCulled = false;
+        keep(child.geometry);
+        for (const m of Array.isArray(child.material) ? child.material : [child.material]) {
+          if (!materials.includes(m)) {
+            keep(m);
+            m.userData.opacity = m.opacity;
+            m.userData.transparent = m.transparent;
+            materials.push(m);
+          }
+        }
+      }
+    });
+    // The parts built in code step aside; the riders stay on its back
+    for (const child of body.children) {
+      child.visible = child === riders;
+    }
+    for (const foot of feet) {
+      foot.visible = false;
+    }
+    group.add(model);
+    rig.model = model;
+    rig.mixer = new THREE.AnimationMixer(model);
+    for (const clip of gltf.animations) {
+      const action = rig.mixer.clipAction(clip);
+      if (clip.name === "jump" || clip.name === "happy" || clip.name === "hit") {
+        action.setLoop(THREE.LoopOnce, 1);
+        action.clampWhenFinished = clip.name === "jump";
+      }
+      rig.actions[clip.name] = action;
+    }
+    play("idle");
+    if (ghost) {
+      pig.setGhost(true);
+    }
+  }
+
+  /** Cross-fades to a clip; a one-shot clip restarts each time. */
+  function play(name, fade) {
+    const next = rig.actions[name];
+    if (!next || (rig.playing === next && next.loop !== THREE.LoopOnce)) {
+      return;
+    }
+    next.reset().fadeIn(fade === undefined ? 0.15 : fade).play();
+    if (rig.playing && rig.playing !== next) {
+      rig.playing.fadeOut(fade === undefined ? 0.15 : fade);
+    }
+    rig.playing = next;
+  }
+
+  function animateModel(dt, state) {
+    const busy = rig.playing && rig.playing.loop === THREE.LoopOnce && rig.playing.isRunning() && rig.playing !== rig.actions.jump;
+    if (sitting) {
+      if (!busy) {
+        play("sit", 0.3);
+      }
+    } else if (state.airborne) {
+      if (!rig.wasAirborne) {
+        play("jump", 0.08);
+      }
+    } else if (!busy) {
+      if (state.running) {
+        play("run");
+        rig.actions.run.timeScale = 0.7 + (state.speed || 0) * 0.06;
+      } else {
+        play("idle", 0.3);
+      }
+    }
+    rig.wasAirborne = Boolean(state.airborne) && !sitting;
+    // A duck flattens it; the clips keep playing underneath
+    const flat = state.ducking && !sitting ? 0.62 : 1;
+    rig.model.scale.y += (flat - rig.model.scale.y) * Math.min(1, dt * 18);
+    rig.mixer.update(dt);
+  }
+
+  const pig = {
     object: outer,
     shadow,
+    /** A happy popcorn hop, for a good moment (the model only). */
+    hop() {
+      if (rig.model && !sitting) {
+        play("happy", 0.08);
+      }
+    },
     /** Invisible to everybody: what a field no permission grants looks like. */
     setGhost(on) {
+      ghost = on;
       for (const m of materials) {
         m.transparent = on ? true : m.userData.transparent;
         m.opacity = on ? 0.18 : m.userData.opacity;
@@ -177,6 +284,14 @@ export function createGuineaPig(THREE, options) {
      * state.height: how high it is.
      */
     animate(dt, state) {
+      if (rig.model) {
+        animateModel(dt, state);
+        const lift = Math.max(0, Math.min(state.height || 0, 2));
+        const size = 1 - lift * 0.25;
+        shadow.scale.set(0.85 * size, 1.3 * size, 1);
+        shadow.material.opacity = 0.5 * (1 - lift * 0.3);
+        return;
+      }
       if (sitting) {
         // Up on its back legs, nose high, front paws off the ground. The nose
         // is on -Z, so a positive turn round X lifts it
@@ -223,13 +338,23 @@ export function createGuineaPig(THREE, options) {
     /** A short shake when it hits something. */
     hitWobble(amount) {
       group.rotation.y = Math.sin(amount * 30) * 0.3 * amount;
+      // A new hit plays the model's hit clip once
+      if (rig.model && amount > rig.lastHit + 0.05 && !sitting) {
+        play("hit", 0.05);
+      }
+      rig.lastHit = amount;
     },
     dispose() {
+      disposed = true;
+      if (rig.mixer) {
+        rig.mixer.stopAllAction();
+      }
       for (const thing of disposables) {
         thing.dispose();
       }
     }
   };
+  return pig;
 }
 
 /** The silhouette, rump to nose along -Z, as one closed lathe. */
@@ -438,4 +563,20 @@ function shadowMaterial(THREE) {
   ctx.fillRect(0, 0, 128, 128);
   const texture = new THREE.CanvasTexture(canvas);
   return new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, opacity: 0.5 });
+}
+
+/** The model file, loaded once per page and shared by every guinea pig. */
+const modelCache = new Map();
+function loadModel(THREE, url) {
+  if (!modelCache.has(url)) {
+    modelCache.set(
+      url,
+      import("./vendor/GLTFLoader.js").then(({ GLTFLoader }) => new GLTFLoader().loadAsync(url))
+    );
+  }
+  // Each guinea pig gets its own copy of the scene, sharing the geometry
+  return Promise.all([modelCache.get(url), import("./vendor/SkeletonUtils.js")]).then(([gltf, utils]) => ({
+    scene: utils.clone(gltf.scene),
+    animations: gltf.animations
+  }));
 }

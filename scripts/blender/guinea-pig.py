@@ -6,7 +6,7 @@ and exported as one glTF binary the game loads.
         site-theme/javascripts/guinea-run/models/guinea-pig.glb [preview.png]
 
 Nothing here needs a texture: the coat is painted into vertex colours (ginger,
-a white band, a black patch on the rump and round the right eye), the rest is
+a white band and blaze, a black patch on the rump), the rest is
 flat materials. The model faces -Y in Blender, which the glTF exporter turns
 into -Z, the way the game's guinea pig has always looked down its track.
 
@@ -42,13 +42,16 @@ def srgb_to_linear(c):
     return tuple((x / 12.92) if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4 for x in c)
 
 
-def material(name, color, roughness=0.6, metallic=0.0, vertex_colors=False, clearcoat=0.0):
+def material(name, color, roughness=0.6, metallic=0.0, vertex_colors=False, clearcoat=0.0, sheen=0.0):
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes["Principled BSDF"]
     bsdf.inputs["Base Color"].default_value = (*srgb_to_linear(color), 1)
     bsdf.inputs["Roughness"].default_value = roughness
     bsdf.inputs["Metallic"].default_value = metallic
+    if sheen and "Sheen Weight" in bsdf.inputs:
+        bsdf.inputs["Sheen Weight"].default_value = sheen
+        bsdf.inputs["Sheen Tint"].default_value = (1, 0.92, 0.85, 1)
     if clearcoat and "Coat Weight" in bsdf.inputs:
         bsdf.inputs["Coat Weight"].default_value = clearcoat
     if vertex_colors:
@@ -58,83 +61,98 @@ def material(name, color, roughness=0.6, metallic=0.0, vertex_colors=False, clea
     return mat
 
 
+# The side profile, rump (s < 0) to nose (s > 0): (s, radius). The same
+# silhouette the game drew before, now on a dense, smooth mesh.
+PROFILE = [
+    (-0.62, 0.0), (-0.6, 0.17), (-0.54, 0.31), (-0.44, 0.41), (-0.3, 0.46), (-0.1, 0.48),
+    (0.1, 0.46), (0.28, 0.415), (0.42, 0.36), (0.54, 0.315), (0.64, 0.255), (0.72, 0.175),
+    (0.77, 0.085), (0.785, 0.0),
+]
+AXIS = 0.42  # height of the body's axis above the floor
+
+
+def profile(s):
+    """Catmull-Rom through PROFILE, so the outline has no corners."""
+    pts = PROFILE
+    if s <= pts[0][0] or s >= pts[-1][0]:
+        return 0.0
+    for i in range(len(pts) - 1):
+        if pts[i][0] <= s <= pts[i + 1][0]:
+            p0 = pts[max(i - 1, 0)][1]
+            p1 = pts[i][1]
+            p2 = pts[i + 1][1]
+            p3 = pts[min(i + 2, len(pts) - 1)][1]
+            t = (s - pts[i][0]) / (pts[i + 1][0] - pts[i][0])
+            return max(0.0, 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t ** 3))
+    return 0.0
+
+
+def smooth(edge0, edge1, x):
+    t = min(max((x - edge0) / (edge1 - edge0), 0.0), 1.0)
+    return t * t * (3 - 2 * t)
+
+
 def body_mesh():
-    """Metaballs for a soft, round, pear-shaped body, turned into a mesh."""
-    data = bpy.data.metaballs.new("BodyBalls")
-    data.resolution = 0.045
-    data.render_resolution = 0.045
-    data.threshold = 0.6
-    obj = bpy.data.objects.new("BodyBalls", data)
-    bpy.context.collection.objects.link(obj)
-    # x: right, y: forward is -Y (nose), z: up
-    balls = [
-        # rump, big and round
-        ((0, 0.28, 0.36), 0.52, (1.0, 1.05, 0.9)),
-        # middle of the body
-        ((0, -0.02, 0.36), 0.5, (0.95, 1.0, 0.86)),
-        # shoulders, a bit narrower
-        ((0, -0.3, 0.37), 0.42, (0.9, 1.0, 0.86)),
-        # head, low and forward, the nose dipping
-        ((0, -0.6, 0.36), 0.34, (0.9, 1.05, 0.88)),
-        # muzzle
-        ((0, -0.8, 0.31), 0.2, (0.95, 1.0, 0.85)),
-        # cheeks
-        ((0.17, -0.66, 0.3), 0.16, (1, 1, 1)),
-        ((-0.17, -0.66, 0.3), 0.16, (1, 1, 1)),
-    ]
-    for (x, y, z), radius, (sx, sy, sz) in balls:
-        element = data.elements.new()
-        element.co = (x, y, z)
-        element.radius = radius
-        element.type = "ELLIPSOID"
-        element.size_x, element.size_y, element.size_z = radius * sx, radius * sy, radius * sz
-    bpy.context.view_layer.objects.active = obj
-    obj.select_set(True)
-    bpy.ops.object.convert(target="MESH")
+    """A dense sphere wrapped onto the profile: round rump, tapered head, flat belly."""
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=48, radius=1)
     mesh = bpy.context.view_layer.objects.active
     mesh.name = "Body"
-    # A flat belly: everything under the floor line is pressed up
     for v in mesh.data.vertices:
-        if v.co.z < 0.08:
-            v.co.z = 0.08 + (v.co.z - 0.08) * 0.25
+        x, y, z = v.co
+        # z from -1 (rump pole) to 1 (nose pole) becomes the axial position s
+        s = -0.62 + (z + 1) / 2 * (0.785 + 0.62)
+        ring = math.hypot(x, y)
+        dx, dy = (x / ring, y / ring) if ring > 1e-6 else (0.0, 0.0)
+        r = profile(s)
+        X = dx * r * 1.03
+        up = dy * r
+        # A flat belly and a slightly narrower back
+        up *= 0.62 if up < 0 else 0.9
+        # The rump sits a little higher, the nose dips; cheeks fill the head
+        up += 0.05 * smooth(0, 0.6, -s)
+        up -= 0.09 * smooth(0.45, 0.8, s)
+        X *= 1 + 0.1 * smooth(0.35, 0.55, s) * (1 - smooth(0.62, 0.76, s))
+        v.co = (X, -s, AXIS + up)
     bpy.ops.object.shade_smooth()
-    decimate = mesh.modifiers.new("Decimate", "DECIMATE")
-    decimate.ratio = 0.5
-    bpy.ops.object.modifier_apply(modifier="Decimate")
-    smooth = mesh.modifiers.new("Smooth", "SMOOTH")
-    smooth.iterations = 4
-    smooth.factor = 0.5
-    bpy.ops.object.modifier_apply(modifier="Smooth")
     return mesh
 
 
+def mix(a, b, t):
+    return tuple(x + (y - x) * t for x, y in zip(a, b))
+
+
+def band(value, low, high, soft):
+    """1 inside [low, high], fading to 0 over soft on both sides."""
+    return smooth(low - soft, low + soft, value) * (1 - smooth(high - soft, high + soft, value))
+
+
+def blob(distance, soft=0.25):
+    """1 at the centre of an ellipse (distance 0), 0 outside (distance 1), soft edge."""
+    return 1 - smooth(1 - soft, 1 + soft * 0.5, distance)
+
+
 def paint_coat(mesh):
-    """Ginger all over, a white band and blaze, black on the rump and the right eye."""
+    """Ginger all over, a white band and blaze, black on the rump. Every edge is
+    a soft blend, so the coat has no steps."""
     attribute = mesh.data.color_attributes.new("Coat", "FLOAT_COLOR", "POINT")
     for v in mesh.data.vertices:
         x, y, z = v.co
+        s = -y
+        h = z - AXIS
         color = GINGER
-        # Lighter under the belly
-        if z < 0.2:
-            color = tuple(c * 0.85 + w * 0.15 for c, w in zip(GINGER, WHITE))
+        # Lighter under the belly, darker along the back
+        color = mix(color, WHITE, 0.22 * (1 - smooth(-0.2, -0.05, h)))
+        color = mix(color, GINGER_DARK, 0.3 * smooth(0.25, 0.42, h))
         # The white band round the middle, with a wavy edge
-        if -0.12 + 0.03 * math.sin(x * 9) < y < 0.1 + 0.03 * math.sin(x * 7 + 1):
-            color = WHITE
-        # The white blaze down the face
-        if y < -0.5 and abs(x) < 0.07 + (-0.5 - y) * 0.25 and z > 0.3:
-            color = WHITE
-        # The muzzle is white too
-        if y < -0.82:
-            color = WHITE
-        # Black patch on the left of the rump
-        if (x + 0.18) ** 2 / 0.09 + (y - 0.36) ** 2 / 0.06 + (z - 0.5) ** 2 / 0.12 < 1:
-            color = BLACK
-        # Black round the right eye
-        if (x - 0.2) ** 2 + (y + 0.62) ** 2 / 1.4 + (z - 0.46) ** 2 < 0.014:
-            color = BLACK
-        # A little darker on the back, as fur is
-        if z > 0.6 and color == GINGER:
-            color = tuple(c * 0.8 + d * 0.2 for c, d in zip(GINGER, GINGER_DARK))
+        color = mix(color, WHITE, band(s + 0.02 * math.sin(x * 9 + h * 6), -0.1, 0.12, 0.03))
+        # The white blaze down the face, then the whole muzzle
+        blaze = band(x, -(0.05 + (s - 0.45) * 0.35), 0.05 + (s - 0.45) * 0.35, 0.025) * smooth(0.42, 0.5, s) * smooth(-0.12, -0.02, h)
+        color = mix(color, WHITE, max(blaze, smooth(0.66, 0.72, s)))
+        # Black on the left of the rump
+        rump = math.sqrt((x + 0.2) ** 2 / 0.07 + (s + 0.38) ** 2 / 0.05 + (h - 0.12) ** 2 / 0.1)
+        color = mix(color, BLACK, blob(rump) * (1 if x < 0.1 else 0))
+        grain = 1 + 0.06 * (math.sin(x * 91 + s * 57) * math.sin(h * 73 - x * 31))
+        color = tuple(min(1.0, c * grain) for c in color)
         attribute.data[v.index].color = (*srgb_to_linear(color), 1)
 
 
@@ -150,36 +168,47 @@ def add(primitive, name, location, scale=(1, 1, 1), rotation=(0, 0, 0), mat=None
     return obj
 
 
+def surface(s, side, lift):
+    """A point on the body at axial position s, on one side, lift above the axis."""
+    r = profile(s)
+    return Vector((side * math.sqrt(max(r * r - lift * lift, 0)) * 1.03, -s, AXIS + lift - 0.09 * smooth(0.45, 0.8, s)))
+
+
 def details(mats):
     parts = []
     # Eyes: glossy black, a little bulging, on the sides of the head
     for side in (1, -1):
-        eye = add("uv_sphere", "Eye" + ("R" if side > 0 else "L"), (0.22 * side, -0.66, 0.47), (0.065, 0.075, 0.075), mat=mats["eye"], segments=20, ring_count=12)
+        p = surface(0.52, side, 0.1)
+        eye = add("uv_sphere", "Eye" + ("R" if side > 0 else "L"), (p.x * 0.96, p.y, p.z), (0.06, 0.07, 0.07), mat=mats["eye"], segments=20, ring_count=12)
         parts.append(eye)
-        shine = add("uv_sphere", "Shine" + ("R" if side > 0 else "L"), (0.26 * side, -0.7, 0.51), (0.018, 0.018, 0.018), mat=mats["shine"], segments=10, ring_count=6)
+        shine = add("uv_sphere", "Shine" + ("R" if side > 0 else "L"), (p.x * 1.04, p.y - 0.035, p.z + 0.035), (0.016, 0.016, 0.016), mat=mats["shine"], segments=10, ring_count=6)
         parts.append(shine)
-    # Ears: petals, pink inside, folded back a little
+    # Ears: drooping petals on top of the head, ginger outside, pink inside
     for side in (1, -1):
-        ear = add("uv_sphere", "Ear" + ("R" if side > 0 else "L"), (0.2 * side, -0.48, 0.63), (0.1, 0.035, 0.08), (math.radians(-20), math.radians(25 * side), 0), mat=mats["ear"], segments=16, ring_count=10)
-        parts.append(ear)
-    # Nose and mouth
-    parts.append(add("uv_sphere", "Nose", (0, -0.98, 0.36), (0.045, 0.03, 0.03), mat=mats["nose"], segments=12, ring_count=8))
-    # Feet: four pink ovals poking out
-    for name, (x, y) in {"FootFL": (0.17, -0.42), "FootFR": (-0.17, -0.42), "FootBL": (0.21, 0.36), "FootBR": (-0.21, 0.36)}.items():
-        parts.append(add("uv_sphere", name, (x, y, 0.05), (0.07, 0.1, 0.045), mat=mats["foot"], segments=14, ring_count=8))
-    # Whiskers: thin, light, three a side
+        p = surface(0.38, side, 0.22)
+        tilt = (math.radians(-10), math.radians(-25 * side), math.radians(28 * side))
+        outer = add("uv_sphere", "Ear" + ("R" if side > 0 else "L"), (p.x * 1.0, p.y + 0.03, p.z + 0.08), (0.022, 0.1, 0.09), tilt, mat=mats["earOuter"], segments=18, ring_count=12)
+        parts.append(outer)
+        inner = add("uv_sphere", "Ear" + ("R" if side > 0 else "L") + "In", (p.x * 1.0 + side * 0.013, p.y + 0.03, p.z + 0.08), (0.01, 0.08, 0.07), tilt, mat=mats["ear"], segments=16, ring_count=10)
+        parts.append(inner)
+    # Nose, at the tip of the muzzle
+    tip = surface(0.77, 1, 0.0)
+    parts.append(add("uv_sphere", "Nose", (0, tip.y + 0.005, tip.z + 0.02), (0.04, 0.03, 0.03), mat=mats["nose"], segments=12, ring_count=8))
+    # Feet: four pink ovals poking out under the body
+    for name, (x, s) in {"FootFL": (0.17, 0.36), "FootFR": (-0.17, 0.36), "FootBL": (0.21, -0.36), "FootBR": (-0.21, -0.36)}.items():
+        parts.append(add("uv_sphere", name, (x, -s, 0.035), (0.065, 0.095, 0.04), mat=mats["foot"], segments=14, ring_count=8))
+    # Whiskers: thin, light, three a side, from the muzzle outwards
     for side in (1, -1):
+        root = surface(0.7, side, -0.02)
         for i in range(3):
-            angle = math.radians(-12 + i * 12)
-            whisker = add(
-                "cylinder",
-                "Whisker",
-                (0.17 * side, -0.9, 0.34 + i * 0.015),
-                (0.004, 0.004, 0.17),
-                (0, math.radians(90), math.radians(-90 * side) + side * angle),
-                mat=mats["whisker"],
-                vertices=5,
-            )
+            angle = math.radians(-14 + i * 14)
+            length = 0.2
+            direction = Vector((side * math.cos(angle), -0.25, math.sin(angle) * 0.6)).normalized()
+            centre = root + direction * (length / 2)
+            whisker = add("cylinder", "Whisker", centre, (0.004, 0.004, length / 2), mat=mats["whisker"], vertices=5)
+            whisker.rotation_mode = "QUATERNION"
+            whisker.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(direction)
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
             parts.append(whisker)
     return parts
 
@@ -200,14 +229,14 @@ def armature():
         bones[name] = b
 
     bone("root", (0, 0, 0), (0, 0, 0.12))
-    bone("body", (0, 0.3, 0.36), (0, -0.3, 0.38), "root")
-    bone("head", (0, -0.36, 0.38), (0, -0.92, 0.36), "body")
-    bone("ear.L", (0.18, -0.48, 0.58), (0.22, -0.44, 0.7), "head")
-    bone("ear.R", (-0.18, -0.48, 0.58), (-0.22, -0.44, 0.7), "head")
-    bone("leg.FL", (0.17, -0.42, 0.24), (0.17, -0.42, 0.02), "body")
-    bone("leg.FR", (-0.17, -0.42, 0.24), (-0.17, -0.42, 0.02), "body")
-    bone("leg.BL", (0.21, 0.36, 0.24), (0.21, 0.36, 0.02), "body")
-    bone("leg.BR", (-0.21, 0.36, 0.24), (-0.21, 0.36, 0.02), "body")
+    bone("body", (0, 0.45, AXIS), (0, -0.3, AXIS), "root")
+    bone("head", (0, -0.3, AXIS), (0, -0.8, AXIS - 0.05), "body")
+    bone("ear.L", (0.17, -0.36, AXIS + 0.22), (0.2, -0.32, AXIS + 0.34), "head")
+    bone("ear.R", (-0.17, -0.36, AXIS + 0.22), (-0.2, -0.32, AXIS + 0.34), "head")
+    bone("leg.FL", (0.17, -0.36, 0.22), (0.17, -0.36, 0.0), "body")
+    bone("leg.FR", (-0.17, -0.36, 0.22), (-0.17, -0.36, 0.0), "body")
+    bone("leg.BL", (0.21, 0.36, 0.22), (0.21, 0.36, 0.0), "body")
+    bone("leg.BR", (-0.21, 0.36, 0.22), (-0.21, 0.36, 0.0), "body")
     bpy.ops.object.mode_set(mode="OBJECT")
     return rig
 
@@ -345,7 +374,7 @@ def preview(path):
     floor.data.materials.append(material("Floor", (0.8, 0.9, 0.95), 0.9))
     bpy.ops.object.camera_add(location=(2.1, -2.3, 1.25))
     camera = bpy.context.view_layer.objects.active
-    direction = Vector((0, -0.2, 0.32)) - camera.location
+    direction = Vector((0, -0.1, 0.36)) - camera.location
     camera.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
     camera.data.lens = 50
     scene.camera = camera
@@ -356,10 +385,11 @@ def preview(path):
 def main():
     reset()
     mats = {
-        "coat": material("Coat", GINGER, 0.85, vertex_colors=True),
+        "coat": material("Coat", GINGER, 0.8, vertex_colors=True, sheen=0.6),
         "eye": material("Eye", (0.02, 0.02, 0.03), 0.05, clearcoat=1.0),
         "shine": material("Shine", (1, 1, 1), 0.2),
         "ear": material("Ear", PINK, 0.7),
+        "earOuter": material("EarOuter", (0.72, 0.42, 0.24), 0.8),
         "nose": material("Nose", PINK_DEEP, 0.5),
         "foot": material("Foot", PINK, 0.7),
         "whisker": material("Whisker", (0.95, 0.93, 0.9), 0.5),

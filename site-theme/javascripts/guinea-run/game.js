@@ -250,7 +250,7 @@ function createGame(options) {
     }
     overlay.setAttribute("data-renderer", engine.backend);
     engine.onBigResize(pause);
-    pig = createGuineaPig(THREE, { furShells: [2, 4, 6][engine.tier] });
+    pig = createGuineaPig(THREE, { furShells: [2, 4, 6][engine.tier], modelUrl: options.base + "models/guinea-pig.glb" });
     pig.state = { running: false };
     engine.scene.add(pig.object);
     engine.scene.add(pig.shadow);
@@ -554,6 +554,7 @@ function createGame(options) {
     run.ended = true;
     run.score += bonus;
     fx.burst(pig.object.position.x, pig.object.position.y + 1, pig.object.position.z, { count: 70, speed: 5, up: 6, life: 1.6 });
+    pig.hop();
     const info = current.info;
     const stars = 1 + (run.lost === 0 ? 1 : 0) + (run.note ? 1 : 0);
     if (run.note) {
