@@ -1,7 +1,7 @@
 /*
  * World 0, Get set up (Lab 1.1): a runner where the guinea pig collects what
  * every sfdx-hardis project needs on a machine, until every card of the Setup
- * panel is green. Nothing of Lab 1.2 here: no org, no fork, no scratch org.
+ * panel is green. Nothing of Lab 1.2 here: no org, no repository, no scratch org.
  *
  * The running gag of Lab 1.1: a tool you just installed stays "installed, not
  * found" in the Setup panel until VS Code is closed completely and opened
@@ -534,9 +534,10 @@ export function createWorld(ctx) {
         if (event.step.spawn && !required[event.step.spawn] && state[event.step.spawn] === "missing") {
           spawnRequired(event.step.spawn, PLACES[event.step.spawn][0]);
         } else if (event.step.note) {
-          runner.calm(event.step.at + 90);
-          runner.spawnObstacle("noext", 0, event.step.at + 90);
-          runner.spawnItem("note", 0, event.step.at + 90, 2.1, { label: false });
+          // Past the choice of the second gate: nothing to catch while it runs
+          runner.calm(event.step.at + 104);
+          runner.spawnObstacle("noext", 0, event.step.at + 104);
+          runner.spawnItem("note", 0, event.step.at + 104, 2.1, { label: false });
         }
         return;
       case "section":
@@ -668,11 +669,16 @@ export function createWorld(ctx) {
       if (owed === true && runner.coach(t("coachRestart"), 2200)) {
         owed = "told";
       }
-      // A required tool that went by uncollected comes back as a pending install
+      // A required tool that went by uncollected comes back as a pending
+      // install, once the choice of a gate is made: nothing comes during it
       for (const id of REQUIRED) {
         const object = required[id];
-        if (object && !object.done && object.at < runner.distance - 4 && state[id] === "missing") {
-          const at = Math.min(runner.distance + 60, runner.total - 25);
+        if (runner.choosing || !object || object.done || object.at >= runner.distance - 4 || state[id] !== "missing") {
+          continue;
+        }
+        // Never in the choice of a gate: before it when there is room, else after
+        const at = runner.freeSpot(Math.min(runner.distance + 60, runner.total - 25), runner.distance + 20);
+        if (at < runner.total - 5) {
           required[id] = runner.spawnItem(id, Math.floor(ctx.random() * 3), at);
           hud.toast(t("pendingAgain", { tools: TOOLS[id].label }), "bad");
         }

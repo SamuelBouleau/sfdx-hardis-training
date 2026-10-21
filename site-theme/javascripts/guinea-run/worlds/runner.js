@@ -61,6 +61,19 @@ const SEGMENT_LENGTH = 20;
 const STOP_DISTANCE = 3.5;
 // How far ahead a gate shows its doors in the HUD, and an obstacle is taught
 const GATE_PANEL_AT = 60;
+// A gate with three answers to choose from gives DECIDE_TIME seconds, from
+// the moment its question and doors show in the HUD to the doors. The run
+// eases down to a calm speed for that stretch (DECIDE_SLOW of the pace there,
+// within DECIDE_SPEED m/s, so the doors show inside the shortest horizon),
+// nothing else is on the track, then the pace comes back smoothly
+const DECIDE_TIME = 10;
+const DECIDE_SLOW = 0.65;
+const DECIDE_SPEED = [4.5, 6.5];
+const DECIDE_EASE = 2.5;
+const RECOVER_EASE = 1.2;
+// The clear track before the doors show, and after them
+const DECIDE_LEAD = 4;
+const DECIDE_AFTER = 12;
 const TEACH_AT = 30;
 const STREAK_STEP = 10;
 // Signs and badges further than this are too small to read: not drawn.
@@ -141,6 +154,15 @@ export function createRunner(ctx, config) {
   let noObstacleUntil = 0;
   // Stretches with no obstacle: the run-up to a gate, to read and steer
   const quiet = [];
+  // Stretches with nothing at all: a choice between three doors, [from, to]
+  const choices = [];
+  // The choice being made now: { gate, elapsed }, and the speed actually run
+  // while it calms the run and while the pace comes back (-1: the pace's own)
+  let choice = null;
+  let runSpeed = -1;
+  let lastSpeed = 0;
+  // True while the runner lays its own rows: what falls in a choice is dropped
+  let laying = false;
   let objects = [];
   let scriptIndex = 0;
   let fog = false;
@@ -1228,6 +1250,7 @@ export function createRunner(ctx, config) {
   }
 
   function add(object) {
+    object.row = laying;
     object.small = object.type === "obstacle" || object.type === "item" || object.type === "power";
     object.detail = 2;
     object.mesh.position.x = object.x;
@@ -1317,7 +1340,23 @@ export function createRunner(ctx, config) {
       return player.lane;
     },
     get speed() {
-      return currentSpeed();
+      return lastSpeed;
+    },
+    /**
+     * A spot out of every choice for a thing to come at `at`: just before the
+     * choice when that is not before `earliest`, else just after it.
+     */
+    freeSpot(at, earliest) {
+      for (const [from, to] of choices) {
+        if (at > from && at < to) {
+          return from - 2 >= (earliest || 0) ? from - 2 : to + 2;
+        }
+      }
+      return at;
+    },
+    /** True while a choice between three doors runs: its doors are shown. */
+    get choosing() {
+      return Boolean(choice);
     },
     get stopped() {
       return Boolean(stopped);
@@ -1332,7 +1371,11 @@ export function createRunner(ctx, config) {
     },
     player,
 
-    spawnObstacle(kind, lane, at) {
+    spawnObstacle(kind, lane, spot) {
+      const at = clearOfChoices(spot);
+      if (at === null) {
+        return null;
+      }
       const def = config.obstacles[kind];
       const object = add({ type: "obstacle", kind, def, lane, x: LANES[lane], at, mesh: obstacleMesh(kind), depth: def.move === "gap" ? 2.2 : 0.6 });
       if (def.hidden && fog) {
@@ -1341,7 +1384,11 @@ export function createRunner(ctx, config) {
       return object;
     },
     /** options: { label: false } leaves the name off (rows of the same item). */
-    spawnItem(kind, lane, at, y, options) {
+    spawnItem(kind, lane, spot, y, options) {
+      const at = clearOfChoices(spot);
+      if (at === null) {
+        return null;
+      }
       let label = options && options.label;
       if (config.labelOnce && config.labelOnce.includes(kind)) {
         label = !labelled.has(kind);
@@ -1352,15 +1399,26 @@ export function createRunner(ctx, config) {
       mesh.position.y = height;
       return add({ type: "item", kind, def: config.items[kind], lane, x: LANES[lane], at, y: height, mesh, depth: 1, pool: pools[kind] || null });
     },
-    spawnPower(kind, lane, at) {
+    spawnPower(kind, lane, spot) {
+      const at = clearOfChoices(spot);
+      if (at === null) {
+        return null;
+      }
       const mesh = powerMesh(kind);
       mesh.position.y = 1;
       return add({ type: "power", kind, def: config.powers[kind], lane, x: LANES[lane], at, y: 1, mesh, depth: 1 });
     },
     /** spec: { doors: [3 x { text, short, ok, look, tip }], question, sign, coach, id } */
+    /** spec.choice: false for doors that are not a choice (no decision stretch). */
     spawnGate(spec, at) {
       calmBefore(at);
-      return add({ type: "gate", kind: "gate", spec, x: 0, at, mesh: gateMesh(spec), depth: 0.4 });
+      const gate = add({ type: "gate", kind: "gate", spec, x: 0, at, mesh: gateMesh(spec), depth: 0.4 });
+      gate.panelAt = GATE_PANEL_AT;
+      if (spec.choice !== false) {
+        gate.panelAt = DECIDE_TIME * decideSpeed(at);
+        clearForChoice(at - gate.panelAt - DECIDE_LEAD, at + DECIDE_AFTER);
+      }
+      return gate;
     },
     /** No obstacle from 30 m before `at` to 8 m after: a run-up to something to read or catch. */
     calm(at) {
@@ -1494,9 +1552,8 @@ export function createRunner(ctx, config) {
       clock += dt;
       stepPlayer(dt);
       const moving = !stopped;
-      if (moving) {
-        distance += currentSpeed() * dt * (player.quick > 0 ? QUICK_BOOST : 1) * speedFactor;
-      }
+      lastSpeed = moving ? runningSpeed(dt) : 0;
+      distance += lastSpeed * dt;
       const section = sectionAt(distance);
       if (section !== sectionIndex) {
         sectionIndex = section;
@@ -1515,7 +1572,7 @@ export function createRunner(ctx, config) {
       markDoorLane();
       showPace();
       placeCamera(dt);
-      pig.state = { running: moving, airborne: player.y > 0.01, ducking: player.duck > 0, speed: currentSpeed(), height: player.y };
+      pig.state = { running: moving, airborne: player.y > 0.01, ducking: player.duck > 0, speed: lastSpeed, height: player.y };
       pig.object.position.set(player.x, player.y, 0);
       pig.shadow.position.set(player.x, 0.012, 0.05);
       pig.hitWobble(player.hit);
@@ -1525,6 +1582,7 @@ export function createRunner(ctx, config) {
       if (!ended && distance >= total) {
         ended = true;
         hideDoors();
+        endChoice();
         // The result card orbits the guinea pig: nothing tall stays around it
         for (const object of objects) {
           if ((object.type === "gate" || object.type === "stop") && object.at - distance < 4) {
@@ -1598,6 +1656,9 @@ export function createRunner(ctx, config) {
         doorsPanel = null;
       }
       ctx.hud.setPath([], 0);
+      if (typeof window !== "undefined" && window.__guineaTrack && window.__guineaTrack.player === player) {
+        delete window.__guineaTrack;
+      }
     }
   };
 
@@ -1624,6 +1685,87 @@ export function createRunner(ctx, config) {
       }
     }
     objects = objects.filter((object) => !object.removed);
+  }
+
+  /** The calm speed of the choice at a gate: its pace slowed, kept readable. */
+  function decideSpeed(at) {
+    return Math.min(DECIDE_SPEED[1], Math.max(DECIDE_SPEED[0], startSpeed * basePace(at) * DECIDE_SLOW));
+  }
+
+  /**
+   * Nothing on the track in a choice: the rows already laid there go, what a
+   * world placed there itself (a tool, a story) moves on to just after it.
+   */
+  function clearForChoice(from, to) {
+    choices.push([from, to]);
+    const inside = objects.filter((object) => (object.type === "obstacle" || object.type === "item" || object.type === "power") && !object.done && object.at > from && object.at < to);
+    // What moves keeps its place relative to the rest (a note over its hurdle)
+    let first = Infinity;
+    for (const object of inside) {
+      if (object.row) {
+        remove(object);
+      } else {
+        first = Math.min(first, object.at);
+      }
+    }
+    for (const object of inside) {
+      if (!object.removed) {
+        object.at += to + 2 - first;
+      }
+    }
+    objects = objects.filter((object) => !object.removed);
+  }
+
+  /** Where a thing can go: out of every choice. null for a row of the runner's own. */
+  function clearOfChoices(at) {
+    for (const [from, to] of choices) {
+      if (at > from && at < to) {
+        return laying ? null : to + 2;
+      }
+    }
+    return at;
+  }
+
+  /**
+   * The speed run this frame. In a choice it aims at the doors in what is
+   * left of DECIDE_TIME, eased so the run calms down smoothly; after it the
+   * pace comes back the same way.
+   */
+  function runningSpeed(dt) {
+    const normal = currentSpeed() * (player.quick > 0 ? QUICK_BOOST : 1) * speedFactor;
+    if (choice) {
+      if (runSpeed < 0) {
+        runSpeed = lastSpeed || normal;
+      }
+      const left = Math.max(0, choice.gate.at - distance);
+      const want = Math.max(1.5, left / Math.max(0.35, DECIDE_TIME - choice.elapsed));
+      runSpeed += (want - runSpeed) * Math.min(1, dt * DECIDE_EASE);
+      choice.elapsed += dt;
+      return runSpeed;
+    }
+    if (runSpeed >= 0) {
+      runSpeed += (normal - runSpeed) * Math.min(1, dt * RECOVER_EASE);
+      if (Math.abs(normal - runSpeed) > 0.05) {
+        return runSpeed;
+      }
+      runSpeed = -1;
+    }
+    return normal;
+  }
+
+  function startChoice(gate) {
+    choice = { gate, elapsed: 0 };
+    ctx.setData("choice", "on");
+  }
+
+  /** The doors are reached: data-choice-seconds says how long the choice lasted. */
+  function endChoice() {
+    if (!choice) {
+      return;
+    }
+    ctx.setData("choice-seconds", choice.elapsed.toFixed(1));
+    choice = null;
+    ctx.setData("choice", "off");
   }
 
   function applyPower(event) {
@@ -1703,7 +1845,7 @@ export function createRunner(ctx, config) {
       paceShown = text;
       ctx.setData("pace", text);
     }
-    if (cue < PACE_CUES.length && basePace(distance) >= PACE_CUES[cue] && !stopped && runner.coach(say("r_faster"), 1300)) {
+    if (cue < PACE_CUES.length && basePace(distance) >= PACE_CUES[cue] && !stopped && !choice && runner.coach(say("r_faster"), 1300)) {
       cue += 1;
       ctx.sound.play("combo");
       ctx.fx.burst(player.x, 1.2, -1, { count: 22, colors: [0xffb400, 0xff5d2d, 0xffd84d], speed: 4, up: 3 });
@@ -1794,6 +1936,10 @@ export function createRunner(ctx, config) {
     const kinds = section.obstacles || [];
     const items = section.items || [];
 
+    if (choices.some(([from, to]) => at > from - 6 && at < to)) {
+      // A choice: nothing at all, not even a row of rewards
+      return;
+    }
     const calm = quiet.some(([from, to]) => at > from && at < to);
     if (nearEdge || calm || at < noObstacleUntil || !kinds.length) {
       if (items.length) {
@@ -1854,7 +2000,9 @@ export function createRunner(ctx, config) {
       gatesSpawned += 1;
     }
     while (nextRowAt < horizon && nextRowAt < total - 20) {
+      laying = true;
       addRow(nextRowAt);
+      laying = false;
       const index = sectionAt(nextRowAt);
       // The gap grows with the pace the guinea pig will have there, so the
       // time to react never shrinks (above a second even at the end); later
@@ -1951,9 +2099,12 @@ export function createRunner(ctx, config) {
         if (logo) {
           logo.rotation.y = Math.PI + Math.sin(time * 1.2) * 0.35;
         }
-        if (dz < GATE_PANEL_AT && !object.shown && dz > 0) {
+        if (dz < object.panelAt && !object.shown && dz > 0) {
           object.shown = true;
           showDoors(object);
+          if (object.spec.choice !== false) {
+            startChoice(object);
+          }
           events.push({ type: "gateNear", gate: object });
           if (object.spec.coach) {
             runner.coach(object.spec.coach, 2800, true);
@@ -1974,6 +2125,9 @@ export function createRunner(ctx, config) {
           }
           if (doorsGate === object) {
             hideDoors();
+          }
+          if (choice && choice.gate === object) {
+            endChoice();
           }
           events.push({ type: "gate", gate: object, door, lane, ok });
         }
@@ -2009,7 +2163,7 @@ export function createRunner(ctx, config) {
         object.mesh.visible = false;
         if (object.type === "item" && !object.def.bad) {
           streak += 1;
-          if (streak % STREAK_STEP === 0) {
+          if (streak % STREAK_STEP === 0 && !choice) {
             // A streak: a bigger burst and a cheer
             ctx.fx.burst(player.x, 1.4, 0, { count: 50, speed: 5, up: 6, life: 1.4 });
             ctx.sound.play("combo");
@@ -2038,7 +2192,9 @@ export function createRunner(ctx, config) {
     focus.lerp(wantedFocus, ease);
     shake = Math.max(0, shake - dt);
     const jitter = shake > 0 ? (Math.random() - 0.5) * shake : 0;
-    const fov = Math.round(((portrait ? 72 : 60) + FOV_PER_PACE * Math.max(0, pace() - 1)) * 10) / 10;
+    // The pace felt: the calm of a choice narrows the camera back too
+    const felt = runSpeed >= 0 ? Math.min(pace(), runSpeed / startSpeed) : pace();
+    const fov = Math.round(((portrait ? 72 : 60) + FOV_PER_PACE * Math.max(0, felt - 1)) * 10) / 10;
     if (camera.fov !== fov) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -2056,9 +2212,14 @@ export function createRunner(ctx, config) {
 
   // Ready for the intro card: the track is drawn before the first step
   ctx.setData("pace", "1.00");
+  ctx.setData("choice", "off");
   // A run started further down the track (guinea-at) does not call out the levels behind it
   while (cue < PACE_CUES.length && basePace(distance) >= PACE_CUES[cue]) {
     cue += 1;
+  }
+  // The playtest bots read the track, on test pages only (guinea-unlock=all, guinea-test=1)
+  if (typeof location !== "undefined" && /[?&]guinea-(unlock=all|test=1)/.test(location.search)) {
+    window.__guineaTrack = { objects: () => objects, player, distance: () => distance };
   }
   spawnAhead();
   placeScenery(0);
