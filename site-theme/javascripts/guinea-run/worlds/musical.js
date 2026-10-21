@@ -173,6 +173,45 @@ export const MUSICAL_CSS = `
 /* ---------- Writing a level ---------- */
 
 /** The builder of a level: every method adds events placed in run beats (4 per bar). */
+/**
+ * The end of the "Good to know" message both musical worlds write: Quick
+ * Deploy missed, too few components collected, then the first two reasons.
+ */
+export function missedInfo(lines, run, stats, t) {
+  if (!run.powerTaken("quick")) {
+    lines.push(t("info_quick"));
+  }
+  if (stats.got < stats.coins * 0.9) {
+    lines.push(t("info_coins", { got: stats.got, total: stats.coins }));
+  }
+  return lines.slice(0, 2).join(" ");
+}
+
+/** The world object a musical run gives the shell. */
+export function musicalWorld(run, isFinished, cleanUp) {
+  return {
+    start() {
+      run.start();
+    },
+    update(dt, time) {
+      if (isFinished()) {
+        return;
+      }
+      run.update(dt, time);
+    },
+    action(name) {
+      run.action(name);
+    },
+    idleCamera(time) {
+      run.idleCamera(time);
+    },
+    dispose() {
+      run.dispose();
+      cleanUp();
+    }
+  };
+}
+
 export function createLevel() {
   const events = [];
   const add = (event) => {

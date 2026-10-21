@@ -15,7 +15,7 @@
  * The finale is the DORA card of Lab 3.6, with the lab's own numbers, and two
  * questions about what they really say.
  */
-import { createLevel, createMusicalRun, MUSICAL_TEXTS, MUSICAL_CSS } from "./musical.js";
+import { createLevel, createMusicalRun, MUSICAL_TEXTS, MUSICAL_CSS, missedInfo, musicalWorld } from "./musical.js";
 import { melody } from "../core/music.js";
 import { SLDS } from "../core/painter.js";
 
@@ -638,38 +638,18 @@ export function createWorld(ctx) {
     if (verified() < 3) {
       lines.push(t("info_verify", { n: verified() }));
     }
-    if (!run.powerTaken("quick")) {
-      lines.push(t("info_quick"));
-    }
-    if (s.got < s.coins * 0.9) {
-      lines.push(t("info_coins", { got: s.got, total: s.coins }));
-    }
-    return lines.slice(0, 2).join(" ");
+    return missedInfo(lines, run, s, t);
   }
 
-  return {
-    start() {
-      run.start();
-    },
-    update(dt, time) {
-      if (finished) {
-        return;
-      }
-      run.update(dt, time);
-    },
-    action(name) {
-      run.action(name);
-    },
-    idleCamera(time) {
-      run.idleCamera(time);
-    },
-    dispose() {
-      run.dispose();
+  return musicalWorld(
+    run,
+    () => finished,
+    () => {
       if (card) {
         card.remove();
       }
     }
-  };
+  );
 }
 
 export const CSS =

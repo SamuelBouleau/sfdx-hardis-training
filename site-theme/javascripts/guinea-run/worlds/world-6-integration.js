@@ -17,7 +17,7 @@
  * shows the walls it hides), the green lie of Lab 2.3, and the three failed
  * actions of Mariia's US-062, each with its own way out, chosen on the beat.
  */
-import { createLevel, createMusicalRun, MUSICAL_TEXTS, MUSICAL_CSS } from "./musical.js";
+import { createLevel, createMusicalRun, MUSICAL_TEXTS, MUSICAL_CSS, missedInfo, musicalWorld } from "./musical.js";
 import { melody } from "../core/music.js";
 import { SLDS } from "../core/painter.js";
 
@@ -611,36 +611,16 @@ export function createWorld(ctx) {
     if (!run.powerTaken("log")) {
       lines.push(t("info_log"));
     }
-    if (!run.powerTaken("quick")) {
-      lines.push(t("info_quick"));
-    }
-    if (s.got < s.coins * 0.9) {
-      lines.push(t("info_coins", { got: s.got, total: s.coins }));
-    }
-    return lines.slice(0, 2).join(" ");
+    return missedInfo(lines, run, s, t);
   }
 
-  return {
-    start() {
-      run.start();
-    },
-    update(dt, time) {
-      if (finished) {
-        return;
-      }
-      run.update(dt, time);
-    },
-    action(name) {
-      run.action(name);
-    },
-    idleCamera(time) {
-      run.idleCamera(time);
-    },
-    dispose() {
-      run.dispose();
+  return musicalWorld(
+    run,
+    () => finished,
+    () => {
       if (meter) {
         meter.remove();
       }
     }
-  };
+  );
 }
